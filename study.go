@@ -2,6 +2,7 @@ package main
 
 import (
 	"sync"
+	"time"
 )
 
 type StudyState uint8
@@ -105,7 +106,7 @@ func (s *StudyManager) SetStudyState(state StudyState) {
 }
 
 type Member struct {
-	Nickname   string
+	Name       string
 	Registered bool
 
 	Subject    string
@@ -115,9 +116,9 @@ type Member struct {
 	mtx *sync.Mutex
 }
 
-func NewMember(nickname string) Member {
+func NewMember(name string) Member {
 	return Member{
-		Nickname:   nickname,
+		Name:       name,
 		Registered: false,
 		Subject:    "",
 		ContentURL: "",
@@ -148,4 +149,73 @@ func (m *Member) SetCompleted(completed bool) {
 	defer m.mtx.Unlock()
 	m.mtx.Lock()
 	m.Completed = completed
+}
+
+type Study struct {
+	ID      string
+	GuildID string
+
+	Title     string
+	Members   map[string]Member
+	CreatedAt time.Time
+	UpdatedAt time.Time
+
+	mtx *sync.Mutex
+}
+
+func NewStudy(guildID, title string) Study {
+	return Study{
+		ID:        "",
+		GuildID:   guildID,
+		Title:     title,
+		Members:   map[string]Member{},
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		mtx:       &sync.Mutex{},
+	}
+}
+
+func (s *Study) SetID(id string) {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+	s.ID = id
+}
+
+func (s *Study) SetTitle(title string) {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+	s.Title = title
+}
+
+func (s *Study) AddMember(memberID string, member Member) {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+	s.Members[memberID] = member
+}
+
+func (s *Study) RemoveMember(memberID string) {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+	delete(s.Members, memberID)
+}
+
+func (s *Study) GetMember(memberID string) (Member, bool) {
+	member, ok := s.Members[memberID]
+	return member, ok
+}
+
+func (s *Study) GetMembers() []Member {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+	members := []Member{}
+	for _, v := range s.Members {
+		members = append(members, v)
+	}
+	return members
+}
+
+func (s *Study) SetUpdatedAt(updatedAt time.Time) {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+	s.UpdatedAt = updatedAt
 }
