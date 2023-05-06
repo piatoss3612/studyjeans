@@ -6,13 +6,13 @@ import (
 )
 
 type Study struct {
-	ID      string
-	GuildID string
+	ID      string `bson:"_id"`
+	GuildID string `bson:"guild_id"`
 
-	Title     string
-	Members   map[string]Member
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	Title     string            `bson:"title"`
+	Members   map[string]Member `bson:"members"`
+	CreatedAt time.Time         `bson:"created_at"`
+	UpdatedAt time.Time         `bson:"updated_at"`
 
 	mtx *sync.RWMutex
 }

@@ -3,12 +3,12 @@ package study
 import "sync"
 
 type Member struct {
-	Name         string
-	Subject      string
-	ContentURL   string
-	Registered   bool
-	Participated bool
-	Reviewers    map[string]bool
+	Name         string          `bson:"name"`
+	Subject      string          `bson:"subject"`
+	ContentURL   string          `bson:"content_url"`
+	Registered   bool            `bson:"registered"`
+	Participated bool            `bson:"participated"`
+	Reviewers    map[string]bool `bson:"reviewers"`
 
 	mtx *sync.RWMutex
 }
