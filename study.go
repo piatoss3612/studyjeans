@@ -4,8 +4,6 @@ import (
 	"errors"
 	"sync"
 	"time"
-
-	"github.com/bwmarrin/discordgo"
 )
 
 type StudyStage uint8
@@ -90,7 +88,7 @@ type StudyManager struct {
 	OnGoingStudyID string
 	StudyStage     StudyStage
 
-	mtx *sync.Mutex
+	mtx *sync.RWMutex
 }
 
 func NewStudyManager(guildID string, ManagerID string) *StudyManager {
@@ -101,37 +99,47 @@ func NewStudyManager(guildID string, ManagerID string) *StudyManager {
 		SubManagerIDs:   []string{},
 		OnGoingStudyID:  "",
 		StudyStage:      StudyStageNone,
-		mtx:             &sync.Mutex{},
+		mtx:             &sync.RWMutex{},
 	}
 }
 
 func (s *StudyManager) SetNoticeChannelID(channelID string) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
 	s.NoticeChannelID = channelID
 }
 
 func (s *StudyManager) IsManager(userID string) bool {
+	defer s.mtx.RLock()
+	s.mtx.RLock()
+
 	return s.ManagerID == userID
 }
 
 func (s *StudyManager) AddSubManagerID(userID string) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
 	s.SubManagerIDs = append(s.SubManagerIDs, userID)
 }
 
 func (s *StudyManager) RemoveSubManagerID(userID string) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
 	for i, v := range s.SubManagerIDs {
 		if v == userID {
 			s.SubManagerIDs = append(s.SubManagerIDs[:i], s.SubManagerIDs[i+1:]...)
+			return
 		}
 	}
 }
 
 func (s *StudyManager) IsSubManager(userID string) bool {
+	defer s.mtx.RLock()
+	s.mtx.RLock()
+
 	for _, v := range s.SubManagerIDs {
 		if v == userID {
 			return true
@@ -143,12 +151,14 @@ func (s *StudyManager) IsSubManager(userID string) bool {
 func (s *StudyManager) SetOnGoingStudyID(studyID string) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
 	s.OnGoingStudyID = studyID
 }
 
 func (s *StudyManager) SetStudyStage(state StudyStage) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
 	s.StudyStage = state
 }
 
@@ -161,7 +171,7 @@ type Member struct {
 	Completed  bool
 	Reviewers  map[string]bool
 
-	mtx *sync.Mutex
+	mtx *sync.RWMutex
 }
 
 func NewMember(name string) Member {
@@ -172,43 +182,49 @@ func NewMember(name string) Member {
 		ContentURL: "",
 		Completed:  false,
 		Reviewers:  map[string]bool{},
-		mtx:        &sync.Mutex{},
+		mtx:        &sync.RWMutex{},
 	}
 }
 
 func (m *Member) SetRegistered(registered bool) {
 	defer m.mtx.Unlock()
 	m.mtx.Lock()
+
 	m.Registered = registered
 }
 
 func (m *Member) SetSubject(subject string) {
 	defer m.mtx.Unlock()
 	m.mtx.Lock()
+
 	m.Subject = subject
 }
 
 func (m *Member) SetContentURL(contentURL string) {
 	defer m.mtx.Unlock()
 	m.mtx.Lock()
+
 	m.ContentURL = contentURL
 }
 
 func (m *Member) SetCompleted(completed bool) {
 	defer m.mtx.Unlock()
 	m.mtx.Lock()
+
 	m.Completed = completed
 }
 
 func (m *Member) SetReviewer(userID string) {
 	defer m.mtx.Unlock()
 	m.mtx.Lock()
+
 	m.Reviewers[userID] = true
 }
 
 func (m *Member) HasDoneReview(userID string) bool {
-	defer m.mtx.Unlock()
-	m.mtx.Lock()
+	defer m.mtx.RUnlock()
+	m.mtx.RLock()
+
 	return m.Reviewers[userID]
 }
 
@@ -221,7 +237,7 @@ type Study struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
-	mtx *sync.Mutex
+	mtx *sync.RWMutex
 }
 
 func NewStudy(guildID, title string) *Study {
@@ -232,42 +248,49 @@ func NewStudy(guildID, title string) *Study {
 		Members:   map[string]Member{},
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		mtx:       &sync.Mutex{},
+		mtx:       &sync.RWMutex{},
 	}
 }
 
 func (s *Study) SetID(id string) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
 	s.ID = id
 }
 
 func (s *Study) SetTitle(title string) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
 	s.Title = title
 }
 
 func (s *Study) SetMember(memberID string, member Member) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
 	s.Members[memberID] = member
 }
 
 func (s *Study) RemoveMember(memberID string) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
 	delete(s.Members, memberID)
 }
 
 func (s *Study) GetMember(memberID string) (Member, bool) {
+	defer s.mtx.RUnlock()
+	s.mtx.RLock()
+
 	member, ok := s.Members[memberID]
 	return member, ok
 }
 
 func (s *Study) GetMembers() []Member {
-	defer s.mtx.Unlock()
-	s.mtx.Lock()
+	defer s.mtx.RUnlock()
+	s.mtx.RLock()
 	members := []Member{}
 	for _, v := range s.Members {
 		members = append(members, v)
@@ -278,22 +301,21 @@ func (s *Study) GetMembers() []Member {
 func (s *Study) SetUpdatedAt(updatedAt time.Time) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
 	s.UpdatedAt = updatedAt
 }
-
-// TODO: Define StudyRepository
 
 type StudyService struct {
 	StudyManager *StudyManager
 	OnGoingStudy *Study
 	// Repository
 
-	mtx *sync.Mutex
+	mtx *sync.RWMutex
 }
 
 func NewStudyService(guildID string) (*StudyService, error) {
 	svc := &StudyService{
-		mtx: &sync.Mutex{},
+		mtx: &sync.RWMutex{},
 	}
 	return svc.setup(guildID)
 }
@@ -301,6 +323,20 @@ func NewStudyService(guildID string) (*StudyService, error) {
 func (s *StudyService) setup(guildID string) (*StudyService, error) {
 	// TODO: get study manager from repository
 	return s, nil
+}
+
+func (s *StudyService) GetNoticeChannelID() string {
+	defer s.mtx.RUnlock()
+	s.mtx.RLock()
+
+	return s.StudyManager.NoticeChannelID
+}
+
+func (s *StudyService) SetNoticeChannelID(channelID string) {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+
+	s.StudyManager.SetNoticeChannelID(channelID)
 }
 
 func (s *StudyService) CreateStudy(proposerID, guildID, title string, memberIDs []string) error {
@@ -345,7 +381,7 @@ func (s *StudyService) CreateStudy(proposerID, guildID, title string, memberIDs 
 	return nil
 }
 
-func (s *StudyService) ChangeRegistrationState(memberID, guildID string, state bool) error {
+func (s *StudyService) ChangeRegistrationState(memberID, guildID, subject string, state bool) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
@@ -371,6 +407,7 @@ func (s *StudyService) ChangeRegistrationState(memberID, guildID string, state b
 
 	// change member's registered state
 	member.SetRegistered(state)
+	member.SetSubject(subject)
 	study.SetMember(memberID, member)
 
 	// TODO: save study to repository
@@ -520,7 +557,7 @@ func (s *StudyService) StartPresentation(proposerID string) error {
 	return nil
 }
 
-func (s *StudyService) ChangeCompleteState(proposerID, guildID, memberID string, state bool) error {
+func (s *StudyService) ChangePresentationCompletedState(proposerID, guildID, memberID string, state bool) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
@@ -615,9 +652,43 @@ func (s *StudyService) StartReview(proposerID string) error {
 	return nil
 }
 
-func (s *StudyService) SendReview(session *discordgo.Session, reviewerID, revieweeID, message string) error {
+func (s *StudyService) HasDoneReview(reviewerID, revieweeID string) (bool, error) {
+	defer s.mtx.RUnlock()
+	s.mtx.RLock()
+
+	if !s.StudyManager.StudyStage.IsReviewOngoing() {
+		return false, errors.New("리뷰 단계가 진행중이 아닙니다.")
+	}
+
+	study := s.OnGoingStudy
+
+	// check if reviewee belongs to study
+	reviewee, ok := study.GetMember(revieweeID)
+	if !ok {
+		return false, errors.New("활성화된 스터디에 등록되지 않은 사용자입니다.")
+	}
+
+	// check if reviewee is registered
+	if !reviewee.Registered {
+		return false, errors.New("발표자로 등록되지 않은 사용자입니다.")
+	}
+
+	// check if reviewee completed presentation
+	if !reviewee.Completed {
+		return false, errors.New("발표를 완료하지 않은 사용자입니다.")
+	}
+
+	// check if reviewer already reviewed
+	return reviewee.HasDoneReview(reviewerID), nil
+}
+
+func (s *StudyService) SetReviewer(reviewerID, revieweeID string) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
+	if !s.StudyManager.StudyStage.IsReviewOngoing() {
+		return errors.New("리뷰 단계가 진행중이 아닙니다.")
+	}
 
 	study := *s.OnGoingStudy
 
@@ -642,17 +713,9 @@ func (s *StudyService) SendReview(session *discordgo.Session, reviewerID, review
 		return errors.New("이미 리뷰를 완료한 사용자입니다.")
 	}
 
-	channel, err := session.UserChannelCreate(revieweeID)
-	if err != nil {
-		return err
-	}
-
-	_, err = session.ChannelMessageSend(channel.ID, message)
-	if err != nil {
-		return err
-	}
-
+	// set reviewer
 	reviewee.SetReviewer(reviewerID)
+	study.SetMember(revieweeID, reviewee)
 
 	// TODO: save study to repository
 
@@ -712,3 +775,7 @@ func (s *StudyService) FinishStudy(proposerID string) error {
 
 	return nil
 }
+
+// TODO: Define StudyRepository
+
+type Repository struct{}
