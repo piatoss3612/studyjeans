@@ -22,6 +22,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	session.Identify.Intents = discordgo.IntentGuildMembers | discordgo.IntentGuildMessages | discordgo.IntentGuilds
+
+	session.AddHandler(ready)
+
 	if err = session.Open(); err != nil {
 		log.Fatal(err)
 	}
@@ -53,4 +57,8 @@ func main() {
 	}
 
 	log.Println("Bot is stopped!")
+}
+
+func ready(s *discordgo.Session, event *discordgo.Ready) {
+	s.UpdateGameStatus(0, "발표 준비")
 }
