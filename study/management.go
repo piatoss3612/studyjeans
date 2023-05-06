@@ -3,8 +3,7 @@ package study
 import "sync"
 
 type Management struct {
-	ID              string `bson:"_id"`
-	GuildID         string `bson:"guild_id"`
+	GuildID         string `bson:"_id"`
 	NoticeChannelID string `bson:"notice_channel_id"`
 
 	ManagerID string `bson:"manager_id"`
@@ -17,7 +16,6 @@ type Management struct {
 
 func NewManagement() *Management {
 	return &Management{
-		ID:                "",
 		GuildID:           "",
 		NoticeChannelID:   "",
 		ManagerID:         "",
@@ -25,13 +23,6 @@ func NewManagement() *Management {
 		CurrentStudyStage: StudyStageNone,
 		mtx:               &sync.RWMutex{},
 	}
-}
-
-func (s *Management) SetID(id string) {
-	defer s.mtx.Unlock()
-	s.mtx.Lock()
-
-	s.ID = id
 }
 
 func (s *Management) SetGuildID(guildID string) {
