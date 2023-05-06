@@ -5,32 +5,60 @@ import (
 	"time"
 )
 
-type StudyState uint8
+type StudyStage uint8
 
 const (
-	StudyStateNone     StudyState = 0
-	StudyStateWait     StudyState = 1
-	StudyStateRegister StudyState = 2
-	StudyStateSubmit   StudyState = 3
-	StudyStatePresent  StudyState = 4
-	StudyStateReview   StudyState = 5
+	StudyStageNone               StudyStage = 0
+	StudyStageWait               StudyStage = 1
+	StudyStageStartRegistration  StudyStage = 2
+	StudyStageFinishRegistration StudyStage = 3
+	StudyStageStartSubmission    StudyStage = 4
+	StudyStageFinishSubmission   StudyStage = 5
+	StudyStageStartPresentation  StudyStage = 6
+	StudyStageFinishPresentation StudyStage = 7
+	StudyStageStartReview        StudyStage = 8
+	StudyStageFinishReview       StudyStage = 9
 )
 
-func (s StudyState) String() string {
+func (s StudyStage) String() string {
 	switch s {
-	case StudyStateWait:
-		return "다음 주차 대기"
-	case StudyStateRegister:
+	case StudyStageWait:
+		return "다음 회차 대기"
+	case StudyStageStartRegistration, StudyStageFinishRegistration:
 		return "발표자 등록"
-	case StudyStateSubmit:
+	case StudyStageStartSubmission, StudyStageFinishSubmission:
 		return "발표자료 제출"
-	case StudyStatePresent:
+	case StudyStageStartPresentation, StudyStageFinishPresentation:
 		return "발표"
-	case StudyStateReview:
+	case StudyStageStartReview, StudyStageFinishReview:
 		return "리뷰 및 피드백"
 	default:
 		return "몰?루"
 	}
+}
+
+func (s StudyStage) IsNone() bool {
+	return s == StudyStageNone
+}
+
+func (s StudyStage) IsWait() bool {
+	return s == StudyStageWait
+}
+
+func (s StudyStage) IsRegister() bool {
+	return s == StudyStageStartRegistration
+}
+
+func (s StudyStage) IsSubmit() bool {
+	return s == StudyStageStartSubmission
+}
+
+func (s StudyStage) IsPresent() bool {
+	return s == StudyStageStartPresentation
+}
+
+func (s StudyStage) IsReview() bool {
+	return s == StudyStageStartReview
 }
 
 type StudyManager struct {
@@ -41,7 +69,7 @@ type StudyManager struct {
 	SubManagerIDs []string
 
 	OnGoingStudyID string
-	StudyState     StudyState
+	StudyStage     StudyStage
 
 	mtx *sync.Mutex
 }
@@ -53,7 +81,7 @@ func NewStudyManager(guildID string, ManagerID string) *StudyManager {
 		ManagerID:       ManagerID,
 		SubManagerIDs:   []string{},
 		OnGoingStudyID:  "",
-		StudyState:      StudyStateNone,
+		StudyStage:      StudyStageNone,
 		mtx:             &sync.Mutex{},
 	}
 }
@@ -99,10 +127,10 @@ func (s *StudyManager) SetOnGoingStudyID(studyID string) {
 	s.OnGoingStudyID = studyID
 }
 
-func (s *StudyManager) SetStudyState(state StudyState) {
+func (s *StudyManager) SetStudyStage(state StudyStage) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
-	s.StudyState = state
+	s.StudyStage = state
 }
 
 type Member struct {
@@ -163,8 +191,8 @@ type Study struct {
 	mtx *sync.Mutex
 }
 
-func NewStudy(guildID, title string) Study {
-	return Study{
+func NewStudy(guildID, title string) *Study {
+	return &Study{
 		ID:        "",
 		GuildID:   guildID,
 		Title:     title,
@@ -187,7 +215,7 @@ func (s *Study) SetTitle(title string) {
 	s.Title = title
 }
 
-func (s *Study) AddMember(memberID string, member Member) {
+func (s *Study) SetMember(memberID string, member Member) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 	s.Members[memberID] = member
