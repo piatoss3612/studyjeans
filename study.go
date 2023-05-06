@@ -1,36 +1,39 @@
 package main
 
 import (
+	"errors"
 	"sync"
 	"time"
+
+	"github.com/bwmarrin/discordgo"
 )
 
 type StudyStage uint8
 
 const (
-	StudyStageNone               StudyStage = 0
-	StudyStageWait               StudyStage = 1
-	StudyStageStartRegistration  StudyStage = 2
-	StudyStageFinishRegistration StudyStage = 3
-	StudyStageStartSubmission    StudyStage = 4
-	StudyStageFinishSubmission   StudyStage = 5
-	StudyStageStartPresentation  StudyStage = 6
-	StudyStageFinishPresentation StudyStage = 7
-	StudyStageStartReview        StudyStage = 8
-	StudyStageFinishReview       StudyStage = 9
+	StudyStageNone                 StudyStage = 0
+	StudyStageWait                 StudyStage = 1
+	StudyStageRegistrationStarted  StudyStage = 2
+	StudyStageRegistrationFinished StudyStage = 3
+	StudyStageSubmissionStarted    StudyStage = 4
+	StudyStageSubmissionFinished   StudyStage = 5
+	StudyStagePresentationStarted  StudyStage = 6
+	StudyStagePresentationFinished StudyStage = 7
+	StudyStageReviewStarted        StudyStage = 8
+	StudyStageReviewFinished       StudyStage = 9
 )
 
 func (s StudyStage) String() string {
 	switch s {
 	case StudyStageWait:
 		return "다음 회차 대기"
-	case StudyStageStartRegistration, StudyStageFinishRegistration:
+	case StudyStageRegistrationStarted, StudyStageRegistrationFinished:
 		return "발표자 등록"
-	case StudyStageStartSubmission, StudyStageFinishSubmission:
+	case StudyStageSubmissionStarted, StudyStageSubmissionFinished:
 		return "발표자료 제출"
-	case StudyStageStartPresentation, StudyStageFinishPresentation:
+	case StudyStagePresentationStarted, StudyStagePresentationFinished:
 		return "발표"
-	case StudyStageStartReview, StudyStageFinishReview:
+	case StudyStageReviewStarted, StudyStageReviewFinished:
 		return "리뷰 및 피드백"
 	default:
 		return "몰?루"
@@ -45,20 +48,36 @@ func (s StudyStage) IsWait() bool {
 	return s == StudyStageWait
 }
 
-func (s StudyStage) IsRegister() bool {
-	return s == StudyStageStartRegistration
+func (s StudyStage) IsRegistrationOngoing() bool {
+	return s == StudyStageRegistrationStarted
 }
 
-func (s StudyStage) IsSubmit() bool {
-	return s == StudyStageStartSubmission
+func (s StudyStage) IsRegistrationFinished() bool {
+	return s == StudyStageRegistrationFinished
 }
 
-func (s StudyStage) IsPresent() bool {
-	return s == StudyStageStartPresentation
+func (s StudyStage) IsSubmissionOngoing() bool {
+	return s == StudyStageSubmissionStarted
 }
 
-func (s StudyStage) IsReview() bool {
-	return s == StudyStageStartReview
+func (s StudyStage) IsSubmissionFinished() bool {
+	return s == StudyStageSubmissionFinished
+}
+
+func (s StudyStage) IsPresentationOngoing() bool {
+	return s == StudyStagePresentationStarted
+}
+
+func (s StudyStage) IsPresentationFinished() bool {
+	return s == StudyStagePresentationFinished
+}
+
+func (s StudyStage) IsReviewOngoing() bool {
+	return s == StudyStageReviewStarted
+}
+
+func (s StudyStage) IsReviewFinished() bool {
+	return s == StudyStageReviewFinished
 }
 
 type StudyManager struct {
@@ -140,6 +159,7 @@ type Member struct {
 	Subject    string
 	ContentURL string
 	Completed  bool
+	Reviewers  map[string]bool
 
 	mtx *sync.Mutex
 }
@@ -151,6 +171,7 @@ func NewMember(name string) Member {
 		Subject:    "",
 		ContentURL: "",
 		Completed:  false,
+		Reviewers:  map[string]bool{},
 		mtx:        &sync.Mutex{},
 	}
 }
@@ -177,6 +198,18 @@ func (m *Member) SetCompleted(completed bool) {
 	defer m.mtx.Unlock()
 	m.mtx.Lock()
 	m.Completed = completed
+}
+
+func (m *Member) SetReviewer(userID string) {
+	defer m.mtx.Unlock()
+	m.mtx.Lock()
+	m.Reviewers[userID] = true
+}
+
+func (m *Member) HasDoneReview(userID string) bool {
+	defer m.mtx.Unlock()
+	m.mtx.Lock()
+	return m.Reviewers[userID]
 }
 
 type Study struct {
@@ -246,4 +279,436 @@ func (s *Study) SetUpdatedAt(updatedAt time.Time) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 	s.UpdatedAt = updatedAt
+}
+
+// TODO: Define StudyRepository
+
+type StudyService struct {
+	StudyManager *StudyManager
+	OnGoingStudy *Study
+	// Repository
+
+	mtx *sync.Mutex
+}
+
+func NewStudyService(guildID string) (*StudyService, error) {
+	svc := &StudyService{
+		mtx: &sync.Mutex{},
+	}
+	return svc.setup(guildID)
+}
+
+func (s *StudyService) setup(guildID string) (*StudyService, error) {
+	// TODO: get study manager from repository
+	return s, nil
+}
+
+func (s *StudyService) CreateStudy(proposerID, guildID, title string, memberIDs []string) error {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+
+	manager := *s.StudyManager
+
+	// check if proposer is manager
+	if !manager.IsManager(proposerID) {
+		return errors.New("스터디 관리자가 아닙니다.")
+	}
+
+	// check if there is no on going study
+	if !(manager.StudyStage.IsNone() || manager.StudyStage.IsWait()) {
+		return errors.New("이미 진행중인 스터디가 있습니다.")
+	}
+
+	// create study
+	study := NewStudy(guildID, title)
+
+	// set initial members
+	for _, id := range memberIDs {
+		member := NewMember(id)
+		study.SetMember(id, member)
+	}
+
+	// TODO: save study to repository
+
+	// move to next stage
+	manager.SetOnGoingStudyID(study.ID)
+	manager.SetStudyStage(StudyStageRegistrationStarted)
+
+	// TODO: save manager to repository
+
+	// TODO: commit transaction
+
+	// set study and manager
+	s.StudyManager = &manager
+	s.OnGoingStudy = study
+
+	return nil
+}
+
+func (s *StudyService) ChangeRegistrationState(memberID, guildID string, state bool) error {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+
+	manager := s.StudyManager
+
+	// check if study is in registration stage
+	if !manager.StudyStage.IsRegistrationOngoing() {
+		return errors.New("발표자 등록이 불가능한 상태입니다.")
+	}
+
+	study := *s.OnGoingStudy
+
+	// check if presentor belongs to study
+	if study.GuildID != guildID {
+		return errors.New("해당 디스코드 서버에서 진행중인 스터디가 아닙니다.")
+	}
+
+	// check if presentor is initialized
+	member, ok := study.GetMember(memberID)
+	if !ok {
+		member = NewMember(memberID)
+	}
+
+	// change member's registered state
+	member.SetRegistered(state)
+	study.SetMember(memberID, member)
+
+	// TODO: save study to repository
+
+	s.OnGoingStudy = &study
+
+	return nil
+}
+
+func (s *StudyService) FinishRegistration(proposerID string) error {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+
+	manager := *s.StudyManager
+
+	// check if proposer is manager
+	if !manager.IsManager(proposerID) {
+		return errors.New("스터디 관리자가 아닙니다.")
+	}
+
+	// check if study is in registration stage
+	if !manager.StudyStage.IsRegistrationOngoing() {
+		return errors.New("발표자 등록 완료가 불가능한 상태입니다.")
+	}
+
+	manager.SetStudyStage(StudyStageRegistrationFinished)
+
+	// TODO: save manager to repository
+
+	s.StudyManager = &manager
+
+	return nil
+}
+
+func (s *StudyService) StartSubmission(proposerID string) error {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+
+	manager := *s.StudyManager
+
+	// check if proposer is manager
+	if !manager.IsManager(proposerID) {
+		return errors.New("스터디 관리자가 아닙니다.")
+	}
+
+	// check if study can accept content submission
+	if manager.StudyStage.IsRegistrationFinished() {
+		return errors.New("발표 자료 제출 단계 시작이 불가능한 상태입니다.")
+	}
+
+	manager.SetStudyStage(StudyStageSubmissionStarted)
+
+	// TODO: save manager to repository
+
+	s.StudyManager = &manager
+
+	return nil
+}
+
+func (s *StudyService) SubmitContent(memberID, guildID, content string) error {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+
+	manager := s.StudyManager
+
+	// check if study can accept content submission
+	if !manager.StudyStage.IsSubmissionOngoing() {
+		return errors.New("발표 자료 제출이 불가능한 상태입니다.")
+	}
+
+	study := *s.OnGoingStudy
+
+	// check if presentor belongs to study
+	if study.GuildID != guildID {
+		return errors.New("해당 디스코드 서버에서 진행중인 스터디가 아닙니다.")
+	}
+
+	// check if presentor is initialized
+	member, ok := study.GetMember(memberID)
+	if !ok {
+		return errors.New("활성화된 스터디에 등록되지 않은 사용자입니다.")
+	}
+
+	// check if presentor is registered
+	if !member.Registered {
+		return errors.New("발표자로 등록되지 않은 사용자입니다.")
+	}
+
+	// set content
+	member.SetContentURL(content)
+	study.SetMember(memberID, member)
+
+	// TODO: save study to repository
+
+	s.OnGoingStudy = &study
+
+	return nil
+}
+
+func (s *StudyService) FinishSubmission(proposerID string) error {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+
+	manager := *s.StudyManager
+
+	// check if proposer is manager
+	if !manager.IsManager(proposerID) {
+		return errors.New("스터디 관리자가 아닙니다.")
+	}
+
+	// check if study can accept content submission
+	if !manager.StudyStage.IsSubmissionOngoing() {
+		return errors.New("발표 자료 제출 단계 종료가 불가능한 상태입니다.")
+	}
+
+	manager.SetStudyStage(StudyStageSubmissionFinished)
+
+	// TODO: save manager to repository
+
+	s.StudyManager = &manager
+
+	return nil
+}
+
+func (s *StudyService) StartPresentation(proposerID string) error {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+
+	manager := *s.StudyManager
+
+	// check if proposer is manager
+	if !manager.IsManager(proposerID) {
+		return errors.New("스터디 관리자가 아닙니다.")
+	}
+
+	// check if content submission is finished
+	if !manager.StudyStage.IsSubmissionFinished() {
+		return errors.New("발표 단계 시작이 불가능한 상태입니다.")
+	}
+
+	manager.SetStudyStage(StudyStagePresentationStarted)
+
+	// TODO: save study manager to repository
+
+	s.StudyManager = &manager
+
+	return nil
+}
+
+func (s *StudyService) ChangeCompleteState(proposerID, guildID, memberID string, state bool) error {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+
+	manager := *s.StudyManager
+
+	// check if proposer is manager
+	if !manager.IsManager(proposerID) {
+		return errors.New("스터디 관리자가 아닙니다.")
+	}
+
+	// check if presentation is ongoing
+	if !manager.StudyStage.IsPresentationOngoing() {
+		return errors.New("발표 완료 상태 전환이 불가능한 상태입니다.")
+	}
+
+	study := *s.OnGoingStudy
+
+	// check if presentor belongs to study
+	if study.GuildID != guildID {
+		return errors.New("해당 디스코드 서버에서 진행중인 스터디가 아닙니다.")
+	}
+
+	// check if presentor is initialized
+	member, ok := study.GetMember(memberID)
+	if !ok {
+		return errors.New("활성화된 스터디에 등록되지 않은 사용자입니다.")
+	}
+
+	// check if presentor is registered
+	if !member.Registered {
+		return errors.New("발표자로 등록되지 않은 사용자입니다.")
+	}
+
+	// set complete state
+	member.SetCompleted(state)
+	study.SetMember(memberID, member)
+
+	// TODO: save study to repository
+
+	s.OnGoingStudy = &study
+
+	return nil
+}
+
+func (s *StudyService) FinishPresentation(proposerID string) error {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+
+	manager := *s.StudyManager
+
+	// check if proposer is manager
+	if !manager.IsManager(proposerID) {
+		return errors.New("스터디 관리자가 아닙니다.")
+	}
+
+	// check if presentation is ongoing
+	if !manager.StudyStage.IsPresentationOngoing() {
+		return errors.New("발표 단계 종료가 불가능한 상태입니다.")
+	}
+
+	manager.SetStudyStage(StudyStagePresentationFinished)
+
+	// TODO: save study manager to repository
+
+	s.StudyManager = &manager
+
+	return nil
+}
+
+func (s *StudyService) StartReview(proposerID string) error {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+
+	manager := *s.StudyManager
+
+	// check if proposer is manager
+	if !manager.IsManager(proposerID) {
+		return errors.New("스터디 관리자가 아닙니다.")
+	}
+
+	// check if presentation is finished
+	if !manager.StudyStage.IsPresentationFinished() {
+		return errors.New("리뷰 단계 시작이 불가능한 상태입니다.")
+	}
+
+	manager.SetStudyStage(StudyStageReviewStarted)
+
+	// TODO: save study manager to repository
+
+	s.StudyManager = &manager
+
+	return nil
+}
+
+func (s *StudyService) SendReview(session *discordgo.Session, reviewerID, revieweeID, message string) error {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+
+	study := *s.OnGoingStudy
+
+	// check if reviewee belongs to study
+	reviewee, ok := study.GetMember(revieweeID)
+	if !ok {
+		return errors.New("활성화된 스터디에 등록되지 않은 사용자입니다.")
+	}
+
+	// check if reviewee is registered
+	if !reviewee.Registered {
+		return errors.New("발표자로 등록되지 않은 사용자입니다.")
+	}
+
+	// check if reviewee completed presentation
+	if !reviewee.Completed {
+		return errors.New("발표를 완료하지 않은 사용자입니다.")
+	}
+
+	// check if reviewer already reviewed
+	if reviewee.HasDoneReview(reviewerID) {
+		return errors.New("이미 리뷰를 완료한 사용자입니다.")
+	}
+
+	channel, err := session.UserChannelCreate(revieweeID)
+	if err != nil {
+		return err
+	}
+
+	_, err = session.ChannelMessageSend(channel.ID, message)
+	if err != nil {
+		return err
+	}
+
+	reviewee.SetReviewer(reviewerID)
+
+	// TODO: save study to repository
+
+	s.OnGoingStudy = &study
+
+	return nil
+}
+
+func (s *StudyService) FinishReview(proposerID string) error {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+
+	manager := *s.StudyManager
+
+	// check if proposer is manager
+	if !manager.IsManager(proposerID) {
+		return errors.New("스터디 관리자가 아닙니다.")
+	}
+
+	// check if review is ongoing
+	if !manager.StudyStage.IsReviewOngoing() {
+		return errors.New("리뷰 단계 종료가 불가능한 상태입니다.")
+	}
+
+	manager.SetStudyStage(StudyStageReviewFinished)
+
+	// TODO: save study manager to repository
+
+	s.StudyManager = &manager
+
+	return nil
+}
+
+func (s *StudyService) FinishStudy(proposerID string) error {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+
+	manager := *s.StudyManager
+
+	// check if proposer is manager
+	if !manager.IsManager(proposerID) {
+		return errors.New("스터디 관리자가 아닙니다.")
+	}
+
+	// check if review is finished
+	if !manager.StudyStage.IsReviewFinished() {
+		return errors.New("스터디 종료가 불가능한 상태입니다.")
+	}
+
+	manager.SetOnGoingStudyID("")
+	manager.SetStudyStage(StudyStageWait)
+
+	// TODO: save study manager to repository
+
+	s.StudyManager = &manager
+	s.OnGoingStudy = nil
+
+	return nil
 }
