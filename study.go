@@ -53,6 +53,7 @@ func NewStudyManager(guildID string, ManagerID string) *StudyManager {
 		SubManagerIDs:   []string{},
 		OnGoingStudyID:  "",
 		StudyState:      StudyStateNone,
+		mtx:             &sync.Mutex{},
 	}
 }
 
@@ -101,4 +102,50 @@ func (s *StudyManager) SetStudyState(state StudyState) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 	s.StudyState = state
+}
+
+type Member struct {
+	Nickname   string
+	Registered bool
+
+	Subject    string
+	ContentURL string
+	Completed  bool
+
+	mtx *sync.Mutex
+}
+
+func NewMember(nickname string) Member {
+	return Member{
+		Nickname:   nickname,
+		Registered: false,
+		Subject:    "",
+		ContentURL: "",
+		Completed:  false,
+		mtx:        &sync.Mutex{},
+	}
+}
+
+func (m *Member) SetRegistered(registered bool) {
+	defer m.mtx.Unlock()
+	m.mtx.Lock()
+	m.Registered = registered
+}
+
+func (m *Member) SetSubject(subject string) {
+	defer m.mtx.Unlock()
+	m.mtx.Lock()
+	m.Subject = subject
+}
+
+func (m *Member) SetContentURL(contentURL string) {
+	defer m.mtx.Unlock()
+	m.mtx.Lock()
+	m.ContentURL = contentURL
+}
+
+func (m *Member) SetCompleted(completed bool) {
+	defer m.mtx.Unlock()
+	m.mtx.Lock()
+	m.Completed = completed
 }
