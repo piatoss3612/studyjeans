@@ -27,13 +27,30 @@ func (b *StudyBot) Setup() *StudyBot {
 	b.sess.AddHandler(b.handleApplicationCommand)
 
 	b.hdr.AddCommand(discordgo.ApplicationCommand{
-		Name:        "ping",
-		Description: "ping pong",
+		Name:        "핑",
+		Description: "핑퐁",
 	}, func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
-				Content: "Pong!",
+				Content: "퐁!",
+			},
+		})
+	})
+	b.hdr.AddCommand(discordgo.ApplicationCommand{
+		Name:        "프로필",
+		Description: "발표진스의 프로필 이미지를 보여줍니다.",
+	}, func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Embeds: []*discordgo.MessageEmbed{
+					{
+						Image: &discordgo.MessageEmbedImage{
+							URL: s.State.User.AvatarURL("256"),
+						},
+					},
+				},
 			},
 		})
 	})
