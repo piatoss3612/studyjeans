@@ -42,7 +42,8 @@ func run() {
 
 	log.Println("Connected to MongoDB!")
 
-	svc, err := study.NewService(ctx, study.NewTx(mongoClient), cfg.GuildID, cfg.ManagerID, cfg.NoticeChannelID)
+	svc, err := study.NewService(ctx, study.NewTx(mongoClient, cfg.DBName),
+		cfg.GuildID, cfg.ManagerID, cfg.NoticeChannelID)
 	if err != nil {
 		log.Fatal(err)
 	}

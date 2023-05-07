@@ -20,10 +20,10 @@ type TxImpl struct {
 	client *mongo.Client
 }
 
-func NewTx(client *mongo.Client) Tx {
+func NewTx(client *mongo.Client, dbname string) Tx {
 	return &TxImpl{
-		Query:  NewQuery(client),
-		Store:  NewStore(client),
+		Query:  NewQuery(client, dbname),
+		Store:  NewStore(client, dbname),
 		client: client,
 	}
 }

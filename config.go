@@ -6,6 +6,7 @@ type Config struct {
 	Environment     string `mapstructure:"environment"`
 	BotToken        string `mapstructure:"bot_token"`
 	MongoURI        string `mapstructure:"mongo_uri"`
+	DBName          string `mapstructure:"db_name"`
 	GuildID         string `mapstructure:"guild_id"`
 	ManagerID       string `mapstructure:"manager_id"`
 	NoticeChannelID string `mapstructure:"notice_channel_id"`

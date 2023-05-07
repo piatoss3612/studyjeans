@@ -17,14 +17,15 @@ type Store interface {
 
 type StoreImpl struct {
 	client *mongo.Client
+	dbname string
 }
 
-func NewStore(client *mongo.Client) Store {
-	return &StoreImpl{client: client}
+func NewStore(client *mongo.Client, dbname string) Store {
+	return &StoreImpl{client: client, dbname: dbname}
 }
 
 func (si *StoreImpl) StoreManagement(ctx context.Context, m Management) (string, error) {
-	collection := si.client.Database("study").Collection("management")
+	collection := si.client.Database(si.dbname).Collection("management")
 
 	res, err := collection.InsertOne(ctx, m)
 	if err != nil {
@@ -35,7 +36,7 @@ func (si *StoreImpl) StoreManagement(ctx context.Context, m Management) (string,
 }
 
 func (si *StoreImpl) StoreStudy(ctx context.Context, s Study) (string, error) {
-	collection := si.client.Database("study").Collection("study")
+	collection := si.client.Database(si.dbname).Collection("study")
 
 	res, err := collection.InsertOne(ctx, s)
 	if err != nil {
@@ -46,7 +47,7 @@ func (si *StoreImpl) StoreStudy(ctx context.Context, s Study) (string, error) {
 }
 
 func (si *StoreImpl) UpdateManagement(ctx context.Context, m Management) error {
-	collection := si.client.Database("study").Collection("management")
+	collection := si.client.Database(si.dbname).Collection("management")
 
 	objID, err := primitive.ObjectIDFromHex(m.ID)
 	if err != nil {
@@ -72,7 +73,7 @@ func (si *StoreImpl) UpdateManagement(ctx context.Context, m Management) error {
 }
 
 func (si StoreImpl) UpdateStudy(ctx context.Context, s Study) error {
-	collection := si.client.Database("study").Collection("study")
+	collection := si.client.Database(si.dbname).Collection("study")
 
 	objID, err := primitive.ObjectIDFromHex(s.ID)
 	if err != nil {

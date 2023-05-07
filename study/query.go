@@ -17,14 +17,15 @@ type Query interface {
 
 type QueryImpl struct {
 	client *mongo.Client
+	dbname string
 }
 
-func NewQuery(client *mongo.Client) Query {
-	return &QueryImpl{client: client}
+func NewQuery(client *mongo.Client, dbname string) Query {
+	return &QueryImpl{client: client, dbname: dbname}
 }
 
 func (q *QueryImpl) FindManagement(ctx context.Context, guildID string) (*Management, error) {
-	collection := q.client.Database("study").Collection("management")
+	collection := q.client.Database(q.dbname).Collection("management")
 
 	filter := bson.M{"guild_id": guildID}
 
@@ -42,7 +43,7 @@ func (q *QueryImpl) FindManagement(ctx context.Context, guildID string) (*Manage
 }
 
 func (q *QueryImpl) FindStudy(ctx context.Context, id string) (*Study, error) {
-	collection := q.client.Database("study").Collection("study")
+	collection := q.client.Database(q.dbname).Collection("study")
 
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -65,7 +66,7 @@ func (q *QueryImpl) FindStudy(ctx context.Context, id string) (*Study, error) {
 }
 
 func (q *QueryImpl) FindStudies(ctx context.Context, guildID string) ([]*Study, error) {
-	collection := q.client.Database("study").Collection("study")
+	collection := q.client.Database(q.dbname).Collection("study")
 
 	filter := bson.M{"guild_id": guildID}
 	opts := options.Find().SetSort(bson.M{"created_at": -1})
