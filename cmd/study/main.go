@@ -20,6 +20,8 @@ func main() {
 		}
 	}()
 
+	mustSetTimezone(os.Getenv("TIME_ZONE"))
+
 	run()
 }
 
@@ -70,4 +72,13 @@ func run() {
 	log.Println("Connected to Discord!")
 
 	<-stop
+}
+
+func mustSetTimezone(tz string) {
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	time.Local = loc
 }

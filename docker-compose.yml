@@ -1,11 +1,13 @@
 version: '3.9'
 
 services:
-  bot:
+  presentation-helper-bot:
+    container_name: presentation-helper-bot
     image: piatoss3612/presentation-helper-bot:latest
     restart: always
     environment:
       CONFIG_FILE: config.json
+      TIME_ZONE: Asia/Seoul
     configs:
       - source: bot-config
         target: /app/config.json
