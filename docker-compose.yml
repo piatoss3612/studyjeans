@@ -1,0 +1,15 @@
+version: '3.9'
+
+services:
+  bot:
+    image: piatoss3612/presentation-helper-bot:latest
+    restart: always
+    environment:
+      CONFIG_FILE: config.json
+    configs:
+      - source: bot-config
+        target: /app/config.json
+
+configs:
+  bot-config:
+    file: ./config-dev.json
