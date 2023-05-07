@@ -21,10 +21,15 @@ func main() {
 		}
 	}()
 
+	cfg, err := NewConfig(os.Getenv("CONFIG_FILE"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	mongoClient, err := ConnectMongoDB(ctx, os.Getenv("MONGO_URI"))
+	mongoClient, err := ConnectMongoDB(ctx, cfg.MongoURI)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -39,14 +44,14 @@ func main() {
 
 	tx := study.NewTx(mongoClient)
 
-	svc, err := study.NewService(tx, os.Getenv("GUILD_ID"))
+	svc, err := study.NewService(tx, cfg.GuildID)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	log.Println("Study service is ready!")
 
-	session, err := discordgo.New("Bot " + os.Getenv("BOT_TOKEN"))
+	session, err := discordgo.New("Bot " + cfg.BotToken)
 	if err != nil {
 		log.Fatal(err)
 	}
