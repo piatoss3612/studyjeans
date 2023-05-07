@@ -10,6 +10,8 @@ import (
 type Service interface {
 	GetNoticeChannelID() string
 	SetNoticeChannelID(ctx context.Context, proposerID, channelID string) error
+	GetCurrentStudyStage() StudyStage
+	GetOngoingStudy() (*Study, error)
 	GetStudies(ctx context.Context, guildID string) ([]*Study, error)
 	CreateStudy(ctx context.Context, proposerID, title string, memberIDs []string) error
 	ChangeMemberRegistration(ctx context.Context, guildID, memberID, name, subject string, registered bool) error
@@ -135,6 +137,25 @@ func (s *ServiceImpl) SetNoticeChannelID(ctx context.Context, proposerID, channe
 	s.Management = &m
 
 	return nil
+}
+
+func (s *ServiceImpl) GetCurrentStudyStage() StudyStage {
+	defer s.mtx.RUnlock()
+	s.mtx.RLock()
+
+	return s.Management.CurrentStudyStage
+}
+
+func (s *ServiceImpl) GetOngoingStudy() (*Study, error) {
+	defer s.mtx.RUnlock()
+	s.mtx.RLock()
+
+	// check if ongoing study is initialized
+	if s.OnGoingStudy == nil {
+		return nil, errors.New("진행중인 스터디가 설정되지 않았습니다.")
+	}
+
+	return s.OnGoingStudy, nil
 }
 
 func (s *ServiceImpl) GetStudies(ctx context.Context, guildID string) ([]*Study, error) {

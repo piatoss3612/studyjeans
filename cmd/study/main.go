@@ -10,7 +10,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/piatoss3612/presentation-helper-bot/internal/db"
-	"github.com/piatoss3612/presentation-helper-bot/internal/study"
+	"github.com/piatoss3612/presentation-helper-bot/internal/service/study"
 )
 
 func main() {
