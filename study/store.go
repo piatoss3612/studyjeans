@@ -73,7 +73,7 @@ func (si *StoreImpl) UpdateManagement(ctx context.Context, m Management) error {
 			Key: "$set", Value: bson.D{
 				{Key: "notice_channel_id", Value: m.NoticeChannelID},
 				{Key: "manager_id", Value: m.ManagerID},
-				{Key: "ongoing_study_id", Value: m.OnGoingStudyID},
+				{Key: "ongoing_study_id", Value: m.OngoingStudyID},
 				{Key: "current_study_stage", Value: m.CurrentStudyStage},
 				{Key: "updated_at", Value: m.UpdatedAt},
 			},
@@ -125,6 +125,9 @@ func (q *QueryImpl) FindManagement(ctx context.Context, guildID string) (*Manage
 
 	err := collection.FindOne(ctx, filter).Decode(m)
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -145,6 +148,9 @@ func (q *QueryImpl) FindStudy(ctx context.Context, id string) (*Study, error) {
 
 	err = collection.FindOne(ctx, filter).Decode(s)
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
 		return nil, err
 	}
 

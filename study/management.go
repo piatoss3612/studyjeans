@@ -12,7 +12,7 @@ type Management struct {
 
 	ManagerID string `bson:"manager_id"`
 
-	OnGoingStudyID    string     `bson:"ongoing_study_id"`
+	OngoingStudyID    string     `bson:"ongoing_study_id"`
 	CurrentStudyStage StudyStage `bson:"current_study_stage"`
 
 	CreatedAt time.Time `bson:"created_at"`
@@ -26,7 +26,7 @@ func NewManagement() *Management {
 		GuildID:           "",
 		NoticeChannelID:   "",
 		ManagerID:         "",
-		OnGoingStudyID:    "",
+		OngoingStudyID:    "",
 		CurrentStudyStage: StudyStageNone,
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
@@ -69,11 +69,11 @@ func (s *Management) IsManager(userID string) bool {
 	return s.ManagerID == userID
 }
 
-func (s *Management) SetOnGoingStudyID(studyID string) {
+func (s *Management) SetOngoingStudyID(studyID string) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
-	s.OnGoingStudyID = studyID
+	s.OngoingStudyID = studyID
 }
 
 func (s *Management) SetCurrentStudyStage(state StudyStage) {

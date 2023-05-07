@@ -26,7 +26,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	mongoClient, err := ConnectMongoDB(ctx, cfg.MongoURI)
@@ -44,7 +44,7 @@ func main() {
 
 	tx := study.NewTx(mongoClient)
 
-	svc, err := study.NewService(tx, cfg.GuildID)
+	svc, err := study.NewService(ctx, tx, cfg.GuildID, cfg.ManagerID, cfg.NoticeChannelID)
 	if err != nil {
 		log.Fatal(err)
 	}

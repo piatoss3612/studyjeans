@@ -1,6 +1,7 @@
 package study
 
 import (
+	"context"
 	"errors"
 	"sync"
 )
@@ -13,16 +14,70 @@ type Service struct {
 	mtx *sync.RWMutex
 }
 
-func NewService(tx Tx, guildID string) (*Service, error) {
+func NewService(ctx context.Context, tx Tx, guildID, managerID, noticeChID string) (*Service, error) {
 	svc := &Service{
 		Tx:  tx,
 		mtx: &sync.RWMutex{},
 	}
-	return svc.setup(guildID)
+	return svc.setup(ctx, guildID, managerID, noticeChID)
 }
 
-func (s *Service) setup(guildID string) (*Service, error) {
-	// TODO: get study manage from repository
+func (s *Service) setup(ctx context.Context, guildID, managerID, noticeChID string) (*Service, error) {
+	// transaction for setup
+	tx := func(sc context.Context) (interface{}, error) {
+		// find management
+		m, err := s.Tx.FindManagement(sc, guildID)
+		if err != nil {
+			return nil, err
+		}
+
+		// if there is no management, create one
+		if m == nil {
+			m = NewManagement()
+			m.SetGuildID(guildID)
+			m.SetManagerID(managerID)
+			m.SetNoticeChannelID(noticeChID)
+
+			id, err := s.Tx.StoreManagement(ctx, *m)
+			if err != nil {
+				return nil, err
+			}
+
+			m.SetID(id)
+		}
+
+		// set management
+		s.Management = m
+
+		// if there is no ongoing study, return
+		if m.OngoingStudyID == "" {
+			return nil, nil
+		}
+
+		// find ongoing study
+		study, err := s.Tx.FindStudy(sc, m.OngoingStudyID)
+		if err != nil {
+			return nil, err
+		}
+
+		// if there is no ongoing study, return error
+		if study == nil {
+			return nil, errors.New("진행중인 스터디를 찾을 수 없습니다.")
+		}
+
+		// set ongoing study
+		s.OnGoingStudy = study
+
+		return nil, nil
+	}
+
+	// execute transaction
+	_, err := s.Tx.ExecTx(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+
+	// return service
 	return s, nil
 }
 
@@ -71,7 +126,7 @@ func (s *Service) CreateStudy(proposerID, title string, memberIDs []string) erro
 	// TODO: save study to repository
 
 	// move to next stage
-	m.SetOnGoingStudyID(study.ID)
+	m.SetOngoingStudyID(study.ID)
 	m.SetCurrentStudyStage(StudyStageRegistrationStarted)
 
 	// TODO: save manage to repository
@@ -478,7 +533,7 @@ func (s *Service) FinishStudy(proposerID string) error {
 		return errors.New("스터디 종료가 불가능한 상태입니다.")
 	}
 
-	m.SetOnGoingStudyID("")
+	m.SetOngoingStudyID("")
 	m.SetCurrentStudyStage(StudyStageWait)
 
 	// TODO: save study manage to repository
