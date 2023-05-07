@@ -6,27 +6,47 @@ import (
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
+	handler "github.com/piatoss3612/presentation-helper-bot/internal/handler/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/service/study"
 )
 
 type StudyBot struct {
 	sess *discordgo.Session
+	hdr  handler.Handler
 	svc  study.Service
 }
 
 func NewStudyBot(sess *discordgo.Session, svc study.Service) *StudyBot {
-	return &StudyBot{sess: sess, svc: svc}
+	return &StudyBot{sess: sess, hdr: handler.NewHandler(), svc: svc}
 }
 
 func (b *StudyBot) Setup() *StudyBot {
 	b.sess.Identify.Intents = discordgo.IntentGuildMembers | discordgo.IntentGuildMessages | discordgo.IntentGuilds | discordgo.IntentDirectMessages
+
 	b.sess.AddHandler(b.ready)
 	b.sess.AddHandler(b.handleApplicationCommand)
+
+	b.hdr.AddCommand(discordgo.ApplicationCommand{
+		Name:        "ping",
+		Description: "ping pong",
+	}, func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "Pong!",
+			},
+		})
+	})
+
 	return b
 }
 
 func (b *StudyBot) Run() (<-chan bool, error) {
 	if err := b.sess.Open(); err != nil {
+		return nil, err
+	}
+
+	if err := b.hdr.RegisterApplicationCommands(b.sess); err != nil {
 		return nil, err
 	}
 
@@ -52,6 +72,10 @@ func (b *StudyBot) Run() (<-chan bool, error) {
 }
 
 func (b *StudyBot) Close() error {
+	if err := b.hdr.RemoveApplicationCommands(b.sess); err != nil {
+		return err
+	}
+
 	return b.sess.Close()
 }
 
@@ -60,5 +84,7 @@ func (b *StudyBot) ready(s *discordgo.Session, _ *discordgo.Ready) {
 }
 
 func (b *StudyBot) handleApplicationCommand(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	// TODO: handle application command
+	if h, ok := b.hdr.GetHandleFunc(i.ApplicationCommandData().Name); ok {
+		h(s, i)
+	}
 }
