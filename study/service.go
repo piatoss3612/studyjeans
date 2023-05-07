@@ -10,6 +10,7 @@ import (
 type Service interface {
 	GetNoticeChannelID() string
 	SetNoticeChannelID(ctx context.Context, proposerID, channelID string) error
+	GetStudies(ctx context.Context, guildID string) ([]*Study, error)
 	CreateStudy(ctx context.Context, proposerID, title string, memberIDs []string) error
 	ChangeMemberRegistration(ctx context.Context, guildID, memberID, name, subject string, registered bool) error
 	FinishRegistration(ctx context.Context, proposerID string) error
@@ -134,6 +135,26 @@ func (s *ServiceImpl) SetNoticeChannelID(ctx context.Context, proposerID, channe
 	s.Management = &m
 
 	return nil
+}
+
+func (s *ServiceImpl) GetStudies(ctx context.Context, guildID string) ([]*Study, error) {
+	defer s.mtx.RUnlock()
+	s.mtx.RLock()
+
+	// check if management is initialized
+	if s.Management == nil {
+		return nil, errors.New("스터디 관리가 설정되지 않았습니다.")
+	}
+
+	m := *s.Management
+
+	// check if guildID is same
+	if m.GuildID != guildID {
+		return nil, errors.New("서버 ID가 일치하지 않습니다.")
+	}
+
+	// find studies
+	return s.Tx.FindStudies(ctx, guildID)
 }
 
 func (s *ServiceImpl) CreateStudy(ctx context.Context, proposerID, title string, memberIDs []string) error {
