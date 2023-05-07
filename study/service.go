@@ -17,7 +17,7 @@ type Service interface {
 	SubmitContent(ctx context.Context, guildID, memberID, contentURL string) error
 	FinishSubmission(ctx context.Context, proposerID string) error
 	StartPresentation(ctx context.Context, proposerID string) error
-	ChangePresentationParticipated(ctx context.Context, proposerID, memberID string, participated bool) error
+	ChangePresentationAttended(ctx context.Context, proposerID, memberID string, attended bool) error
 	FinishPresentation(ctx context.Context, proposerID string) error
 	StartReview(ctx context.Context, proposerID string) error
 	SetReviewer(ctx context.Context, guildID, reviewerID, revieweeID string) error
@@ -457,7 +457,7 @@ func (s *ServiceImpl) StartPresentation(ctx context.Context, proposerID string) 
 	return nil
 }
 
-func (s *ServiceImpl) ChangePresentationParticipated(ctx context.Context, proposerID, memberID string, participated bool) error {
+func (s *ServiceImpl) ChangePresentationAttended(ctx context.Context, proposerID, memberID string, attended bool) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
@@ -497,7 +497,7 @@ func (s *ServiceImpl) ChangePresentationParticipated(ctx context.Context, propos
 	}
 
 	// set complete state
-	member.SetParticipated(participated)
+	member.SetAttended(attended)
 
 	// set updated member to study
 	study.SetMember(memberID, member)
@@ -621,8 +621,8 @@ func (s *ServiceImpl) SetReviewer(ctx context.Context, guildID, reviewerID, revi
 		return errors.New("발표자로 등록되지 않은 사용자입니다.")
 	}
 
-	// check if reviewee participated presentation
-	if !reviewee.Participated {
+	// check if reviewee Attended presentation
+	if !reviewee.Attended {
 		return errors.New("발표에 참여하지 않은 사용자입니다.")
 	}
 

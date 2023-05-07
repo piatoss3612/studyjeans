@@ -1,22 +1,22 @@
 package study
 
 type Member struct {
-	Name         string          `bson:"name"`
-	Subject      string          `bson:"subject"`
-	ContentURL   string          `bson:"content_url"`
-	Registered   bool            `bson:"registered"`
-	Participated bool            `bson:"participated"`
-	Reviewers    map[string]bool `bson:"reviewers"`
+	Name       string          `bson:"name"`
+	Subject    string          `bson:"subject"`
+	ContentURL string          `bson:"content_url"`
+	Registered bool            `bson:"registered"`
+	Attended   bool            `bson:"attended"`
+	Reviewers  map[string]bool `bson:"reviewers"`
 }
 
 func NewMember() Member {
 	return Member{
-		Name:         "",
-		Subject:      "",
-		ContentURL:   "",
-		Registered:   false,
-		Participated: false,
-		Reviewers:    map[string]bool{},
+		Name:       "",
+		Subject:    "",
+		ContentURL: "",
+		Registered: false,
+		Attended:   false,
+		Reviewers:  map[string]bool{},
 	}
 }
 
@@ -36,8 +36,8 @@ func (m *Member) SetRegistered(registered bool) {
 	m.Registered = registered
 }
 
-func (m *Member) SetParticipated(Participated bool) {
-	m.Participated = Participated
+func (m *Member) SetAttended(Attended bool) {
+	m.Attended = Attended
 }
 
 func (m *Member) SetReviewer(userID string) {
