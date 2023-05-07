@@ -6,7 +6,7 @@ import (
 )
 
 type Study struct {
-	ID      string `bson:"_id"`
+	ID      string `bson:"_id,omitempty"`
 	GuildID string `bson:"guild_id"`
 
 	Title     string            `bson:"title"`
