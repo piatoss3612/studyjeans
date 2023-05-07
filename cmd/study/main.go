@@ -9,7 +9,8 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	_ "github.com/joho/godotenv/autoload"
-	"github.com/piatoss3612/presentation-helper-bot/study"
+	"github.com/piatoss3612/presentation-helper-bot/internal/db"
+	"github.com/piatoss3612/presentation-helper-bot/internal/study"
 )
 
 func main() {
@@ -31,7 +32,7 @@ func run() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	mongoClient, err := ConnectMongoDB(ctx, cfg.MongoURI)
+	mongoClient, err := db.ConnectMongoDB(ctx, cfg.MongoURI)
 	if err != nil {
 		log.Fatal(err)
 	}

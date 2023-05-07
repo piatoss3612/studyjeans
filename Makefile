@@ -1,3 +1,3 @@
 run:
 	@echo "Run discord bot"
-	go run ./
+	go run ./cmd/study/

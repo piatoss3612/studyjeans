@@ -6,7 +6,7 @@ import (
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/piatoss3612/presentation-helper-bot/study"
+	"github.com/piatoss3612/presentation-helper-bot/internal/study"
 )
 
 type StudyBot struct {
