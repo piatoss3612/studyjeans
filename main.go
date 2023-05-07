@@ -47,11 +47,6 @@ func run() {
 		log.Fatal(err)
 	}
 
-	//err = svc.CreateStudy(cfg.ManagerID, "test", []string{"test", "test", "test", "test", "test", "test", "test", "test", "test", "test"})
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-
 	log.Println("Study service is ready!")
 
 	sess, err := discordgo.New("Bot " + cfg.BotToken)

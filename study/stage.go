@@ -28,7 +28,7 @@ func (s StudyStage) String() string {
 	case StudyStageReviewStarted, StudyStageReviewFinished:
 		return "리뷰 및 피드백"
 	default:
-		return "몰?루"
+		return "초기화 대기"
 	}
 }
 

@@ -11,10 +11,10 @@ import (
 
 type StudyBot struct {
 	sess *discordgo.Session
-	svc  *study.Service
+	svc  study.Service
 }
 
-func NewStudyBot(sess *discordgo.Session, svc *study.Service) *StudyBot {
+func NewStudyBot(sess *discordgo.Session, svc study.Service) *StudyBot {
 	return &StudyBot{sess: sess, svc: svc}
 }
 

@@ -4,9 +4,28 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 )
 
-type Service struct {
+type Service interface {
+	GetNoticeChannelID() string
+	SetNoticeChannelID(ctx context.Context, proposerID, channelID string) error
+	CreateStudy(ctx context.Context, proposerID, title string, memberIDs []string) error
+	ChangeMemberRegistration(ctx context.Context, guildID, memberID, name, subject string, registered bool) error
+	FinishRegistration(ctx context.Context, proposerID string) error
+	StartSubmission(ctx context.Context, proposerID string) error
+	SubmitContent(ctx context.Context, guildID, memberID, contentURL string) error
+	FinishSubmission(ctx context.Context, proposerID string) error
+	StartPresentation(ctx context.Context, proposerID string) error
+	ChangePresentationParticipated(ctx context.Context, proposerID, memberID string, participated bool) error
+	FinishPresentation(ctx context.Context, proposerID string) error
+	StartReview(ctx context.Context, proposerID string) error
+	SetReviewer(ctx context.Context, guildID, reviewerID, revieweeID string) error
+	FinishReview(ctx context.Context, proposerID string) error
+	FinishStudy(ctx context.Context, proposerID string) error
+}
+
+type ServiceImpl struct {
 	Management   *Management
 	OnGoingStudy *Study
 	Tx           Tx
@@ -14,15 +33,15 @@ type Service struct {
 	mtx *sync.RWMutex
 }
 
-func NewService(ctx context.Context, tx Tx, guildID, managerID, noticeChID string) (*Service, error) {
-	svc := &Service{
+func NewService(ctx context.Context, tx Tx, guildID, managerID, noticeChID string) (Service, error) {
+	svc := &ServiceImpl{
 		Tx:  tx,
 		mtx: &sync.RWMutex{},
 	}
 	return svc.setup(ctx, guildID, managerID, noticeChID)
 }
 
-func (s *Service) setup(ctx context.Context, guildID, managerID, noticeChID string) (*Service, error) {
+func (s *ServiceImpl) setup(ctx context.Context, guildID, managerID, noticeChID string) (*ServiceImpl, error) {
 	// transaction for setup
 	tx := func(sc context.Context) (interface{}, error) {
 		// find management
@@ -77,27 +96,54 @@ func (s *Service) setup(ctx context.Context, guildID, managerID, noticeChID stri
 		return nil, err
 	}
 
-	// return service
+	// return ServiceImpl
 	return s, nil
 }
 
-func (s *Service) GetNoticeChannelID() string {
+func (s *ServiceImpl) GetNoticeChannelID() string {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
 
 	return s.Management.NoticeChannelID
 }
 
-func (s *Service) SetNoticeChannelID(channelID string) {
+func (s *ServiceImpl) SetNoticeChannelID(ctx context.Context, proposerID, channelID string) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
-	s.Management.SetNoticeChannelID(channelID)
+	// check if management is initialized
+	if s.Management == nil {
+		return errors.New("스터디 관리가 설정되지 않았습니다.")
+	}
+
+	m := *s.Management
+
+	// check if proposer is manager
+	if !m.IsManager(proposerID) {
+		return errors.New("스터디 관리자가 아닙니다.")
+	}
+
+	m.SetNoticeChannelID(channelID)
+
+	// update management
+	err := s.Tx.UpdateManagement(ctx, m)
+	if err != nil {
+		return err
+	}
+
+	s.Management = &m
+
+	return nil
 }
 
-func (s *Service) CreateStudy(proposerID, title string, memberIDs []string) error {
+func (s *ServiceImpl) CreateStudy(ctx context.Context, proposerID, title string, memberIDs []string) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
+	// check if management is initialized
+	if s.Management == nil {
+		return errors.New("스터디 관리가 설정되지 않았습니다.")
+	}
 
 	m := *s.Management
 
@@ -123,15 +169,36 @@ func (s *Service) CreateStudy(proposerID, title string, memberIDs []string) erro
 		study.SetMember(id, member)
 	}
 
-	// TODO: save study to repository
-
 	// move to next stage
 	m.SetOngoingStudyID(study.ID)
 	m.SetCurrentStudyStage(StudyStageRegistrationStarted)
 
-	// TODO: save manage to repository
+	// transaction for create study and update management
+	tx := func(sc context.Context) (interface{}, error) {
+		// store new study
+		studyID, err := s.Tx.StoreStudy(sc, *study)
+		if err != nil {
+			return nil, err
+		}
 
-	// TODO: commit transaction
+		// set study id to study and management
+		study.SetID(studyID)
+		m.SetOngoingStudyID(studyID)
+
+		// update management
+		err = s.Tx.UpdateManagement(sc, m)
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, nil
+	}
+
+	// execute transaction
+	_, err := s.Tx.ExecTx(ctx, tx)
+	if err != nil {
+		return err
+	}
 
 	// set study and manage
 	s.Management = &m
@@ -140,15 +207,25 @@ func (s *Service) CreateStudy(proposerID, title string, memberIDs []string) erro
 	return nil
 }
 
-func (s *Service) ChangeMemberRegistration(guildID, memberID, name, subject string, registered bool) error {
+func (s *ServiceImpl) ChangeMemberRegistration(ctx context.Context, guildID, memberID, name, subject string, registered bool) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
+	// check if management is initialized
+	if s.Management == nil {
+		return errors.New("스터디 관리가 설정되지 않았습니다.")
+	}
 
 	m := s.Management
 
 	// check if study is in registration stage
 	if !m.CurrentStudyStage.IsRegistrationOngoing() {
 		return errors.New("발표자 등록 및 등록 해지가 불가능한 상태입니다.")
+	}
+
+	// check if there is no ongoing study
+	if m.OngoingStudyID == "" || s.OnGoingStudy == nil {
+		return errors.New("진행중인 스터디가 없습니다.")
 	}
 
 	study := *s.OnGoingStudy
@@ -169,18 +246,29 @@ func (s *Service) ChangeMemberRegistration(guildID, memberID, name, subject stri
 	member.SetSubject(subject)
 	member.SetRegistered(registered)
 
+	// set updated member to study
 	study.SetMember(memberID, member)
+	study.SetUpdatedAt(time.Now())
 
-	// TODO: save study to repository
+	// update study
+	err := s.Tx.UpdateStudy(ctx, study)
+	if err != nil {
+		return err
+	}
 
 	s.OnGoingStudy = &study
 
 	return nil
 }
 
-func (s *Service) FinishRegistration(proposerID string) error {
+func (s *ServiceImpl) FinishRegistration(ctx context.Context, proposerID string) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
+	// check if management is initialized
+	if s.Management == nil {
+		return errors.New("스터디 관리가 설정되지 않았습니다.")
+	}
 
 	m := *s.Management
 
@@ -195,17 +283,26 @@ func (s *Service) FinishRegistration(proposerID string) error {
 	}
 
 	m.SetCurrentStudyStage(StudyStageRegistrationFinished)
+	m.SetUpdatedAt(time.Now())
 
-	// TODO: save manage to repository
+	err := s.Tx.UpdateManagement(ctx, m)
+	if err != nil {
+		return err
+	}
 
 	s.Management = &m
 
 	return nil
 }
 
-func (s *Service) StartSubmission(proposerID string) error {
+func (s *ServiceImpl) StartSubmission(ctx context.Context, proposerID string) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
+	// check if management is initialized
+	if s.Management == nil {
+		return errors.New("스터디 관리가 설정되지 않았습니다.")
+	}
 
 	m := *s.Management
 
@@ -220,23 +317,38 @@ func (s *Service) StartSubmission(proposerID string) error {
 	}
 
 	m.SetCurrentStudyStage(StudyStageSubmissionStarted)
+	m.SetUpdatedAt(time.Now())
 
-	// TODO: save manage to repository
+	// update management
+	err := s.Tx.UpdateManagement(ctx, m)
+	if err != nil {
+		return err
+	}
 
 	s.Management = &m
 
 	return nil
 }
 
-func (s *Service) SubmitContent(guildID, memberID, contentURL string) error {
+func (s *ServiceImpl) SubmitContent(ctx context.Context, guildID, memberID, contentURL string) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
+	// check if management is initialized
+	if s.Management == nil {
+		return errors.New("스터디 관리가 설정되지 않았습니다.")
+	}
 
 	m := s.Management
 
 	// check if study can accept content submission
 	if !m.CurrentStudyStage.IsSubmissionOngoing() {
 		return errors.New("발표 자료 제출이 불가능한 상태입니다.")
+	}
+
+	// check if there is no ongoing study
+	if m.OngoingStudyID == "" || s.OnGoingStudy == nil {
+		return errors.New("진행중인 스터디가 없습니다.")
 	}
 
 	study := *s.OnGoingStudy
@@ -259,18 +371,30 @@ func (s *Service) SubmitContent(guildID, memberID, contentURL string) error {
 
 	// set content
 	member.SetContentURL(contentURL)
-	study.SetMember(memberID, member)
 
-	// TODO: save study to repository
+	// set updated member to study
+	study.SetMember(memberID, member)
+	study.SetUpdatedAt(time.Now())
+
+	// update study
+	err := s.Tx.UpdateStudy(ctx, study)
+	if err != nil {
+		return err
+	}
 
 	s.OnGoingStudy = &study
 
 	return nil
 }
 
-func (s *Service) FinishSubmission(proposerID string) error {
+func (s *ServiceImpl) FinishSubmission(ctx context.Context, proposerID string) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
+	// check if management is initialized
+	if s.Management == nil {
+		return errors.New("스터디 관리가 설정되지 않았습니다.")
+	}
 
 	m := *s.Management
 
@@ -285,17 +409,27 @@ func (s *Service) FinishSubmission(proposerID string) error {
 	}
 
 	m.SetCurrentStudyStage(StudyStageSubmissionFinished)
+	m.SetUpdatedAt(time.Now())
 
-	// TODO: save manage to repository
+	// update management
+	err := s.Tx.UpdateManagement(ctx, m)
+	if err != nil {
+		return err
+	}
 
 	s.Management = &m
 
 	return nil
 }
 
-func (s *Service) StartPresentation(proposerID string) error {
+func (s *ServiceImpl) StartPresentation(ctx context.Context, proposerID string) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
+	// check if management is initialized
+	if s.Management == nil {
+		return errors.New("스터디 관리가 설정되지 않았습니다.")
+	}
 
 	m := *s.Management
 
@@ -310,17 +444,27 @@ func (s *Service) StartPresentation(proposerID string) error {
 	}
 
 	m.SetCurrentStudyStage(StudyStagePresentationStarted)
+	m.SetUpdatedAt(time.Now())
 
-	// TODO: save study manage to repository
+	// update management
+	err := s.Tx.UpdateManagement(ctx, m)
+	if err != nil {
+		return err
+	}
 
 	s.Management = &m
 
 	return nil
 }
 
-func (s *Service) ChangePresentationParticipated(proposerID, memberID string, participated bool) error {
+func (s *ServiceImpl) ChangePresentationParticipated(ctx context.Context, proposerID, memberID string, participated bool) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
+	// check if management is initialized
+	if s.Management == nil {
+		return errors.New("스터디 관리가 설정되지 않았습니다.")
+	}
 
 	m := *s.Management
 
@@ -332,6 +476,11 @@ func (s *Service) ChangePresentationParticipated(proposerID, memberID string, pa
 	// check if presentation is ongoing
 	if !m.CurrentStudyStage.IsPresentationOngoing() {
 		return errors.New("발표 완료 상태 전환이 불가능한 상태입니다.")
+	}
+
+	// check if there is no ongoing study
+	if m.OngoingStudyID == "" || s.OnGoingStudy == nil {
+		return errors.New("진행중인 스터디가 없습니다.")
 	}
 
 	study := *s.OnGoingStudy
@@ -349,18 +498,30 @@ func (s *Service) ChangePresentationParticipated(proposerID, memberID string, pa
 
 	// set complete state
 	member.SetParticipated(participated)
-	study.SetMember(memberID, member)
 
-	// TODO: save study to repository
+	// set updated member to study
+	study.SetMember(memberID, member)
+	study.SetUpdatedAt(time.Now())
+
+	// update study
+	err := s.Tx.UpdateStudy(ctx, study)
+	if err != nil {
+		return err
+	}
 
 	s.OnGoingStudy = &study
 
 	return nil
 }
 
-func (s *Service) FinishPresentation(proposerID string) error {
+func (s *ServiceImpl) FinishPresentation(ctx context.Context, proposerID string) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
+	// check if management is initialized
+	if s.Management == nil {
+		return errors.New("스터디 관리가 설정되지 않았습니다.")
+	}
 
 	m := *s.Management
 
@@ -375,17 +536,27 @@ func (s *Service) FinishPresentation(proposerID string) error {
 	}
 
 	m.SetCurrentStudyStage(StudyStagePresentationFinished)
+	m.SetUpdatedAt(time.Now())
 
-	// TODO: save study manage to repository
+	// update management
+	err := s.Tx.UpdateManagement(ctx, m)
+	if err != nil {
+		return err
+	}
 
 	s.Management = &m
 
 	return nil
 }
 
-func (s *Service) StartReview(proposerID string) error {
+func (s *ServiceImpl) StartReview(ctx context.Context, proposerID string) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
+	// check if management is initialized
+	if s.Management == nil {
+		return errors.New("스터디 관리가 설정되지 않았습니다.")
+	}
 
 	m := *s.Management
 
@@ -400,58 +571,37 @@ func (s *Service) StartReview(proposerID string) error {
 	}
 
 	m.SetCurrentStudyStage(StudyStageReviewStarted)
+	m.SetUpdatedAt(time.Now())
 
-	// TODO: save study manage to repository
+	// update management
+	err := s.Tx.UpdateManagement(ctx, m)
+	if err != nil {
+		return err
+	}
 
 	s.Management = &m
 
 	return nil
 }
 
-func (s *Service) IsReviewer(guildID, reviewerID, revieweeID string) (bool, error) {
-	defer s.mtx.RUnlock()
-	s.mtx.RLock()
-
-	m := s.Management
-
-	if !m.CurrentStudyStage.IsReviewOngoing() {
-		return false, errors.New("리뷰 단계가 진행중이 아닙니다.")
-	}
-
-	study := s.OnGoingStudy
-
-	// check if reviewee belongs to study
-	if study.GuildID != guildID {
-		return false, errors.New("스터디 서버 정보가 일치하지 않습니다.")
-	}
-
-	reviewee, ok := study.GetMember(revieweeID)
-	if !ok {
-		return false, errors.New("활성화된 스터디에 등록되지 않은 사용자입니다.")
-	}
-
-	// check if reviewee is registered
-	if !reviewee.Registered {
-		return false, errors.New("발표자로 등록되지 않은 사용자입니다.")
-	}
-
-	// check if reviewee participated presentation
-	if !reviewee.Participated {
-		return false, errors.New("발표를 완료하지 않은 사용자입니다.")
-	}
-
-	// check if reviewer already reviewed
-	return reviewee.IsReviewer(reviewerID), nil
-}
-
-func (s *Service) SetReviewer(guildID, reviewerID, revieweeID string) error {
+func (s *ServiceImpl) SetReviewer(ctx context.Context, guildID, reviewerID, revieweeID string) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
+	// check if management is initialized
+	if s.Management == nil {
+		return errors.New("스터디 관리가 설정되지 않았습니다.")
+	}
 
 	m := s.Management
 
 	if !m.CurrentStudyStage.IsReviewOngoing() {
 		return errors.New("리뷰 단계가 진행중이 아닙니다.")
+	}
+
+	// check if there is no ongoing study
+	if m.OngoingStudyID == "" || s.OnGoingStudy == nil {
+		return errors.New("진행중인 스터디가 없습니다.")
 	}
 
 	study := *s.OnGoingStudy
@@ -478,23 +628,35 @@ func (s *Service) SetReviewer(guildID, reviewerID, revieweeID string) error {
 
 	// check if reviewer already reviewed
 	if reviewee.IsReviewer(reviewerID) {
-		return errors.New("이미 리뷰를 완료한 사용자입니다.")
+		return errors.New("이미 리뷰를 완료하였습니다.")
 	}
 
 	// set reviewer
 	reviewee.SetReviewer(reviewerID)
-	study.SetMember(revieweeID, reviewee)
 
-	// TODO: save study to repository
+	// set updated member to study
+	study.SetMember(revieweeID, reviewee)
+	study.SetUpdatedAt(time.Now())
+
+	// update study
+	err := s.Tx.UpdateStudy(ctx, study)
+	if err != nil {
+		return err
+	}
 
 	s.OnGoingStudy = &study
 
 	return nil
 }
 
-func (s *Service) FinishReview(proposerID string) error {
+func (s *ServiceImpl) FinishReview(ctx context.Context, proposerID string) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
+	// check if management is initialized
+	if s.Management == nil {
+		return errors.New("스터디 관리가 설정되지 않았습니다.")
+	}
 
 	m := *s.Management
 
@@ -509,17 +671,27 @@ func (s *Service) FinishReview(proposerID string) error {
 	}
 
 	m.SetCurrentStudyStage(StudyStageReviewFinished)
+	m.SetUpdatedAt(time.Now())
 
-	// TODO: save study manage to repository
+	// update management
+	err := s.Tx.UpdateManagement(ctx, m)
+	if err != nil {
+		return err
+	}
 
 	s.Management = &m
 
 	return nil
 }
 
-func (s *Service) FinishStudy(proposerID string) error {
+func (s *ServiceImpl) FinishStudy(ctx context.Context, proposerID string) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
+
+	// check if management is initialized
+	if s.Management == nil {
+		return errors.New("스터디 관리가 설정되지 않았습니다.")
+	}
 
 	m := *s.Management
 
@@ -535,8 +707,13 @@ func (s *Service) FinishStudy(proposerID string) error {
 
 	m.SetOngoingStudyID("")
 	m.SetCurrentStudyStage(StudyStageWait)
+	m.SetUpdatedAt(time.Now())
 
-	// TODO: save study manage to repository
+	// update management
+	err := s.Tx.UpdateManagement(ctx, m)
+	if err != nil {
+		return err
+	}
 
 	s.Management = &m
 	s.OnGoingStudy = nil
