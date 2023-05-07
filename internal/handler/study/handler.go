@@ -7,8 +7,8 @@ import (
 type Handler interface {
 	AddCommand(cmd discordgo.ApplicationCommand, handleFunc HandleFunc)
 	GetHandleFunc(name string) (HandleFunc, bool)
-	RegisterApplicationCommands() error
-	RemoveApplicationCommands() error
+	RegisterApplicationCommands(s *discordgo.Session) error
+	RemoveApplicationCommands(s *discordgo.Session) error
 }
 
 type HandleFunc func(s *discordgo.Session, i *discordgo.InteractionCreate)
@@ -27,22 +27,36 @@ func NewHandler() Handler {
 	}
 }
 
-// AddCommand implements Handler.
-func (*handlerImpl) AddCommand(cmd discordgo.ApplicationCommand, handleFunc HandleFunc) {
-	panic("unimplemented")
+func (h *handlerImpl) AddCommand(cmd discordgo.ApplicationCommand, handleFunc HandleFunc) {
+	h.handleFuncs[cmd.Name] = handleFunc
+	h.cmds = append(h.cmds, &cmd)
 }
 
-// GetHandleFunc implements Handler.
-func (*handlerImpl) GetHandleFunc(name string) (HandleFunc, bool) {
-	panic("unimplemented")
+func (h *handlerImpl) GetHandleFunc(name string) (HandleFunc, bool) {
+	f, ok := h.handleFuncs[name]
+	return f, ok
 }
 
-// RegisterApplicationCommands implements Handler.
-func (*handlerImpl) RegisterApplicationCommands() error {
-	panic("unimplemented")
+func (h *handlerImpl) RegisterApplicationCommands(s *discordgo.Session) error {
+	for _, cmd := range h.cmds {
+		_, err := s.ApplicationCommandCreate(s.State.User.ID, "", cmd)
+		if err != nil {
+			return err
+		}
+
+		h.registeredCmds = append(h.registeredCmds, cmd)
+	}
+
+	return nil
 }
 
-// RemoveApplicationCommands implements Handler.
-func (*handlerImpl) RemoveApplicationCommands() error {
-	panic("unimplemented")
+func (h *handlerImpl) RemoveApplicationCommands(s *discordgo.Session) error {
+	for _, cmd := range h.registeredCmds {
+		err := s.ApplicationCommandDelete(s.State.User.ID, "", cmd.ID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
