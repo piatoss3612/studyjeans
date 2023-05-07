@@ -3,8 +3,6 @@ package main
 import (
 	"log"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"context"
@@ -21,6 +19,10 @@ func main() {
 		}
 	}()
 
+	run()
+}
+
+func run() {
 	cfg, err := NewConfig(os.Getenv("CONFIG_FILE"))
 	if err != nil {
 		log.Fatal(err)
@@ -34,65 +36,36 @@ func main() {
 		log.Fatal(err)
 	}
 	defer func() {
-		if err = mongoClient.Disconnect(context.Background()); err != nil {
-			log.Fatal(err)
-		}
+		_ = mongoClient.Disconnect(context.Background())
 		log.Println("Disconnected from MongoDB!")
 	}()
 
 	log.Println("Connected to MongoDB!")
 
-	tx := study.NewTx(mongoClient)
-
-	svc, err := study.NewService(ctx, tx, cfg.GuildID, cfg.ManagerID, cfg.NoticeChannelID)
+	svc, err := study.NewService(ctx, study.NewTx(mongoClient), cfg.GuildID, cfg.ManagerID, cfg.NoticeChannelID)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	log.Println("Study service is ready!")
 
-	session, err := discordgo.New("Bot " + cfg.BotToken)
+	sess, err := discordgo.New("Bot " + cfg.BotToken)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	session.Identify.Intents = discordgo.IntentGuildMembers | discordgo.IntentGuildMessages | discordgo.IntentGuilds | discordgo.IntentDirectMessages
+	bot := NewStudyBot(sess, svc).Setup()
 
-	session.AddHandler(ready)
-
-	if err = session.Open(); err != nil {
+	stop, err := bot.Run()
+	if err != nil {
 		log.Fatal(err)
 	}
-
-	log.Println("Bot is running!")
-
-	stop := make(chan struct{})
-	shutdown := make(chan os.Signal, 1)
-
-	signal.Notify(shutdown,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT,
-	)
-
-	go func() {
-		defer func() {
-			close(shutdown)
-			close(stop)
-		}()
-		<-shutdown
+	defer func() {
+		_ = bot.Close()
+		log.Println("Disconnected from Discord!")
 	}()
 
+	log.Println("Connected to Discord!")
+
 	<-stop
-
-	if err = session.Close(); err != nil {
-		log.Fatal(err)
-	}
-
-	log.Println("Bot is stopped!")
-}
-
-func ready(s *discordgo.Session, event *discordgo.Ready) {
-	s.UpdateGameStatus(0, "발표 준비")
 }
