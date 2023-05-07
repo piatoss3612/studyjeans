@@ -8,13 +8,14 @@ import (
 type Service struct {
 	Management   *Management
 	OnGoingStudy *Study
-	// Store
+	Tx           Tx
 
 	mtx *sync.RWMutex
 }
 
-func NewService(guildID string) (*Service, error) {
+func NewService(tx Tx, guildID string) (*Service, error) {
 	svc := &Service{
+		Tx:  tx,
 		mtx: &sync.RWMutex{},
 	}
 	return svc.setup(guildID)

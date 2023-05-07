@@ -11,6 +11,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/piatoss3612/presentation-helper-bot/study"
 )
 
 func main() {
@@ -23,19 +24,34 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, err := ConnectMongoDB(ctx, os.Getenv("MONGO_URI"))
+	mongoClient, err := ConnectMongoDB(ctx, os.Getenv("MONGO_URI"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err = mongoClient.Disconnect(context.Background()); err != nil {
+			log.Fatal(err)
+		}
+		log.Println("Disconnected from MongoDB!")
+	}()
+
+	log.Println("Connected to MongoDB!")
+
+	tx := study.NewTx(mongoClient)
+
+	svc, err := study.NewService(tx, os.Getenv("GUILD_ID"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("Connected to MongoDB!")
+	log.Println("Study service is ready!")
 
 	session, err := discordgo.New("Bot " + os.Getenv("BOT_TOKEN"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	session.Identify.Intents = discordgo.IntentGuildMembers | discordgo.IntentGuildMessages | discordgo.IntentGuilds
+	session.Identify.Intents = discordgo.IntentGuildMembers | discordgo.IntentGuildMessages | discordgo.IntentGuilds | discordgo.IntentDirectMessages
 
 	session.AddHandler(ready)
 
