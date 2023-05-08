@@ -43,6 +43,10 @@ var adminCmd = discordgo.ApplicationCommand{
 					Value: "start-presentation",
 				},
 				{
+					Name:  "발표 참여 확인",
+					Value: "confirm-presentation",
+				},
+				{
 					Name:  "발표 종료",
 					Value: "end-presentation",
 				},
@@ -128,6 +132,8 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 		err = b.closeSubmissionHandler(s, i)
 	case "start-presentation":
 		err = b.startPresentationHandler(s, i)
+	case "confirm-presentation":
+		err = b.confirmPresentationHandler(s, i, u)
 	case "end-presentation":
 		err = b.endPresentationHandler(s, i)
 	case "start-feedback":
@@ -384,6 +390,47 @@ func (b *StudyBot) startPresentationHandler(s *discordgo.Session, i *discordgo.I
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: "발표가 시작되었습니다.",
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	})
+}
+
+func (b *StudyBot) confirmPresentationHandler(s *discordgo.Session, i *discordgo.InteractionCreate, u *discordgo.User) error {
+	if u == nil {
+		return errors.New("user not found")
+	}
+
+	guild := b.svc.GetGuildID()
+
+	// check if the command is executed in the correct guild
+	if guild != i.GuildID {
+		return errors.New("guild id mismatch with the bot's guild id")
+	}
+
+	var admin *discordgo.User
+
+	if i.Member != nil && i.Member.User != nil {
+		admin = i.Member.User
+	}
+
+	if admin == nil {
+		return errors.New("admin not found")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// confirm presentation
+	err := b.svc.ChangePresentationAttended(ctx, admin.ID, u.ID, true)
+	if err != nil {
+		return err
+	}
+
+	// send a response message
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: fmt.Sprintf("<@%s>님의 발표 참석 여부가 확인되었습니다.", u.ID),
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})

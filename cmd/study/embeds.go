@@ -65,10 +65,6 @@ func HelpStudyEmbed(u *discordgo.User) *discordgo.MessageEmbed {
 				Value: "발표 자료 제출",
 			},
 			{
-				Name:  "발표 완료",
-				Value: "발표 완료 처리",
-			},
-			{
 				Name:  "피드백",
 				Value: "피드백 제출",
 			},
@@ -149,6 +145,16 @@ func MyStudyInfoEmbed(u *discordgo.User, m study.Member) *discordgo.MessageEmbed
 				Inline: true,
 			},
 			{
+				Name: "발표 완료",
+				Value: func() string {
+					if m.Attended {
+						return "```O```"
+					}
+					return "```X```"
+				}(),
+				Inline: true,
+			},
+			{
 				Name: "발표주제",
 				Value: func() string {
 					if m.Subject == "" {
@@ -165,16 +171,6 @@ func MyStudyInfoEmbed(u *discordgo.User, m study.Member) *discordgo.MessageEmbed
 					}
 					return fmt.Sprintf("```%s```", m.ContentURL)
 				}(),
-			},
-			{
-				Name: "발표 완료",
-				Value: func() string {
-					if m.Attended {
-						return "```O```"
-					}
-					return "```X```"
-				}(),
-				Inline: true,
 			},
 		},
 		Color: 16777215,
