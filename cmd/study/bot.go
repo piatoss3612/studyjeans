@@ -36,6 +36,7 @@ func (b *StudyBot) Setup() *StudyBot {
 	b.sess.AddHandler(b.ready)
 	b.sess.AddHandler(b.handleApplicationCommand)
 
+	b.hdr.AddCommand(adminCmd, b.adminHandler)
 	b.hdr.AddCommand(helpCmd, b.helpHandler)
 	b.hdr.AddCommand(profileCmd, b.profileCmdHandler)
 
