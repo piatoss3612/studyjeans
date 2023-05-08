@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -146,11 +147,14 @@ func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.Interac
 	// check if the command is executed in the correct guild
 	if guildID != i.GuildID {
 		// TODO: error handling
+		log.Println("wrong guild")
 		return
 	}
 
 	// check if title is empty
 	if title == "" {
+		// TODO: error handling
+		log.Println("empty title")
 		return
 	}
 
@@ -158,6 +162,7 @@ func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.Interac
 	members, err := s.GuildMembers(i.GuildID, "", 1000)
 	if err != nil {
 		// TODO: error handling
+		log.Println(err)
 		return
 	}
 
@@ -179,6 +184,7 @@ func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.Interac
 	err = b.svc.CreateStudy(ctx, i.Member.User.ID, title, memberIDs)
 	if err != nil {
 		// TODO: error handling
+		log.Println(err)
 		return
 	}
 
@@ -188,6 +194,7 @@ func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.Interac
 	_, err = s.ChannelMessageSendEmbed(noticeCh, EmbedTemplate(s.State.User, "스터디 생성", fmt.Sprintf("**<%s>**가 생성되었습니다.", title)))
 	if err != nil {
 		// TODO: error handling
+		log.Println(err)
 		return
 	}
 
@@ -196,14 +203,59 @@ func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.Interac
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: "스터디가 생성되었습니다.",
+			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
 	if err != nil {
 		// TODO: error handling
+		log.Println(err)
 	}
 }
 
-func (b *StudyBot) closeRegistrationHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {}
+func (b *StudyBot) closeRegistrationHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	guildID := b.svc.GetGuildID()
+
+	// check if the command is executed in the correct guild
+	if guildID != i.GuildID {
+		// TODO: error handling
+		log.Println("wrong guild")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// close registration
+	err := b.svc.FinishRegistration(ctx, i.Member.User.ID)
+	if err != nil {
+		// TODO: error handling
+		log.Println(err)
+		return
+	}
+
+	noticeCh := b.svc.GetNoticeChannelID()
+
+	// send a notice message
+	_, err = s.ChannelMessageSendEmbed(noticeCh, EmbedTemplate(s.State.User, "발표자 등록 마감", "발표자 등록이 마감되었습니다."))
+	if err != nil {
+		// TODO: error handling
+		log.Println(err)
+		return
+	}
+
+	// send a response message
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: "발표자 등록이 마감되었습니다.",
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	})
+	if err != nil {
+		// TODO: error handling
+		log.Println(err)
+	}
+}
 
 func (b *StudyBot) cancelRegistrationHandler(s *discordgo.Session, i *discordgo.InteractionCreate, u *discordgo.User) {
 }
