@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	handler "github.com/piatoss3612/presentation-helper-bot/internal/handler/study"
@@ -14,10 +15,17 @@ type StudyBot struct {
 	sess *discordgo.Session
 	hdr  handler.Handler
 	svc  study.Service
+
+	startedAt time.Time
 }
 
 func NewStudyBot(sess *discordgo.Session, svc study.Service) *StudyBot {
-	return &StudyBot{sess: sess, hdr: handler.NewHandler(), svc: svc}
+	return &StudyBot{
+		sess:      sess,
+		hdr:       handler.NewHandler(),
+		svc:       svc,
+		startedAt: time.Now(),
+	}
 }
 
 func (b *StudyBot) Setup() *StudyBot {
@@ -26,7 +34,6 @@ func (b *StudyBot) Setup() *StudyBot {
 	b.sess.AddHandler(b.ready)
 	b.sess.AddHandler(b.handleApplicationCommand)
 
-	b.hdr.AddCommand(pingCmd, b.pingCmdHandler)
 	b.hdr.AddCommand(profileCmd, b.profileCmdHandler)
 
 	return b
