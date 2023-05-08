@@ -39,6 +39,8 @@ func (b *StudyBot) Setup() *StudyBot {
 	b.hdr.AddCommand(helpCmd, b.helpHandler)
 	b.hdr.AddCommand(profileCmd, b.profileCmdHandler)
 
+	b.chdr.AddHandleFunc(helpSelectMenu.CustomID, b.helpSelectMenuHandler)
+
 	return b
 }
 
