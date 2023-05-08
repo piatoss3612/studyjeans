@@ -152,6 +152,8 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 			},
 		})
 	}
+
+	_ = s.UpdateGameStatus(0, b.svc.GetCurrentStudyStage().String())
 }
 
 func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.InteractionCreate, title string) error {
