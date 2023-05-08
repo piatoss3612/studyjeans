@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -113,57 +113,64 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 		}
 	}
 
+	var err error
+
 	switch cmd {
 	case "create-study":
-		b.createStudyHandler(s, i, title)
+		err = b.createStudyHandler(s, i, title)
 	case "close-registration":
-		b.closeRegistrationHandler(s, i)
+		err = b.closeRegistrationHandler(s, i)
 	case "cancel-registration":
-		b.cancelRegistrationHandler(s, i, u)
+		err = b.cancelRegistrationHandler(s, i, u)
 	case "start-submission":
-		b.startSubmissionHandler(s, i)
+		err = b.startSubmissionHandler(s, i)
 	case "close-submission":
-		b.closeSubmissionHandler(s, i)
+		err = b.closeSubmissionHandler(s, i)
 	case "start-presentation":
-		b.startPresentationHandler(s, i)
+		err = b.startPresentationHandler(s, i)
 	case "end-presentation":
-		b.endPresentationHandler(s, i)
+		err = b.endPresentationHandler(s, i)
 	case "start-feedback":
-		b.startFeedbackHandler(s, i)
+		err = b.startFeedbackHandler(s, i)
 	case "end-feedback":
-		b.endFeedbackHandler(s, i)
+		err = b.endFeedbackHandler(s, i)
 	case "end-study":
-		b.endStudyHandler(s, i)
+		err = b.endStudyHandler(s, i)
 	case "set-notice-channel":
-		b.setNoticeChannelHandler(s, i, ch)
+		err = b.setNoticeChannelHandler(s, i, ch)
 	default:
-		return
+		err = errors.New("invalid command")
+	}
+
+	if err != nil {
+		_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "Error",
+				Flags:   discordgo.MessageFlagsEphemeral,
+				Embeds:  []*discordgo.MessageEmbed{ErrorEmbed(err.Error())},
+			},
+		})
 	}
 }
 
-func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.InteractionCreate, title string) {
+func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.InteractionCreate, title string) error {
 	guildID := b.svc.GetGuildID()
 
 	// check if the command is executed in the correct guild
 	if guildID != i.GuildID {
-		// TODO: error handling
-		log.Println("wrong guild")
-		return
+		return errors.New("guild id mismatch with the bot's guild id")
 	}
 
 	// check if title is empty
 	if title == "" {
-		// TODO: error handling
-		log.Println("empty title")
-		return
+		return errors.New("title is empty")
 	}
 
 	// get all members in the guild
 	members, err := s.GuildMembers(i.GuildID, "", 1000)
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	// get all id of non-bot members
@@ -183,9 +190,7 @@ func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.Interac
 	// create a study
 	err = b.svc.CreateStudy(ctx, i.Member.User.ID, title, memberIDs)
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	noticeCh := b.svc.GetNoticeChannelID()
@@ -193,33 +198,25 @@ func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.Interac
 	// send a notice message
 	_, err = s.ChannelMessageSendEmbed(noticeCh, EmbedTemplate(s.State.User, "스터디 생성", fmt.Sprintf("**<%s>**가 생성되었습니다.", title)))
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	// send a response message
-	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: "스터디가 생성되었습니다.",
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
-	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-	}
 }
 
-func (b *StudyBot) closeRegistrationHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (b *StudyBot) closeRegistrationHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	guildID := b.svc.GetGuildID()
 
 	// check if the command is executed in the correct guild
 	if guildID != i.GuildID {
-		// TODO: error handling
-		log.Println("wrong guild")
-		return
+		return errors.New("guild id mismatch with the bot's guild id")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -228,9 +225,7 @@ func (b *StudyBot) closeRegistrationHandler(s *discordgo.Session, i *discordgo.I
 	// close registration
 	err := b.svc.FinishRegistration(ctx, i.Member.User.ID)
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	noticeCh := b.svc.GetNoticeChannelID()
@@ -238,33 +233,34 @@ func (b *StudyBot) closeRegistrationHandler(s *discordgo.Session, i *discordgo.I
 	// send a notice message
 	_, err = s.ChannelMessageSendEmbed(noticeCh, EmbedTemplate(s.State.User, "발표자 등록 마감", "발표자 등록이 마감되었습니다."))
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	// send a response message
-	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: "발표자 등록이 마감되었습니다.",
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
-	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-	}
 }
 
-func (b *StudyBot) cancelRegistrationHandler(s *discordgo.Session, i *discordgo.InteractionCreate, u *discordgo.User) {
+func (b *StudyBot) cancelRegistrationHandler(s *discordgo.Session, i *discordgo.InteractionCreate, u *discordgo.User) error {
 	guild := b.svc.GetGuildID()
+
+	// check if user is not nil
+	if u == nil {
+		return errors.New("user is nil")
+	}
+
+	if u.Bot {
+		return errors.New("bot cannot cancel registration")
+	}
 
 	// check if the command is executed in the correct guild
 	if guild != i.GuildID {
-		// TODO: error handling
-		log.Println("wrong guild")
-		return
+		return errors.New("guild id mismatch with the bot's guild id")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -273,33 +269,25 @@ func (b *StudyBot) cancelRegistrationHandler(s *discordgo.Session, i *discordgo.
 	// cancel registration
 	err := b.svc.ChangeMemberRegistration(ctx, i.Member.User.ID, u.ID, "", "", false)
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	// send a response message
-	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: fmt.Sprintf("<@%s>님의 발표자 등록이 취소되었습니다.", u.ID),
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
-	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-	}
 }
 
-func (b *StudyBot) startSubmissionHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (b *StudyBot) startSubmissionHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	guild := b.svc.GetGuildID()
 
 	// check if the command is executed in the correct guild
 	if guild != i.GuildID {
-		// TODO: error handling
-		log.Println("wrong guild")
-		return
+		return errors.New("guild id mismatch with the bot's guild id")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -308,9 +296,7 @@ func (b *StudyBot) startSubmissionHandler(s *discordgo.Session, i *discordgo.Int
 	// start submission
 	err := b.svc.StartSubmission(ctx, i.Member.User.ID)
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	noticeCh := b.svc.GetNoticeChannelID()
@@ -318,33 +304,25 @@ func (b *StudyBot) startSubmissionHandler(s *discordgo.Session, i *discordgo.Int
 	// send a notice message
 	_, err = s.ChannelMessageSendEmbed(noticeCh, EmbedTemplate(s.State.User, "발표자료 제출 시작", "발표자료 제출이 시작되었습니다."))
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	// send a response message
-	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: "발표자료 제출이 시작되었습니다.",
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
-	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-	}
 }
 
-func (b *StudyBot) closeSubmissionHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (b *StudyBot) closeSubmissionHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	guild := b.svc.GetGuildID()
 
 	// check if the command is executed in the correct guild
 	if guild != i.GuildID {
-		// TODO: error handling
-		log.Println("wrong guild")
-		return
+		return errors.New("guild id mismatch with the bot's guild id")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -353,9 +331,7 @@ func (b *StudyBot) closeSubmissionHandler(s *discordgo.Session, i *discordgo.Int
 	// close submission
 	err := b.svc.FinishSubmission(ctx, i.Member.User.ID)
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	noticeCh := b.svc.GetNoticeChannelID()
@@ -363,33 +339,25 @@ func (b *StudyBot) closeSubmissionHandler(s *discordgo.Session, i *discordgo.Int
 	// send a notice message
 	_, err = s.ChannelMessageSendEmbed(noticeCh, EmbedTemplate(s.State.User, "발표자료 제출 마감", "발표자료 제출이 마감되었습니다."))
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	// send a response message
-	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: "발표자료 제출이 마감되었습니다.",
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
-	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-	}
 }
 
-func (b *StudyBot) startPresentationHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (b *StudyBot) startPresentationHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	guild := b.svc.GetGuildID()
 
 	// check if the command is executed in the correct guild
 	if guild != i.GuildID {
-		// TODO: error handling
-		log.Println("wrong guild")
-		return
+		return errors.New("guild id mismatch with the bot's guild id")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -399,9 +367,7 @@ func (b *StudyBot) startPresentationHandler(s *discordgo.Session, i *discordgo.I
 	err := b.svc.StartPresentation(ctx, i.Member.User.ID)
 
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	noticeCh := b.svc.GetNoticeChannelID()
@@ -409,33 +375,25 @@ func (b *StudyBot) startPresentationHandler(s *discordgo.Session, i *discordgo.I
 	// send a notice message
 	_, err = s.ChannelMessageSendEmbed(noticeCh, EmbedTemplate(s.State.User, "발표 시작", "발표가 시작되었습니다."))
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	// send a response message
-	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: "발표가 시작되었습니다.",
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
-	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-	}
 }
 
-func (b *StudyBot) endPresentationHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (b *StudyBot) endPresentationHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	guild := b.svc.GetGuildID()
 
 	// check if the command is executed in the correct guild
 	if guild != i.GuildID {
-		// TODO: error handling
-		log.Println("wrong guild")
-		return
+		return errors.New("guild id mismatch with the bot's guild id")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -444,9 +402,7 @@ func (b *StudyBot) endPresentationHandler(s *discordgo.Session, i *discordgo.Int
 	// end presentation
 	err := b.svc.FinishPresentation(ctx, i.Member.User.ID)
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	noticeCh := b.svc.GetNoticeChannelID()
@@ -454,33 +410,25 @@ func (b *StudyBot) endPresentationHandler(s *discordgo.Session, i *discordgo.Int
 	// send a notice message
 	_, err = s.ChannelMessageSendEmbed(noticeCh, EmbedTemplate(s.State.User, "발표 종료", "발표가 종료되었습니다."))
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	// send a response message
-	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: "발표가 종료되었습니다.",
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
-	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-	}
 }
 
-func (b *StudyBot) startFeedbackHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (b *StudyBot) startFeedbackHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	guild := b.svc.GetGuildID()
 
 	// check if the command is executed in the correct guild
 	if guild != i.GuildID {
-		// TODO: error handling
-		log.Println("wrong guild")
-		return
+		return errors.New("guild id mismatch with the bot's guild id")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -489,9 +437,7 @@ func (b *StudyBot) startFeedbackHandler(s *discordgo.Session, i *discordgo.Inter
 	// start feedback
 	err := b.svc.StartReview(ctx, i.Member.User.ID)
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	noticeCh := b.svc.GetNoticeChannelID()
@@ -499,33 +445,25 @@ func (b *StudyBot) startFeedbackHandler(s *discordgo.Session, i *discordgo.Inter
 	// send a notice message
 	_, err = s.ChannelMessageSendEmbed(noticeCh, EmbedTemplate(s.State.User, "피드백 시작", "피드백이 시작되었습니다."))
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	// send a response message
-	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: "피드백이 시작되었습니다.",
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
-	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-	}
 }
 
-func (b *StudyBot) endFeedbackHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (b *StudyBot) endFeedbackHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	guild := b.svc.GetGuildID()
 
 	// check if the command is executed in the correct guild
 	if guild != i.GuildID {
-		// TODO: error handling
-		log.Println("wrong guild")
-		return
+		return errors.New("guild id mismatch with the bot's guild id")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -534,9 +472,7 @@ func (b *StudyBot) endFeedbackHandler(s *discordgo.Session, i *discordgo.Interac
 	// end feedback
 	err := b.svc.FinishReview(ctx, i.Member.User.ID)
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	noticeCh := b.svc.GetNoticeChannelID()
@@ -544,34 +480,25 @@ func (b *StudyBot) endFeedbackHandler(s *discordgo.Session, i *discordgo.Interac
 	// send a notice message
 	_, err = s.ChannelMessageSendEmbed(noticeCh, EmbedTemplate(s.State.User, "피드백 종료", "피드백이 종료되었습니다."))
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	// send a response message
-	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: "피드백이 종료되었습니다.",
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
-
-	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-	}
 }
 
-func (b *StudyBot) endStudyHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (b *StudyBot) endStudyHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	guild := b.svc.GetGuildID()
 
 	// check if the command is executed in the correct guild
 	if guild != i.GuildID {
-		// TODO: error handling
-		log.Println("wrong guild")
-		return
+		return errors.New("guild id mismatch with the bot's guild id")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -580,9 +507,7 @@ func (b *StudyBot) endStudyHandler(s *discordgo.Session, i *discordgo.Interactio
 	// end study
 	err := b.svc.FinishStudy(ctx, i.Member.User.ID)
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	noticeCh := b.svc.GetNoticeChannelID()
@@ -590,39 +515,30 @@ func (b *StudyBot) endStudyHandler(s *discordgo.Session, i *discordgo.Interactio
 	// send a notice message
 	_, err = s.ChannelMessageSendEmbed(noticeCh, EmbedTemplate(s.State.User, "스터디 종료", "스터디가 종료되었습니다."))
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	// send a response message
-	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: "스터디가 종료되었습니다.",
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
-	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-	}
 }
 
-func (b *StudyBot) setNoticeChannelHandler(s *discordgo.Session, i *discordgo.InteractionCreate, ch *discordgo.Channel) {
+func (b *StudyBot) setNoticeChannelHandler(s *discordgo.Session, i *discordgo.InteractionCreate, ch *discordgo.Channel) error {
 	guild := b.svc.GetGuildID()
+
+	// check if the channel is nil
+	if ch == nil {
+		return errors.New("channel is nil")
+	}
 
 	// check if the command is executed in the correct guild
 	if guild != i.GuildID {
-		// TODO: error handling
-		log.Println("wrong guild")
-		return
-	}
-
-	if ch == nil {
-		// TODO: error handling
-		log.Println("channel not found")
-		return
+		return errors.New("guild id mismatch with the bot's guild id")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -631,21 +547,15 @@ func (b *StudyBot) setNoticeChannelHandler(s *discordgo.Session, i *discordgo.In
 	// set notice channel
 	err := b.svc.SetNoticeChannelID(ctx, i.Member.User.ID, ch.ID)
 	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-		return
+		return err
 	}
 
 	// send a response message
-	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: fmt.Sprintf("공지 채널이 %s로 설정되었습니다.", ch.Mention()),
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
-	if err != nil {
-		// TODO: error handling
-		log.Println(err)
-	}
 }
