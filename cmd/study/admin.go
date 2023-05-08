@@ -610,4 +610,42 @@ func (b *StudyBot) endStudyHandler(s *discordgo.Session, i *discordgo.Interactio
 }
 
 func (b *StudyBot) setNoticeChannelHandler(s *discordgo.Session, i *discordgo.InteractionCreate, ch *discordgo.Channel) {
+	guild := b.svc.GetGuildID()
+
+	// check if the command is executed in the correct guild
+	if guild != i.GuildID {
+		// TODO: error handling
+		log.Println("wrong guild")
+		return
+	}
+
+	if ch == nil {
+		// TODO: error handling
+		log.Println("channel not found")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// set notice channel
+	err := b.svc.SetNoticeChannelID(ctx, i.Member.User.ID, ch.ID)
+	if err != nil {
+		// TODO: error handling
+		log.Println(err)
+		return
+	}
+
+	// send a response message
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: fmt.Sprintf("공지 채널이 %s로 설정되었습니다.", ch.Mention()),
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	})
+	if err != nil {
+		// TODO: error handling
+		log.Println(err)
+	}
 }
