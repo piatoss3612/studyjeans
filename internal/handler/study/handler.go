@@ -5,7 +5,7 @@ import (
 )
 
 type Handler interface {
-	AddCommand(cmd discordgo.ApplicationCommand, handleFunc HandleFunc)
+	AddCommand(cmd discordgo.ApplicationCommand, f HandleFunc)
 	GetHandleFunc(name string) (HandleFunc, bool)
 	RegisterApplicationCommands(s *discordgo.Session) error
 	RemoveApplicationCommands(s *discordgo.Session) error
@@ -19,7 +19,7 @@ type handlerImpl struct {
 	registeredCmds []*discordgo.ApplicationCommand
 }
 
-func NewHandler() Handler {
+func New() Handler {
 	return &handlerImpl{
 		handleFuncs:    make(map[string]HandleFunc),
 		cmds:           []*discordgo.ApplicationCommand{},
@@ -27,8 +27,8 @@ func NewHandler() Handler {
 	}
 }
 
-func (h *handlerImpl) AddCommand(cmd discordgo.ApplicationCommand, handleFunc HandleFunc) {
-	h.handleFuncs[cmd.Name] = handleFunc
+func (h *handlerImpl) AddCommand(cmd discordgo.ApplicationCommand, f HandleFunc) {
+	h.handleFuncs[cmd.Name] = f
 	h.cmds = append(h.cmds, &cmd)
 }
 
@@ -59,4 +59,28 @@ func (h *handlerImpl) RemoveApplicationCommands(s *discordgo.Session) error {
 	}
 
 	return nil
+}
+
+type ComponentHandler interface {
+	AddHandleFunc(name string, f HandleFunc)
+	GetHandleFunc(name string) (HandleFunc, bool)
+}
+
+type componentHandlerImpl struct {
+	handleFuncs map[string]HandleFunc
+}
+
+func NewComponent() ComponentHandler {
+	return &componentHandlerImpl{
+		handleFuncs: make(map[string]HandleFunc),
+	}
+}
+
+func (h *componentHandlerImpl) AddHandleFunc(name string, f HandleFunc) {
+	h.handleFuncs[name] = f
+}
+
+func (h *componentHandlerImpl) GetHandleFunc(name string) (HandleFunc, bool) {
+	f, ok := h.handleFuncs[name]
+	return f, ok
 }

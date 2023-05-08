@@ -14,6 +14,7 @@ import (
 type StudyBot struct {
 	sess *discordgo.Session
 	hdr  handler.Handler
+	chdr handler.ComponentHandler
 	svc  study.Service
 
 	startedAt time.Time
@@ -22,7 +23,8 @@ type StudyBot struct {
 func NewStudyBot(sess *discordgo.Session, svc study.Service) *StudyBot {
 	return &StudyBot{
 		sess:      sess,
-		hdr:       handler.NewHandler(),
+		hdr:       handler.New(),
+		chdr:      handler.NewComponent(),
 		svc:       svc,
 		startedAt: time.Now(),
 	}
@@ -34,6 +36,7 @@ func (b *StudyBot) Setup() *StudyBot {
 	b.sess.AddHandler(b.ready)
 	b.sess.AddHandler(b.handleApplicationCommand)
 
+	b.hdr.AddCommand(helpCmd, b.helpHandler)
 	b.hdr.AddCommand(profileCmd, b.profileCmdHandler)
 
 	return b
@@ -82,7 +85,16 @@ func (b *StudyBot) ready(s *discordgo.Session, _ *discordgo.Ready) {
 }
 
 func (b *StudyBot) handleApplicationCommand(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	if h, ok := b.hdr.GetHandleFunc(i.ApplicationCommandData().Name); ok {
-		h(s, i)
+	switch i.Type {
+	case discordgo.InteractionApplicationCommand:
+		if h, ok := b.hdr.GetHandleFunc(i.ApplicationCommandData().Name); ok {
+			h(s, i)
+		}
+	case discordgo.InteractionMessageComponent:
+		if h, ok := b.chdr.GetHandleFunc(i.MessageComponentData().CustomID); ok {
+			h(s, i)
+		}
+	default:
+		return
 	}
 }
