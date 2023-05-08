@@ -35,3 +35,16 @@ var registerCmd = discordgo.ApplicationCommand{
 		},
 	},
 }
+
+var submitContentCmd = discordgo.ApplicationCommand{
+	Name:        "발표-자료-제출",
+	Description: "발표 자료를 제출합니다.",
+	Options: []*discordgo.ApplicationCommandOption{
+		{
+			Name:        "링크",
+			Description: "발표 자료 링크를 입력해주세요.",
+			Type:        discordgo.ApplicationCommandOptionString,
+			Required:    true,
+		},
+	},
+}

@@ -146,9 +146,8 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 		_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
-				Content: "Error",
-				Flags:   discordgo.MessageFlagsEphemeral,
-				Embeds:  []*discordgo.MessageEmbed{ErrorEmbed(err.Error())},
+				Flags:  discordgo.MessageFlagsEphemeral,
+				Embeds: []*discordgo.MessageEmbed{ErrorEmbed(err.Error())},
 			},
 		})
 	}
@@ -269,7 +268,7 @@ func (b *StudyBot) cancelRegistrationHandler(s *discordgo.Session, i *discordgo.
 	defer cancel()
 
 	// cancel registration
-	err := b.svc.ChangeMemberRegistration(ctx, i.Member.User.ID, u.ID, "", "", false)
+	err := b.svc.ChangeMemberRegistration(ctx, i.GuildID, u.ID, "", "", false)
 	if err != nil {
 		return err
 	}

@@ -155,3 +155,68 @@ func (b *StudyBot) registerCmdHandler(s *discordgo.Session, i *discordgo.Interac
 		return
 	}
 }
+
+func (b *StudyBot) submitContentCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	guildID := b.svc.GetGuildID()
+
+	if i.GuildID != guildID {
+		// TODO: error response
+		log.Println("guildID not matched")
+		return
+	}
+
+	var user *discordgo.User
+
+	if i.Member != nil && i.Member.User != nil {
+		user = i.Member.User
+	}
+
+	if user == nil {
+		// TODO: error response
+		log.Println("user not found")
+		return
+	}
+
+	var content string
+
+	for _, option := range i.ApplicationCommandData().Options {
+		switch option.Name {
+		case "링크":
+			content = option.StringValue()
+		}
+	}
+
+	if content == "" {
+		// TODO: error response
+		log.Println("content not found")
+		return
+	}
+
+	// TODO: validate if content is url
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := b.svc.SubmitContent(ctx, i.GuildID, user.ID, content)
+	if err != nil {
+		// TODO: error response
+		log.Println(err)
+		return
+	}
+
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: user.Mention(),
+			Flags:   discordgo.MessageFlagsEphemeral,
+			Embeds: []*discordgo.MessageEmbed{
+				EmbedTemplate(s.State.User, "제출 완료", "발표 자료가 제출되었습니다."),
+			},
+		},
+	})
+	if err != nil {
+		// TODO: error response
+		log.Println(err)
+		return
+	}
+}
