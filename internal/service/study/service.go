@@ -284,8 +284,12 @@ func (s *ServiceImpl) ChangeMemberRegistration(ctx context.Context, guildID, mem
 	}
 
 	// change member's registered state
-	member.SetName(name)
-	member.SetSubject(subject)
+	if name != "" {
+		member.SetName(name)
+	}
+	if subject != "" {
+		member.SetSubject(subject)
+	}
 	member.SetRegistered(registered)
 
 	// set updated member to study

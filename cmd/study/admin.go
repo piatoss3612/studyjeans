@@ -258,6 +258,37 @@ func (b *StudyBot) closeRegistrationHandler(s *discordgo.Session, i *discordgo.I
 }
 
 func (b *StudyBot) cancelRegistrationHandler(s *discordgo.Session, i *discordgo.InteractionCreate, u *discordgo.User) {
+	guild := b.svc.GetGuildID()
+
+	// check if the command is executed in the correct guild
+	if guild != i.GuildID {
+		// TODO: error handling
+		log.Println("wrong guild")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// cancel registration
+	err := b.svc.ChangeMemberRegistration(ctx, i.Member.User.ID, u.ID, "", "", false)
+	if err != nil {
+		// TODO: error handling
+		log.Println(err)
+		return
+	}
+
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: fmt.Sprintf("<@%s>님의 발표자 등록이 취소되었습니다.", u.ID),
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	})
+	if err != nil {
+		// TODO: error handling
+		log.Println(err)
+	}
 }
 
 func (b *StudyBot) startSubmissionHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {}
