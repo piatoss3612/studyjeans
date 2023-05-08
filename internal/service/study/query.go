@@ -31,7 +31,7 @@ func (q *QueryImpl) FindManagement(ctx context.Context, guildID string) (*Manage
 
 	m := NewManagement()
 
-	err := collection.FindOne(ctx, filter).Decode(m)
+	err := collection.FindOne(ctx, filter).Decode(&m)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, nil
@@ -39,7 +39,7 @@ func (q *QueryImpl) FindManagement(ctx context.Context, guildID string) (*Manage
 		return nil, err
 	}
 
-	return m, nil
+	return &m, nil
 }
 
 func (q *QueryImpl) FindStudy(ctx context.Context, id string) (*Study, error) {
@@ -54,7 +54,7 @@ func (q *QueryImpl) FindStudy(ctx context.Context, id string) (*Study, error) {
 
 	s := New()
 
-	err = collection.FindOne(ctx, filter).Decode(s)
+	err = collection.FindOne(ctx, filter).Decode(&s)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, nil
@@ -62,7 +62,7 @@ func (q *QueryImpl) FindStudy(ctx context.Context, id string) (*Study, error) {
 		return nil, err
 	}
 
-	return s, nil
+	return &s, nil
 }
 
 func (q *QueryImpl) FindStudies(ctx context.Context, guildID string) ([]*Study, error) {
@@ -84,12 +84,12 @@ func (q *QueryImpl) FindStudies(ctx context.Context, guildID string) ([]*Study, 
 	for cursor.Next(ctx) {
 		s := New()
 
-		err := cursor.Decode(s)
+		err := cursor.Decode(&s)
 		if err != nil {
 			return nil, err
 		}
 
-		studies = append(studies, s)
+		studies = append(studies, &s)
 	}
 
 	return studies, nil

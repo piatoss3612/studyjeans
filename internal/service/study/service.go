@@ -29,8 +29,8 @@ type Service interface {
 }
 
 type ServiceImpl struct {
-	Management   *Management
-	OnGoingStudy *Study
+	Management   Management
+	OnGoingStudy Study
 	Tx           Tx
 
 	mtx *sync.RWMutex
@@ -38,8 +38,10 @@ type ServiceImpl struct {
 
 func NewService(ctx context.Context, tx Tx, guildID, managerID, noticeChID string) (Service, error) {
 	svc := &ServiceImpl{
-		Tx:  tx,
-		mtx: &sync.RWMutex{},
+		Management:   NewManagement(),
+		OnGoingStudy: New(),
+		Tx:           tx,
+		mtx:          &sync.RWMutex{},
 	}
 	return svc.setup(ctx, guildID, managerID, noticeChID)
 }
@@ -55,24 +57,26 @@ func (s *ServiceImpl) setup(ctx context.Context, guildID, managerID, noticeChID 
 
 		// if there is no management, create one
 		if m == nil {
-			m = NewManagement()
-			m.SetGuildID(guildID)
-			m.SetManagerID(managerID)
-			m.SetNoticeChannelID(noticeChID)
+			nm := NewManagement()
 
-			id, err := s.Tx.StoreManagement(ctx, *m)
+			nm.SetGuildID(guildID)
+			nm.SetManagerID(managerID)
+			nm.SetNoticeChannelID(noticeChID)
+
+			id, err := s.Tx.StoreManagement(ctx, nm)
 			if err != nil {
 				return nil, err
 			}
 
-			m.SetID(id)
+			nm.SetID(id)
+
+			s.Management = nm
+		} else {
+			s.Management = *m
 		}
 
-		// set management
-		s.Management = m
-
 		// if there is no ongoing study, return
-		if m.OngoingStudyID == "" {
+		if s.Management.OngoingStudyID == "" {
 			return nil, nil
 		}
 
@@ -88,7 +92,7 @@ func (s *ServiceImpl) setup(ctx context.Context, guildID, managerID, noticeChID 
 		}
 
 		// set ongoing study
-		s.OnGoingStudy = study
+		s.OnGoingStudy = *study
 
 		return nil, nil
 	}
@@ -114,12 +118,7 @@ func (s *ServiceImpl) SetNoticeChannelID(ctx context.Context, proposerID, channe
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
-	// check if management is initialized
-	if s.Management == nil {
-		return errors.New("스터디 관리가 설정되지 않았습니다.")
-	}
-
-	m := *s.Management
+	m := s.Management
 
 	// check if proposer is manager
 	if !m.IsManager(proposerID) {
@@ -134,7 +133,7 @@ func (s *ServiceImpl) SetNoticeChannelID(ctx context.Context, proposerID, channe
 		return err
 	}
 
-	s.Management = &m
+	s.Management = m
 
 	return nil
 }
@@ -151,25 +150,20 @@ func (s *ServiceImpl) GetOngoingStudy() (*Study, error) {
 	s.mtx.RLock()
 
 	// check if ongoing study is initialized
-	if s.OnGoingStudy == nil {
+	if s.OnGoingStudy.ID == "" {
 		return nil, errors.New("진행중인 스터디가 설정되지 않았습니다.")
 	}
 
-	return s.OnGoingStudy, nil
+	return &s.OnGoingStudy, nil
 }
 
 func (s *ServiceImpl) GetStudies(ctx context.Context, guildID string) ([]*Study, error) {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
 
-	// check if management is initialized
-	if s.Management == nil {
-		return nil, errors.New("스터디 관리가 설정되지 않았습니다.")
-	}
+	m := s.Management
 
-	m := *s.Management
-
-	// check if guildID is same
+	// check if guildID is same as management's
 	if m.GuildID != guildID {
 		return nil, errors.New("서버 ID가 일치하지 않습니다.")
 	}
@@ -182,19 +176,14 @@ func (s *ServiceImpl) CreateStudy(ctx context.Context, proposerID, title string,
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
-	// check if management is initialized
-	if s.Management == nil {
-		return errors.New("스터디 관리가 설정되지 않았습니다.")
-	}
-
-	m := *s.Management
+	m := s.Management
 
 	// check if proposer is manager
 	if !m.IsManager(proposerID) {
 		return errors.New("스터디 관리자가 아닙니다.")
 	}
 
-	// check if there is no on going study
+	// check if there is any ongoing study
 	if !(m.CurrentStudyStage.IsNone() || m.CurrentStudyStage.IsWait()) {
 		return errors.New("이미 진행중인 스터디가 있습니다.")
 	}
@@ -218,7 +207,7 @@ func (s *ServiceImpl) CreateStudy(ctx context.Context, proposerID, title string,
 	// transaction for create study and update management
 	tx := func(sc context.Context) (interface{}, error) {
 		// store new study
-		studyID, err := s.Tx.StoreStudy(sc, *study)
+		studyID, err := s.Tx.StoreStudy(sc, study)
 		if err != nil {
 			return nil, err
 		}
@@ -243,7 +232,7 @@ func (s *ServiceImpl) CreateStudy(ctx context.Context, proposerID, title string,
 	}
 
 	// set study and manage
-	s.Management = &m
+	s.Management = m
 	s.OnGoingStudy = study
 
 	return nil
@@ -253,11 +242,6 @@ func (s *ServiceImpl) ChangeMemberRegistration(ctx context.Context, guildID, mem
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
-	// check if management is initialized
-	if s.Management == nil {
-		return errors.New("스터디 관리가 설정되지 않았습니다.")
-	}
-
 	m := s.Management
 
 	// check if study is in registration stage
@@ -266,11 +250,11 @@ func (s *ServiceImpl) ChangeMemberRegistration(ctx context.Context, guildID, mem
 	}
 
 	// check if there is no ongoing study
-	if m.OngoingStudyID == "" || s.OnGoingStudy == nil {
+	if m.OngoingStudyID == "" || s.OnGoingStudy.ID == "" {
 		return errors.New("진행중인 스터디가 없습니다.")
 	}
 
-	study := *s.OnGoingStudy
+	study := s.OnGoingStudy
 
 	// check if presentor belongs to study
 	if study.GuildID != guildID {
@@ -298,7 +282,7 @@ func (s *ServiceImpl) ChangeMemberRegistration(ctx context.Context, guildID, mem
 		return err
 	}
 
-	s.OnGoingStudy = &study
+	s.OnGoingStudy = study
 
 	return nil
 }
@@ -307,12 +291,7 @@ func (s *ServiceImpl) FinishRegistration(ctx context.Context, proposerID string)
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
-	// check if management is initialized
-	if s.Management == nil {
-		return errors.New("스터디 관리가 설정되지 않았습니다.")
-	}
-
-	m := *s.Management
+	m := s.Management
 
 	// check if proposer is manager
 	if !m.IsManager(proposerID) {
@@ -332,7 +311,7 @@ func (s *ServiceImpl) FinishRegistration(ctx context.Context, proposerID string)
 		return err
 	}
 
-	s.Management = &m
+	s.Management = m
 
 	return nil
 }
@@ -341,12 +320,7 @@ func (s *ServiceImpl) StartSubmission(ctx context.Context, proposerID string) er
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
-	// check if management is initialized
-	if s.Management == nil {
-		return errors.New("스터디 관리가 설정되지 않았습니다.")
-	}
-
-	m := *s.Management
+	m := s.Management
 
 	// check if proposer is manager
 	if !m.IsManager(proposerID) {
@@ -367,7 +341,7 @@ func (s *ServiceImpl) StartSubmission(ctx context.Context, proposerID string) er
 		return err
 	}
 
-	s.Management = &m
+	s.Management = m
 
 	return nil
 }
@@ -375,11 +349,6 @@ func (s *ServiceImpl) StartSubmission(ctx context.Context, proposerID string) er
 func (s *ServiceImpl) SubmitContent(ctx context.Context, guildID, memberID, contentURL string) error {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
-
-	// check if management is initialized
-	if s.Management == nil {
-		return errors.New("스터디 관리가 설정되지 않았습니다.")
-	}
 
 	m := s.Management
 
@@ -389,11 +358,11 @@ func (s *ServiceImpl) SubmitContent(ctx context.Context, guildID, memberID, cont
 	}
 
 	// check if there is no ongoing study
-	if m.OngoingStudyID == "" || s.OnGoingStudy == nil {
+	if m.OngoingStudyID == "" || s.OnGoingStudy.ID == "" {
 		return errors.New("진행중인 스터디가 없습니다.")
 	}
 
-	study := *s.OnGoingStudy
+	study := s.OnGoingStudy
 
 	// check if presentor belongs to study
 	if study.GuildID != guildID {
@@ -424,7 +393,7 @@ func (s *ServiceImpl) SubmitContent(ctx context.Context, guildID, memberID, cont
 		return err
 	}
 
-	s.OnGoingStudy = &study
+	s.OnGoingStudy = study
 
 	return nil
 }
@@ -433,12 +402,7 @@ func (s *ServiceImpl) FinishSubmission(ctx context.Context, proposerID string) e
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
-	// check if management is initialized
-	if s.Management == nil {
-		return errors.New("스터디 관리가 설정되지 않았습니다.")
-	}
-
-	m := *s.Management
+	m := s.Management
 
 	// check if proposer is manager
 	if !m.IsManager(proposerID) {
@@ -459,7 +423,7 @@ func (s *ServiceImpl) FinishSubmission(ctx context.Context, proposerID string) e
 		return err
 	}
 
-	s.Management = &m
+	s.Management = m
 
 	return nil
 }
@@ -468,12 +432,7 @@ func (s *ServiceImpl) StartPresentation(ctx context.Context, proposerID string) 
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
-	// check if management is initialized
-	if s.Management == nil {
-		return errors.New("스터디 관리가 설정되지 않았습니다.")
-	}
-
-	m := *s.Management
+	m := s.Management
 
 	// check if proposer is manager
 	if !m.IsManager(proposerID) {
@@ -494,7 +453,7 @@ func (s *ServiceImpl) StartPresentation(ctx context.Context, proposerID string) 
 		return err
 	}
 
-	s.Management = &m
+	s.Management = m
 
 	return nil
 }
@@ -503,12 +462,7 @@ func (s *ServiceImpl) ChangePresentationAttended(ctx context.Context, proposerID
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
-	// check if management is initialized
-	if s.Management == nil {
-		return errors.New("스터디 관리가 설정되지 않았습니다.")
-	}
-
-	m := *s.Management
+	m := s.Management
 
 	// check if proposer is manager
 	if !m.IsManager(proposerID) {
@@ -521,11 +475,11 @@ func (s *ServiceImpl) ChangePresentationAttended(ctx context.Context, proposerID
 	}
 
 	// check if there is no ongoing study
-	if m.OngoingStudyID == "" || s.OnGoingStudy == nil {
+	if m.OngoingStudyID == "" || s.OnGoingStudy.ID == "" {
 		return errors.New("진행중인 스터디가 없습니다.")
 	}
 
-	study := *s.OnGoingStudy
+	study := s.OnGoingStudy
 
 	// check if presentor is initialized
 	member, ok := study.GetMember(memberID)
@@ -551,7 +505,7 @@ func (s *ServiceImpl) ChangePresentationAttended(ctx context.Context, proposerID
 		return err
 	}
 
-	s.OnGoingStudy = &study
+	s.OnGoingStudy = study
 
 	return nil
 }
@@ -560,12 +514,7 @@ func (s *ServiceImpl) FinishPresentation(ctx context.Context, proposerID string)
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
-	// check if management is initialized
-	if s.Management == nil {
-		return errors.New("스터디 관리가 설정되지 않았습니다.")
-	}
-
-	m := *s.Management
+	m := s.Management
 
 	// check if proposer is manager
 	if !m.IsManager(proposerID) {
@@ -586,7 +535,7 @@ func (s *ServiceImpl) FinishPresentation(ctx context.Context, proposerID string)
 		return err
 	}
 
-	s.Management = &m
+	s.Management = m
 
 	return nil
 }
@@ -595,12 +544,7 @@ func (s *ServiceImpl) StartReview(ctx context.Context, proposerID string) error 
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
-	// check if management is initialized
-	if s.Management == nil {
-		return errors.New("스터디 관리가 설정되지 않았습니다.")
-	}
-
-	m := *s.Management
+	m := s.Management
 
 	// check if proposer is manager
 	if !m.IsManager(proposerID) {
@@ -621,7 +565,7 @@ func (s *ServiceImpl) StartReview(ctx context.Context, proposerID string) error 
 		return err
 	}
 
-	s.Management = &m
+	s.Management = m
 
 	return nil
 }
@@ -630,11 +574,6 @@ func (s *ServiceImpl) SetReviewer(ctx context.Context, guildID, reviewerID, revi
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
-	// check if management is initialized
-	if s.Management == nil {
-		return errors.New("스터디 관리가 설정되지 않았습니다.")
-	}
-
 	m := s.Management
 
 	if !m.CurrentStudyStage.IsReviewOngoing() {
@@ -642,11 +581,11 @@ func (s *ServiceImpl) SetReviewer(ctx context.Context, guildID, reviewerID, revi
 	}
 
 	// check if there is no ongoing study
-	if m.OngoingStudyID == "" || s.OnGoingStudy == nil {
+	if m.OngoingStudyID == "" || s.OnGoingStudy.ID == "" {
 		return errors.New("진행중인 스터디가 없습니다.")
 	}
 
-	study := *s.OnGoingStudy
+	study := s.OnGoingStudy
 
 	// check if reviewee belongs to study
 	if study.GuildID != guildID {
@@ -686,7 +625,7 @@ func (s *ServiceImpl) SetReviewer(ctx context.Context, guildID, reviewerID, revi
 		return err
 	}
 
-	s.OnGoingStudy = &study
+	s.OnGoingStudy = study
 
 	return nil
 }
@@ -695,12 +634,7 @@ func (s *ServiceImpl) FinishReview(ctx context.Context, proposerID string) error
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
-	// check if management is initialized
-	if s.Management == nil {
-		return errors.New("스터디 관리가 설정되지 않았습니다.")
-	}
-
-	m := *s.Management
+	m := s.Management
 
 	// check if proposer is manager
 	if !m.IsManager(proposerID) {
@@ -721,7 +655,7 @@ func (s *ServiceImpl) FinishReview(ctx context.Context, proposerID string) error
 		return err
 	}
 
-	s.Management = &m
+	s.Management = m
 
 	return nil
 }
@@ -730,12 +664,7 @@ func (s *ServiceImpl) FinishStudy(ctx context.Context, proposerID string) error 
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
-	// check if management is initialized
-	if s.Management == nil {
-		return errors.New("스터디 관리가 설정되지 않았습니다.")
-	}
-
-	m := *s.Management
+	m := s.Management
 
 	// check if proposer is manager
 	if !m.IsManager(proposerID) {
@@ -757,8 +686,8 @@ func (s *ServiceImpl) FinishStudy(ctx context.Context, proposerID string) error 
 		return err
 	}
 
-	s.Management = &m
-	s.OnGoingStudy = nil
+	s.Management = m
+	s.OnGoingStudy = New()
 
 	return nil
 }

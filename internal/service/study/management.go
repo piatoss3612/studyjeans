@@ -18,8 +18,8 @@ type Management struct {
 	UpdatedAt time.Time `bson:"updated_at"`
 }
 
-func NewManagement() *Management {
-	return &Management{
+func NewManagement() Management {
+	return Management{
 		GuildID:           "",
 		NoticeChannelID:   "",
 		ManagerID:         "",

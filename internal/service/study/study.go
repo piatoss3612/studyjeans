@@ -14,8 +14,8 @@ type Study struct {
 	UpdatedAt time.Time         `bson:"updated_at"`
 }
 
-func New() *Study {
-	return &Study{
+func New() Study {
+	return Study{
 		ID:        "",
 		GuildID:   "",
 		Title:     "",
