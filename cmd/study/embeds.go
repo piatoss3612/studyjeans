@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/piatoss3612/presentation-helper-bot/internal/service/study"
 )
 
 func HelpIntroEmbed(u *discordgo.User) *discordgo.MessageEmbed {
@@ -48,9 +49,13 @@ func HelpStudyEmbed(u *discordgo.User) *discordgo.MessageEmbed {
 			Name:    u.Username,
 			IconURL: u.AvatarURL(""),
 		},
-		Title:       "📚 스터디 관리 명령어",
+		Title:       "📚 스터디 명령어",
 		Description: "> 명령어 사용 예시: /[명령어]",
 		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:  "내-정보",
+				Value: "내 스터디 등록 정보 확인",
+			},
 			{
 				Name:  "발표자 등록",
 				Value: "발표자로 등록",
@@ -71,7 +76,7 @@ func HelpStudyEmbed(u *discordgo.User) *discordgo.MessageEmbed {
 	}
 }
 
-func InfoEmbed(u *discordgo.User, title, createdAt, rebootedAt, uptime string) *discordgo.MessageEmbed {
+func BotInfoEmbed(u *discordgo.User, title, createdAt, rebootedAt, uptime string) *discordgo.MessageEmbed {
 	return &discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{
 			Name:    u.Username,
@@ -111,6 +116,66 @@ func InfoEmbed(u *discordgo.User, title, createdAt, rebootedAt, uptime string) *
 		},
 		Image: &discordgo.MessageEmbedImage{
 			URL: u.AvatarURL("256"),
+		},
+		Color: 16777215,
+	}
+}
+
+func MyStudyInfoEmbed(u *discordgo.User, m study.Member) *discordgo.MessageEmbed {
+	return &discordgo.MessageEmbed{
+		Title: "나의 스터디 등록 정보",
+		Thumbnail: &discordgo.MessageEmbedThumbnail{
+			URL: u.AvatarURL(""),
+		},
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name: "이름",
+				Value: func() string {
+					if m.Name == "" {
+						return "```미등록```"
+					}
+					return fmt.Sprintf("```%s```", m.Name)
+				}(),
+				Inline: true,
+			},
+			{
+				Name: "발표자 등록",
+				Value: func() string {
+					if m.Registered {
+						return "```O```"
+					}
+					return "```X```"
+				}(),
+				Inline: true,
+			},
+			{
+				Name: "발표주제",
+				Value: func() string {
+					if m.Subject == "" {
+						return "```미등록```"
+					}
+					return fmt.Sprintf("```%s```", m.Subject)
+				}(),
+			},
+			{
+				Name: "발표자료",
+				Value: func() string {
+					if m.ContentURL == "" {
+						return "```미등록```"
+					}
+					return fmt.Sprintf("```%s```", m.ContentURL)
+				}(),
+			},
+			{
+				Name: "발표 완료",
+				Value: func() string {
+					if m.Attended {
+						return "```O```"
+					}
+					return "```X```"
+				}(),
+				Inline: true,
+			},
 		},
 		Color: 16777215,
 	}

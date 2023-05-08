@@ -11,6 +11,7 @@ type Service interface {
 	GetManagerID() string
 	GetGuildID() string
 	GetNoticeChannelID() string
+	GetMember(memberID string) (Member, bool)
 	SetNoticeChannelID(ctx context.Context, proposerID, channelID string) error
 	GetCurrentStudyStage() StudyStage
 	GetOngoingStudy() (*Study, error)
@@ -128,6 +129,17 @@ func (s *ServiceImpl) GetNoticeChannelID() string {
 	s.mtx.RLock()
 
 	return s.Management.NoticeChannelID
+}
+
+func (s *ServiceImpl) GetMember(memberID string) (Member, bool) {
+	defer s.mtx.RUnlock()
+	s.mtx.RLock()
+
+	if s.OnGoingStudy.ID == "" {
+		return Member{}, false
+	}
+
+	return s.OnGoingStudy.GetMember(memberID)
 }
 
 func (s *ServiceImpl) SetNoticeChannelID(ctx context.Context, proposerID, channelID string) error {

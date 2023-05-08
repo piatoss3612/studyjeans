@@ -51,8 +51,45 @@ func (b *StudyBot) profileCmdHandler(s *discordgo.Session, i *discordgo.Interact
 		Data: &discordgo.InteractionResponseData{
 			Content: u.Mention(),
 			Embeds: []*discordgo.MessageEmbed{
-				InfoEmbed(u, "발표 진스의 프로필", createdAt, rebootedAt, uptime),
+				BotInfoEmbed(u, "발표 진스의 프로필", createdAt, rebootedAt, uptime),
 			},
 		},
 	})
+}
+
+func (b *StudyBot) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	guildID := b.svc.GetGuildID()
+
+	if i.GuildID != guildID {
+		// TODO: error response
+	}
+
+	var user *discordgo.User
+
+	if i.Member != nil && i.Member.User != nil {
+		user = i.Member.User
+	}
+
+	if user == nil {
+		// TODO: error response
+	}
+
+	member, ok := b.svc.GetMember(user.ID)
+	if !ok {
+		// TODO: error response
+	}
+
+	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: user.Mention(),
+			Flags:   discordgo.MessageFlagsEphemeral,
+			Embeds: []*discordgo.MessageEmbed{
+				MyStudyInfoEmbed(user, member),
+			},
+		},
+	})
+	if err != nil {
+		// TODO: error response
+	}
 }
