@@ -564,7 +564,50 @@ func (b *StudyBot) endFeedbackHandler(s *discordgo.Session, i *discordgo.Interac
 	}
 }
 
-func (b *StudyBot) endStudyHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {}
+func (b *StudyBot) endStudyHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	guild := b.svc.GetGuildID()
+
+	// check if the command is executed in the correct guild
+	if guild != i.GuildID {
+		// TODO: error handling
+		log.Println("wrong guild")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// end study
+	err := b.svc.FinishStudy(ctx, i.Member.User.ID)
+	if err != nil {
+		// TODO: error handling
+		log.Println(err)
+		return
+	}
+
+	noticeCh := b.svc.GetNoticeChannelID()
+
+	// send a notice message
+	_, err = s.ChannelMessageSendEmbed(noticeCh, EmbedTemplate(s.State.User, "스터디 종료", "스터디가 종료되었습니다."))
+	if err != nil {
+		// TODO: error handling
+		log.Println(err)
+		return
+	}
+
+	// send a response message
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: "스터디가 종료되었습니다.",
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	})
+	if err != nil {
+		// TODO: error handling
+		log.Println(err)
+	}
+}
 
 func (b *StudyBot) setNoticeChannelHandler(s *discordgo.Session, i *discordgo.InteractionCreate, ch *discordgo.Channel) {
 }
