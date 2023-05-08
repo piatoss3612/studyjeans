@@ -9,6 +9,7 @@ import (
 
 type Service interface {
 	GetManagerID() string
+	GetGuildID() string
 	GetNoticeChannelID() string
 	SetNoticeChannelID(ctx context.Context, proposerID, channelID string) error
 	GetCurrentStudyStage() StudyStage
@@ -113,6 +114,13 @@ func (s *ServiceImpl) GetManagerID() string {
 	s.mtx.RLock()
 
 	return s.Management.ManagerID
+}
+
+func (s *ServiceImpl) GetGuildID() string {
+	defer s.mtx.RUnlock()
+	s.mtx.RLock()
+
+	return s.Management.GuildID
 }
 
 func (s *ServiceImpl) GetNoticeChannelID() string {

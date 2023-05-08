@@ -1,6 +1,12 @@
 package main
 
-import "github.com/bwmarrin/discordgo"
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/bwmarrin/discordgo"
+)
 
 var adminCmd = discordgo.ApplicationCommand{
 	Name:        "매니저",
@@ -91,14 +97,27 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 
 	cmd := options[0].StringValue()
 
+	var title string
+	var u *discordgo.User
+	var ch *discordgo.Channel
+
+	for _, o := range options[1:] {
+		switch o.Name {
+		case "제목":
+			title = o.StringValue()
+		case "스터디원":
+			u = o.UserValue(s)
+		case "채널":
+			ch = o.ChannelValue(s)
+		}
+	}
+
 	switch cmd {
 	case "create-study":
-		studyName := options[1].StringValue()
-		b.createStudyHandler(s, i, studyName)
+		b.createStudyHandler(s, i, title)
 	case "close-registration":
 		b.closeRegistrationHandler(s, i)
 	case "cancel-registration":
-		u := options[1].UserValue(s)
 		b.cancelRegistrationHandler(s, i, u)
 	case "start-submission":
 		b.startSubmissionHandler(s, i)
@@ -115,15 +134,73 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 	case "end-study":
 		b.endStudyHandler(s, i)
 	case "set-notice-channel":
-		channel := options[1].ChannelValue(s)
-		b.setNoticeChannelHandler(s, i, channel.ID)
+		b.setNoticeChannelHandler(s, i, ch)
 	default:
 		return
 	}
 }
 
-func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.InteractionCreate, studyName string) {
+func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.InteractionCreate, title string) {
+	guildID := b.svc.GetGuildID()
 
+	// check if the command is executed in the correct guild
+	if guildID != i.GuildID {
+		// TODO: error handling
+		return
+	}
+
+	// check if title is empty
+	if title == "" {
+		return
+	}
+
+	// get all members in the guild
+	members, err := s.GuildMembers(i.GuildID, "", 1000)
+	if err != nil {
+		// TODO: error handling
+		return
+	}
+
+	// get all id of non-bot members
+	var memberIDs []string
+
+	for _, m := range members {
+		if m.User == nil || m.User.Bot {
+			continue
+		}
+
+		memberIDs = append(memberIDs, m.User.ID)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// create a study
+	err = b.svc.CreateStudy(ctx, i.Member.User.ID, title, memberIDs)
+	if err != nil {
+		// TODO: error handling
+		return
+	}
+
+	noticeCh := b.svc.GetNoticeChannelID()
+
+	// send a notice message
+	_, err = s.ChannelMessageSendEmbed(noticeCh, EmbedTemplate(s.State.User, "스터디 생성", fmt.Sprintf("**<%s>**가 생성되었습니다.", title)))
+	if err != nil {
+		// TODO: error handling
+		return
+	}
+
+	// send a response message
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: "스터디가 생성되었습니다.",
+		},
+	})
+	if err != nil {
+		// TODO: error handling
+	}
 }
 
 func (b *StudyBot) closeRegistrationHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {}
@@ -145,5 +222,5 @@ func (b *StudyBot) endFeedbackHandler(s *discordgo.Session, i *discordgo.Interac
 
 func (b *StudyBot) endStudyHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {}
 
-func (b *StudyBot) setNoticeChannelHandler(s *discordgo.Session, i *discordgo.InteractionCreate, channelID string) {
+func (b *StudyBot) setNoticeChannelHandler(s *discordgo.Session, i *discordgo.InteractionCreate, ch *discordgo.Channel) {
 }
