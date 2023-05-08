@@ -348,7 +348,7 @@ func (s *ServiceImpl) StartSubmission(ctx context.Context, proposerID string) er
 	}
 
 	// check if study can accept content submission
-	if m.CurrentStudyStage.IsRegistrationFinished() {
+	if !m.CurrentStudyStage.IsRegistrationFinished() {
 		return errors.New("발표 자료 제출 단계 시작이 불가능한 상태입니다.")
 	}
 
