@@ -19,14 +19,22 @@ func (s StudyStage) String() string {
 	switch s {
 	case StudyStageWait:
 		return "다음 회차 대기"
-	case StudyStageRegistrationOpend, StudyStageRegistrationClosed:
+	case StudyStageRegistrationOpend:
 		return "발표자 등록"
-	case StudyStageSubmissionOpend, StudyStageSubmissionClosed:
+	case StudyStageRegistrationClosed:
+		return "발표자 등록 마감"
+	case StudyStageSubmissionOpend:
 		return "발표 자료 제출"
-	case StudyStagePresentationStarted, StudyStagePresentationFinished:
+	case StudyStageSubmissionClosed:
+		return "발표 자료 제출 마감"
+	case StudyStagePresentationStarted:
 		return "발표"
-	case StudyStageReviewOpened, StudyStageReviewClosed:
-		return "리뷰"
+	case StudyStagePresentationFinished:
+		return "발표 종료"
+	case StudyStageReviewOpened:
+		return "피드백"
+	case StudyStageReviewClosed:
+		return "피드백 마감"
 	default:
 		return "초기화"
 	}

@@ -186,6 +186,7 @@ func (b *StudyBot) noticeHandler(s *discordgo.Session, i *discordgo.InteractionC
 	embed := &discordgo.MessageEmbed{
 		Title:       "공지",
 		Description: fmt.Sprintf("@everyone %s", txt),
+		Timestamp:   time.Now().Format(time.RFC3339),
 		Color:       0x00ff00,
 	}
 

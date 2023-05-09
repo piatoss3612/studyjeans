@@ -2,6 +2,7 @@ package study
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/piatoss3612/presentation-helper-bot/internal/utils"
@@ -78,6 +79,7 @@ func ProfileEmbed(u *discordgo.User, title, createdAt, rebootedAt, uptime string
 		Image: &discordgo.MessageEmbedImage{
 			URL: u.AvatarURL("256"),
 		},
-		Color: 16777215,
+		Timestamp: time.Now().Format(time.RFC3339),
+		Color:     16777215,
 	}
 }

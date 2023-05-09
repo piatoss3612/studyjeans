@@ -121,6 +121,7 @@ func MyStudyInfoEmbed(u *discordgo.User, m study.Member) *discordgo.MessageEmbed
 				}(),
 			},
 		},
-		Color: 16777215,
+		Timestamp: time.Now().Format(time.RFC3339),
+		Color:     16777215,
 	}
 }

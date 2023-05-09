@@ -541,8 +541,8 @@ func (svc *serviceImpl) SetPresentorAttended(ctx context.Context, guildID, manag
 			return nil, ErrNotManager
 		}
 
-		// check if presentation is ongoing
-		if !m.CurrentStudyStage.IsPresentationStarted() {
+		// check if presentation is started
+		if m.CurrentStudyStage < StudyStagePresentationStarted {
 			return nil, errors.Join(ErrInvalidStudyStage, errors.New("발표자 출석 확인이 불가능한 단계입니다."))
 		}
 
