@@ -61,12 +61,6 @@ func (b *StudyBot) profileCmdHandler(s *discordgo.Session, i *discordgo.Interact
 }
 
 func (b *StudyBot) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	guildID := b.svc.GetGuildID()
-
-	if i.GuildID != guildID {
-		// TODO: error response
-	}
-
 	var user *discordgo.User
 
 	if i.Member != nil && i.Member.User != nil {
@@ -75,14 +69,30 @@ func (b *StudyBot) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.Inte
 
 	if user == nil {
 		// TODO: error response
+		return
 	}
 
-	member, ok := b.svc.GetMember(user.ID)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	study, err := b.svc.GetOngoingStudy(ctx, i.GuildID)
+	if err != nil {
+		// TODO: error response
+		return
+	}
+
+	if study == nil {
+		// TODO: error response
+		return
+	}
+
+	member, ok := study.GetMember(user.ID)
 	if !ok {
 		// TODO: error response
+		return
 	}
 
-	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: user.Mention(),
@@ -98,13 +108,6 @@ func (b *StudyBot) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.Inte
 }
 
 func (b *StudyBot) registerCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	guildID := b.svc.GetGuildID()
-
-	if i.GuildID != guildID {
-		// TODO: error response
-		return
-	}
-
 	var user *discordgo.User
 
 	if i.Member != nil && i.Member.User != nil {
@@ -132,10 +135,10 @@ func (b *StudyBot) registerCmdHandler(s *discordgo.Session, i *discordgo.Interac
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err := b.svc.ChangeMemberRegistration(ctx, i.GuildID, user.ID, name, subject, true)
+	err := b.svc.SetMemberRegistered(ctx, i.GuildID, user.ID, name, subject, true)
 	if err != nil {
 		// TODO: error response
 		return
@@ -158,14 +161,6 @@ func (b *StudyBot) registerCmdHandler(s *discordgo.Session, i *discordgo.Interac
 }
 
 func (b *StudyBot) submitContentCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	guildID := b.svc.GetGuildID()
-
-	if i.GuildID != guildID {
-		// TODO: error response
-		log.Println("guildID not matched")
-		return
-	}
-
 	var user *discordgo.User
 
 	if i.Member != nil && i.Member.User != nil {
@@ -223,14 +218,6 @@ func (b *StudyBot) submitContentCmdHandler(s *discordgo.Session, i *discordgo.In
 }
 
 func (b *StudyBot) sendFeedbackCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	guildID := b.svc.GetGuildID()
-
-	if i.GuildID != guildID {
-		// TODO: error response
-		log.Println("guildID not matched")
-		return
-	}
-
 	var user *discordgo.User
 
 	if i.Member != nil && i.Member.User != nil {
@@ -258,20 +245,11 @@ func (b *StudyBot) sendFeedbackCmdHandler(s *discordgo.Session, i *discordgo.Int
 		return
 	}
 
-	/*
-		if presentor.Bot {
-			// TODO: error response
-			log.Println("presentor is bot")
-			return
-		}
-
-
-		if user.ID == presentor.ID {
-			// TODO: error response
-			log.Println("user and presentor is same")
-			return
-		}
-	*/
+	if presentor.Bot {
+		// TODO: error response
+		log.Println("presentor is bot")
+		return
+	}
 
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseModal,

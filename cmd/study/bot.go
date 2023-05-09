@@ -12,10 +12,11 @@ import (
 )
 
 type StudyBot struct {
-	sess *discordgo.Session
-	hdr  handler.Handler
-	chdr handler.ComponentHandler
-	svc  study.Service
+	sess    *discordgo.Session
+	hdr     handler.Handler
+	chdr    handler.ComponentHandler
+	svc     study.Service
+	guildID string
 
 	startedAt time.Time
 }
@@ -89,7 +90,7 @@ func (b *StudyBot) Close() error {
 }
 
 func (b *StudyBot) ready(s *discordgo.Session, _ *discordgo.Ready) {
-	_ = s.UpdateGameStatus(0, b.svc.GetCurrentStudyStage().String())
+	_ = s.UpdateGameStatus(0, "초기화")
 }
 
 func (b *StudyBot) handleApplicationCommand(s *discordgo.Session, i *discordgo.InteractionCreate) {

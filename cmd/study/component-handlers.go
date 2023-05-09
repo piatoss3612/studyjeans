@@ -68,14 +68,6 @@ func (b *StudyBot) helpSelectMenuHandler(s *discordgo.Session, i *discordgo.Inte
 }
 
 func (b *StudyBot) feedbackSubmitHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	guildID := b.svc.GetGuildID()
-
-	if i.GuildID != guildID {
-		// TODO: error response
-		log.Println("guildID mismatch")
-		return
-	}
-
 	var reviewer *discordgo.User
 
 	if i.Member != nil && i.Member.User != nil {
