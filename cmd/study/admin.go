@@ -31,10 +31,6 @@ var adminCmd = discordgo.ApplicationCommand{
 					Value: "close-registration",
 				},
 				{
-					Name:  "발표자 등록 취소",
-					Value: "cancel-registration",
-				},
-				{
 					Name:  "발표자료 제출 시작",
 					Value: "start-submission",
 				},
@@ -130,8 +126,6 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 		err = b.createStudyHandler(s, i, title)
 	case "close-registration":
 		err = b.closeRegistrationHandler(s, i)
-	case "cancel-registration":
-		err = b.cancelRegistrationHandler(s, i, u)
 	case "start-submission":
 		err = b.startSubmissionHandler(s, i)
 	case "close-submission":
@@ -314,36 +308,6 @@ func (b *StudyBot) closeRegistrationHandler(s *discordgo.Session, i *discordgo.I
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: "발표자 등록이 마감되었습니다.",
-			Flags:   discordgo.MessageFlagsEphemeral,
-		},
-	})
-}
-
-// move to study command not admin
-func (b *StudyBot) cancelRegistrationHandler(s *discordgo.Session, i *discordgo.InteractionCreate, u *discordgo.User) error {
-	// check if user is not nil
-	if u == nil {
-		return errors.New("user is nil")
-	}
-
-	if u.Bot {
-		return errors.New("bot cannot cancel registration")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// cancel registration
-	err := b.svc.SetMemberRegistered(ctx, i.GuildID, u.ID, "", "", false)
-	if err != nil {
-		return err
-	}
-
-	// send a response message
-	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Content: fmt.Sprintf("<@%s>님의 발표자 등록이 취소되었습니다.", u.ID),
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})

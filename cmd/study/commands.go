@@ -36,6 +36,11 @@ var registerCmd = discordgo.ApplicationCommand{
 	},
 }
 
+var unregisterCmd = discordgo.ApplicationCommand{
+	Name:        "발표자-등록-취소",
+	Description: "발표자 등록을 취소합니다.",
+}
+
 var submitContentCmd = discordgo.ApplicationCommand{
 	Name:        "발표-자료-제출",
 	Description: "발표 자료를 제출합니다.",

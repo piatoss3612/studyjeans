@@ -42,6 +42,7 @@ func (b *StudyBot) Setup() *StudyBot {
 	b.hdr.AddCommand(profileCmd, b.profileCmdHandler)
 	b.hdr.AddCommand(myStudyInfoCmd, b.myStudyInfoCmdHandler)
 	b.hdr.AddCommand(registerCmd, b.registerCmdHandler)
+	b.hdr.AddCommand(unregisterCmd, b.unregisterCmdHandler)
 	b.hdr.AddCommand(submitContentCmd, b.submitContentCmdHandler)
 	b.hdr.AddCommand(sendFeedbackCmd, b.sendFeedbackCmdHandler)
 

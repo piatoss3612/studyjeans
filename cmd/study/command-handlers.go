@@ -160,6 +160,43 @@ func (b *StudyBot) registerCmdHandler(s *discordgo.Session, i *discordgo.Interac
 	}
 }
 
+func (b *StudyBot) unregisterCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	var user *discordgo.User
+
+	if i.Member != nil && i.Member.User != nil {
+		user = i.Member.User
+	}
+
+	if user == nil {
+		// TODO: error response
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err := b.svc.SetMemberRegistered(ctx, i.GuildID, user.ID, "", "", false)
+	if err != nil {
+		// TODO: error response
+		return
+	}
+
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: user.Mention(),
+			Flags:   discordgo.MessageFlagsEphemeral,
+			Embeds: []*discordgo.MessageEmbed{
+				EmbedTemplate(s.State.User, "등록 취소 완료", "발표자 등록이 취소되었습니다."),
+			},
+		},
+	})
+	if err != nil {
+		// TODO: error response
+		return
+	}
+}
+
 func (b *StudyBot) submitContentCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	var user *discordgo.User
 
