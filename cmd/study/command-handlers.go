@@ -55,6 +55,7 @@ func (b *StudyBot) profileCmdHandler(s *discordgo.Session, i *discordgo.Interact
 			Embeds: []*discordgo.MessageEmbed{
 				BotInfoEmbed(u, "발표 진스의 프로필", createdAt, rebootedAt, uptime),
 			},
+			Flags: discordgo.MessageFlagsEphemeral,
 		},
 	})
 }
