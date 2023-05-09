@@ -19,6 +19,10 @@ var adminCmd = discordgo.ApplicationCommand{
 			Type:        discordgo.ApplicationCommandOptionString,
 			Choices: []*discordgo.ApplicationCommandOptionChoice{
 				{
+					Name:  "공지",
+					Value: "notice",
+				},
+				{
 					Name:  "상태 갱신",
 					Value: "refresh-status",
 				},
@@ -70,13 +74,13 @@ var adminCmd = discordgo.ApplicationCommand{
 			Required: true,
 		},
 		{
-			Name:        "제목",
-			Description: "스터디 제목을 입력해주세요.",
+			Name:        "텍스트",
+			Description: "텍스트를 입력해주세요.",
 			Type:        discordgo.ApplicationCommandOptionString,
 		},
 		{
-			Name:        "스터디원",
-			Description: "스터디원을 선택해주세요.",
+			Name:        "사용자",
+			Description: "사용자를 선택해주세요.",
 			Type:        discordgo.ApplicationCommandOptionUser,
 		},
 		{
@@ -106,15 +110,15 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 
 	cmd := options[0].StringValue()
 
-	var title string
+	var txt string
 	var u *discordgo.User
 	var ch *discordgo.Channel
 
 	for _, o := range options[1:] {
 		switch o.Name {
-		case "제목":
-			title = o.StringValue()
-		case "스터디원":
+		case "텍스트":
+			txt = o.StringValue()
+		case "사용자":
 			u = o.UserValue(s)
 		case "채널":
 			ch = o.ChannelValue(s)
@@ -124,10 +128,12 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 	var err error
 
 	switch cmd {
+	case "notice":
+		err = b.noticeHandler(s, i, txt)
 	case "refresh-status":
 		err = b.refreshStatusHandler(s, i)
 	case "create-study":
-		err = b.createStudyHandler(s, i, title)
+		err = b.createStudyHandler(s, i, txt)
 	case "close-registration":
 		err = b.closeRegistrationHandler(s, i)
 	case "start-submission":
@@ -155,6 +161,48 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 	if err != nil {
 		_ = errorInteractionRespond(s, i, err)
 	}
+}
+
+func (b *StudyBot) noticeHandler(s *discordgo.Session, i *discordgo.InteractionCreate, txt string) error {
+	var admin *discordgo.User
+
+	if i.Member != nil && i.Member.User != nil {
+		admin = i.Member.User
+	}
+
+	if admin == nil {
+		return ErrAdminNotFound
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// get management
+	m, err := b.svc.GetManagement(ctx, i.GuildID)
+	if err != nil {
+		return err
+	}
+
+	embed := &discordgo.MessageEmbed{
+		Title:       "공지",
+		Description: fmt.Sprintf("@everyone %s", txt),
+		Color:       0x00ff00,
+	}
+
+	// send a notice message
+	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, embed)
+	if err != nil {
+		return err
+	}
+
+	// send a response message
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: "공지를 전송했습니다.",
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	})
 }
 
 func (b *StudyBot) refreshStatusHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
