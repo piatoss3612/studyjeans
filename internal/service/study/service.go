@@ -7,6 +7,17 @@ import (
 	"time"
 )
 
+var (
+	ErrManagementNotFound     = errors.New("스터디 관리 정보를 찾을 수 없습니다.")
+	ErrStudyNotFound          = errors.New("스터디 정보를 찾을 수 없습니다.")
+	ErrNotManager             = errors.New("스터디 관리자가 아닙니다.")
+	ErrStudyExists            = errors.New("이미 진행중인 스터디가 있습니다.")
+	ErrInvalidStudyStage      = errors.New("잘못된 스터디 단계입니다.")
+	ErrMemberNotFound         = errors.New("스터디 멤버를 찾을 수 없습니다.")
+	ErrPresentorNotRegistered = errors.New("발표자로 등록되지 않은 멤버입니다.")
+	ErrReviewByYourself       = errors.New("자기 자신을 리뷰할 수 없습니다.")
+)
+
 type Service interface {
 	GetManagement(ctx context.Context, guildID string) (*Management, error)
 	GetOngoingStudy(ctx context.Context, guildID string) (*Study, error)
@@ -89,7 +100,16 @@ func (svc *serviceImpl) GetManagement(ctx context.Context, guildID string) (*Man
 	defer svc.mtx.Unlock()
 	svc.mtx.Lock()
 
-	return svc.tx.FindManagement(ctx, guildID)
+	m, err := svc.tx.FindManagement(ctx, guildID)
+	if err != nil {
+		return nil, err
+	}
+
+	if m == nil {
+		return nil, ErrManagementNotFound
+	}
+
+	return m, nil
 }
 
 // get ongoing study of guild
@@ -104,13 +124,23 @@ func (svc *serviceImpl) GetOngoingStudy(ctx context.Context, guildID string) (*S
 			return nil, err
 		}
 
-		// if there is no ongoing study, return nil
-		if m == nil || m.OngoingStudyID == "" {
-			return nil, nil
+		// if there is no management, return error
+		if m == nil {
+			return nil, ErrManagementNotFound
 		}
 
 		// find ongoing study
-		return svc.tx.FindStudy(sc, m.OngoingStudyID)
+		s, err := svc.tx.FindStudy(sc, m.OngoingStudyID)
+		if err != nil {
+			return nil, err
+		}
+
+		// if there is no ongoing study, return error
+		if s == nil {
+			return nil, ErrStudyNotFound
+		}
+
+		return s, nil
 	}
 
 	// execute transaction
@@ -127,7 +157,16 @@ func (svc *serviceImpl) GetStudies(ctx context.Context, guildID string) ([]*Stud
 	defer svc.mtx.Unlock()
 	svc.mtx.Lock()
 
-	return svc.tx.FindStudies(ctx, guildID)
+	s, err := svc.tx.FindStudies(ctx, guildID)
+	if err != nil {
+		return nil, err
+	}
+
+	if s == nil {
+		return nil, ErrStudyNotFound
+	}
+
+	return s, nil
 }
 
 // initialize new study round
@@ -144,17 +183,17 @@ func (svc *serviceImpl) InitNewStudyRound(ctx context.Context, guildID, managerI
 
 		// if there is no management, return error
 		if m == nil {
-			return nil, errors.New("스터디 관리 정보가 없습니다.")
+			return nil, ErrManagementNotFound
 		}
 
 		// check if valid manager
 		if !m.IsManager(managerID) {
-			return nil, errors.New("스터디 관리자가 아닙니다.")
+			return nil, ErrNotManager
 		}
 
 		// check if there is any ongoing study
 		if !(m.CurrentStudyStage.IsNone() || m.CurrentStudyStage.IsWait()) {
-			return nil, errors.New("이미 진행중인 스터디가 있습니다.")
+			return nil, ErrStudyExists
 		}
 
 		// create study
@@ -208,12 +247,12 @@ func (svc *serviceImpl) SetMemberRegistered(ctx context.Context, guildID, member
 
 		// if there is no management, return error
 		if m == nil {
-			return nil, errors.New("스터디 관리 정보가 없습니다.")
+			return nil, ErrManagementNotFound
 		}
 
 		// check if study is in registration stage
 		if !m.CurrentStudyStage.IsRegistrationOpened() {
-			return nil, errors.New("발표자 등록 및 등록 해지가 불가능한 상태입니다.")
+			return nil, errors.Join(ErrInvalidStudyStage, errors.New("발표자 등록 및 등록 해지가 불가능한 단계입니다."))
 		}
 
 		// find ongoing study
@@ -224,7 +263,7 @@ func (svc *serviceImpl) SetMemberRegistered(ctx context.Context, guildID, member
 
 		// if there is no ongoing study, return error
 		if s == nil {
-			return nil, errors.New("진행중인 스터디가 없습니다.")
+			return nil, ErrStudyNotFound
 		}
 
 		// check if member is initialized
@@ -275,17 +314,17 @@ func (svc *serviceImpl) CloseRegistration(ctx context.Context, guildID, managerI
 
 		// if there is no management, return error
 		if m == nil {
-			return nil, errors.New("스터디 관리 정보가 없습니다.")
+			return nil, ErrManagementNotFound
 		}
 
 		// check if valid manager
 		if !m.IsManager(managerID) {
-			return nil, errors.New("스터디 관리자가 아닙니다.")
+			return nil, ErrNotManager
 		}
 
 		// check if study is in registration stage
 		if !m.CurrentStudyStage.IsRegistrationOpened() {
-			return nil, errors.New("발표자 등록 마감이 불가능한 상태입니다.")
+			return nil, errors.Join(ErrInvalidStudyStage, errors.New("발표자 등록 마감이 불가능한 단계입니다."))
 		}
 
 		m.SetCurrentStudyStage(StudyStageRegistrationClosed)
@@ -313,17 +352,17 @@ func (svc *serviceImpl) OpenSubmission(ctx context.Context, guildID, managerID s
 
 		// if there is no management, return error
 		if m == nil {
-			return nil, errors.New("스터디 관리 정보가 없습니다.")
+			return nil, ErrManagementNotFound
 		}
 
 		// check if valid manager
 		if !m.IsManager(managerID) {
-			return nil, errors.New("스터디 관리자가 아닙니다.")
+			return nil, ErrNotManager
 		}
 
 		// check if study is in registration closed stage
 		if !m.CurrentStudyStage.IsRegistrationClosed() {
-			return nil, errors.New("발표 자료 제출 단계 시작이 불가능한 상태입니다.")
+			return nil, errors.Join(ErrInvalidStudyStage, errors.New("발표 자료 제출 시작이 불가능한 단계입니다."))
 		}
 
 		m.SetCurrentStudyStage(StudyStageSubmissionOpend)
@@ -352,12 +391,12 @@ func (svc *serviceImpl) SubmitContent(ctx context.Context, guildID, memberID, co
 
 		// if there is no management, return error
 		if m == nil {
-			return nil, errors.New("스터디 관리 정보가 없습니다.")
+			return nil, ErrManagementNotFound
 		}
 
 		// check if study is in submission stage
 		if !m.CurrentStudyStage.IsSubmissionOpened() {
-			return nil, errors.New("발표 자료 제출이 불가능한 상태입니다.")
+			return nil, errors.Join(ErrInvalidStudyStage, errors.New("발표 자료 제출이 불가능한 단계입니다."))
 		}
 
 		// find ongoing study
@@ -368,18 +407,18 @@ func (svc *serviceImpl) SubmitContent(ctx context.Context, guildID, memberID, co
 
 		// if there is no ongoing study, return error
 		if s == nil {
-			return nil, errors.New("진행중인 스터디가 없습니다.")
+			return nil, ErrStudyNotFound
 		}
 
 		// check if member is initialized
 		member, ok := s.GetMember(memberID)
 		if !ok {
-			return nil, errors.New("스터디에 등록되지 않은 사용자입니다.")
+			return nil, ErrMemberNotFound
 		}
 
 		// check if member is registered
 		if !member.Registered {
-			return nil, errors.New("발표자로 등록되지 않은 사용자입니다.")
+			return nil, ErrPresentorNotRegistered
 		}
 
 		// set content
@@ -412,17 +451,17 @@ func (svc *serviceImpl) CloseSubmission(ctx context.Context, guildID, managerID 
 
 		// if there is no management, return error
 		if m == nil {
-			return nil, errors.New("스터디 관리 정보가 없습니다.")
+			return nil, ErrManagementNotFound
 		}
 
 		// check if valid manager
 		if !m.IsManager(managerID) {
-			return nil, errors.New("스터디 관리자가 아닙니다.")
+			return nil, ErrNotManager
 		}
 
 		// check if study is in submission stage
 		if !m.CurrentStudyStage.IsSubmissionOpened() {
-			return nil, errors.New("발표 자료 제출 단계 종료가 불가능한 상태입니다.")
+			return nil, errors.Join(ErrInvalidStudyStage, errors.New("발표 자료 제출 마감이 불가능한 단계입니다."))
 		}
 
 		m.SetCurrentStudyStage(StudyStageSubmissionClosed)
@@ -450,17 +489,17 @@ func (svc *serviceImpl) StartPresentation(ctx context.Context, guildID, managerI
 
 		// if there is no management, return error
 		if m == nil {
-			return nil, errors.New("스터디 관리 정보가 없습니다.")
+			return nil, ErrManagementNotFound
 		}
 
 		// check if valid manager
 		if !m.IsManager(managerID) {
-			return nil, errors.New("스터디 관리자가 아닙니다.")
+			return nil, ErrNotManager
 		}
 
 		// check if content submission is finished
 		if !m.CurrentStudyStage.IsSubmissionClosed() {
-			return nil, errors.New("발표 시작이 불가능한 상태입니다.")
+			return nil, errors.Join(ErrInvalidStudyStage, errors.New("발표 시작이 불가능한 단계입니다."))
 		}
 
 		m.SetCurrentStudyStage(StudyStagePresentationStarted)
@@ -489,17 +528,17 @@ func (svc *serviceImpl) SetPresentorAttended(ctx context.Context, guildID, manag
 
 		// if there is no management, return error
 		if m == nil {
-			return nil, errors.New("스터디 관리 정보가 없습니다.")
+			return nil, ErrManagementNotFound
 		}
 
 		// check if valid manager
 		if !m.IsManager(managerID) {
-			return nil, errors.New("스터디 관리자가 아닙니다.")
+			return nil, ErrNotManager
 		}
 
 		// check if presentation is ongoing
 		if !m.CurrentStudyStage.IsPresentationStarted() {
-			return nil, errors.New("발표 완료 상태 전환이 불가능한 상태입니다.")
+			return nil, errors.Join(ErrInvalidStudyStage, errors.New("발표자 출석 확인이 불가능한 단계입니다."))
 		}
 
 		// find ongoing study
@@ -510,18 +549,18 @@ func (svc *serviceImpl) SetPresentorAttended(ctx context.Context, guildID, manag
 
 		// if there is no ongoing study, return error
 		if s == nil {
-			return nil, errors.New("진행중인 스터디가 없습니다.")
+			return nil, ErrStudyNotFound
 		}
 
 		// check if member is initialized
 		member, ok := s.GetMember(memberID)
 		if !ok {
-			return nil, errors.New("스터디에 등록되지 않은 사용자입니다.")
+			return nil, ErrMemberNotFound
 		}
 
 		// check if member is registered
 		if !member.Registered {
-			return nil, errors.New("발표자로 등록되지 않은 사용자입니다.")
+			return nil, ErrPresentorNotRegistered
 		}
 
 		// set attended
@@ -555,17 +594,17 @@ func (svc *serviceImpl) FinishPresentation(ctx context.Context, guildID, manager
 
 		// if there is no management, return error
 		if m == nil {
-			return nil, errors.New("스터디 관리 정보가 없습니다.")
+			return nil, ErrManagementNotFound
 		}
 
 		// check if valid manager
 		if !m.IsManager(managerID) {
-			return nil, errors.New("스터디 관리자가 아닙니다.")
+			return nil, ErrNotManager
 		}
 
 		// check if presentation is ongoing
 		if !m.CurrentStudyStage.IsPresentationStarted() {
-			return nil, errors.New("발표 단계 종료가 불가능한 상태입니다.")
+			return nil, errors.Join(ErrInvalidStudyStage, errors.New("발표 종료가 불가능한 단계입니다."))
 		}
 
 		m.SetCurrentStudyStage(StudyStagePresentationFinished)
@@ -594,17 +633,17 @@ func (svc *serviceImpl) OpenReview(ctx context.Context, guildID, managerID strin
 
 		// if there is no management, return error
 		if m == nil {
-			return nil, errors.New("스터디 관리 정보가 없습니다.")
+			return nil, ErrManagementNotFound
 		}
 
 		// check if valid manager
 		if !m.IsManager(managerID) {
-			return nil, errors.New("스터디 관리자가 아닙니다.")
+			return nil, ErrNotManager
 		}
 
 		// check if presentation is finished
 		if !m.CurrentStudyStage.IsPresentationFinished() {
-			return nil, errors.New("리뷰 단계 시작이 불가능한 상태입니다.")
+			return nil, errors.Join(ErrInvalidStudyStage, errors.New("리뷰 시작이 불가능한 단계입니다."))
 		}
 
 		// update management
@@ -626,7 +665,7 @@ func (svc *serviceImpl) SetReviewer(ctx context.Context, guildID, reviewerID, re
 	svc.mtx.Lock()
 
 	if reviewerID == revieweeID {
-		return errors.New("자기 자신에게 리뷰를 달 수 없습니다.")
+		return ErrReviewByYourself
 	}
 
 	txFn := func(sc context.Context) (interface{}, error) {
@@ -638,17 +677,17 @@ func (svc *serviceImpl) SetReviewer(ctx context.Context, guildID, reviewerID, re
 
 		// if there is no management, return error
 		if m == nil {
-			return nil, errors.New("스터디 관리 정보가 없습니다.")
+			return nil, ErrManagementNotFound
 		}
 
 		// check if valid reviewer
 		if !m.IsManager(reviewerID) {
-			return nil, errors.New("스터디 관리자가 아닙니다.")
+			return nil, ErrNotManager
 		}
 
 		// check if review is ongoing
 		if !m.CurrentStudyStage.IsReviewOpened() {
-			return nil, errors.New("리뷰 단계가 진행중이 아닙니다.")
+			return nil, errors.Join(ErrInvalidStudyStage, errors.New("리뷰 작성이 불가능한 단계입니다."))
 		}
 
 		// find ongoing study
@@ -659,29 +698,29 @@ func (svc *serviceImpl) SetReviewer(ctx context.Context, guildID, reviewerID, re
 
 		// if there is no ongoing study, return error
 		if s == nil {
-			return nil, errors.New("진행중인 스터디가 없습니다.")
+			return nil, ErrStudyNotFound
 		}
 
 		// check if reviewer is member of ongoing study
 		_, ok := s.GetMember(reviewerID)
 		if !ok {
-			return nil, errors.New("스터디에 등록되지 않은 사용자입니다.")
+			return nil, errors.Join(ErrMemberNotFound, errors.New("리뷰어는 스터디에 참여한 사용자여야 합니다."))
 		}
 
 		// check if reviewee is member of ongoing study
 		reviewee, ok := s.GetMember(revieweeID)
 		if !ok {
-			return nil, errors.New("스터디에 등록되지 않은 사용자입니다.")
+			return nil, errors.Join(ErrMemberNotFound, errors.New("리뷰 대상자는 스터디에 참여한 사용자여야 합니다."))
 		}
 
 		// check if reviewee is registered and attended presentation
 		if !reviewee.Registered || !reviewee.Attended {
-			return nil, errors.New("발표에 참여하지 않은 사용자입니다.")
+			return nil, errors.New("리뷰 대상자는 발표에 참여한 사용자여야 합니다.")
 		}
 
 		// check if reviewer already reviewed
 		if reviewee.IsReviewer(reviewerID) {
-			return nil, errors.New("이미 리뷰를 완료하였습니다.")
+			return nil, errors.New("이미 리뷰를 작성하였습니다.")
 		}
 
 		// set reviewer
@@ -715,17 +754,17 @@ func (svc *serviceImpl) CloseReview(ctx context.Context, guildID, managerID stri
 
 		// if there is no management, return error
 		if m == nil {
-			return nil, errors.New("스터디 관리 정보가 없습니다.")
+			return nil, ErrManagementNotFound
 		}
 
 		// check if valid manager
 		if !m.IsManager(managerID) {
-			return nil, errors.New("스터디 관리자가 아닙니다.")
+			return nil, ErrNotManager
 		}
 
 		// check if review is ongoing
 		if !m.CurrentStudyStage.IsReviewOpened() {
-			return nil, errors.New("리뷰 종료가 불가능한 상태입니다.")
+			return nil, errors.Join(ErrInvalidStudyStage, errors.New("리뷰 작성 마감이 불가능한 단계입니다."))
 		}
 
 		// find ongoing study
@@ -736,7 +775,7 @@ func (svc *serviceImpl) CloseReview(ctx context.Context, guildID, managerID stri
 
 		// if there is no ongoing study, return error
 		if s == nil {
-			return nil, errors.New("진행중인 스터디가 없습니다.")
+			return nil, ErrStudyNotFound
 		}
 
 		// update management
@@ -766,17 +805,17 @@ func (svc *serviceImpl) CloseStudyRound(ctx context.Context, guildID, managerID 
 
 		// if there is no management, return error
 		if m == nil {
-			return nil, errors.New("스터디 관리 정보가 없습니다.")
+			return nil, ErrManagementNotFound
 		}
 
 		// check if valid manager
 		if !m.IsManager(managerID) {
-			return nil, errors.New("스터디 관리자가 아닙니다.")
+			return nil, ErrNotManager
 		}
 
 		// check if review is finished
 		if !m.CurrentStudyStage.IsReviewClosed() {
-			return nil, errors.New("스터디 종료가 불가능한 상태입니다.")
+			return nil, errors.Join(ErrInvalidStudyStage, errors.New("스터디 라운드 종료가 불가능한 단계입니다."))
 		}
 
 		// update management
@@ -807,12 +846,12 @@ func (svc *serviceImpl) SetNoticeChannelID(ctx context.Context, guildID, manager
 
 		// if there is no management, return error
 		if m == nil {
-			return nil, errors.New("스터디 관리 정보가 없습니다.")
+			return nil, ErrManagementNotFound
 		}
 
 		// check if valid manager
 		if !m.IsManager(managerID) {
-			return nil, errors.New("스터디 관리자가 아닙니다.")
+			return nil, ErrNotManager
 		}
 
 		// update management
