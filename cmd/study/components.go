@@ -24,3 +24,13 @@ var helpSelectMenu = discordgo.SelectMenu{
 		},
 	},
 }
+
+var feedbackTextInput = discordgo.TextInput{
+	CustomID:    "feedback",
+	Label:       "피드백",
+	Style:       discordgo.TextInputParagraph,
+	Placeholder: "피드백을 입력해주세요.",
+	Required:    true,
+	MaxLength:   1000,
+	MinLength:   10,
+}

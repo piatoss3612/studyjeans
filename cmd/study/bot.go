@@ -45,6 +45,7 @@ func (b *StudyBot) Setup() *StudyBot {
 	b.hdr.AddCommand(sendFeedbackCmd, b.sendFeedbackCmdHandler)
 
 	b.chdr.AddHandleFunc(helpSelectMenu.CustomID, b.helpSelectMenuHandler)
+	b.chdr.AddHandleFunc("feedback-modal", b.feedbackSubmitHandler)
 
 	return b
 }
@@ -92,16 +93,21 @@ func (b *StudyBot) ready(s *discordgo.Session, _ *discordgo.Ready) {
 }
 
 func (b *StudyBot) handleApplicationCommand(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	var h handler.HandleFunc
+	var ok bool
+
 	switch i.Type {
 	case discordgo.InteractionApplicationCommand:
-		if h, ok := b.hdr.GetHandleFunc(i.ApplicationCommandData().Name); ok {
-			h(s, i)
-		}
+		h, ok = b.hdr.GetHandleFunc(i.ApplicationCommandData().Name)
 	case discordgo.InteractionMessageComponent:
-		if h, ok := b.chdr.GetHandleFunc(i.MessageComponentData().CustomID); ok {
-			h(s, i)
-		}
+		h, ok = b.chdr.GetHandleFunc(i.MessageComponentData().CustomID)
+	case discordgo.InteractionModalSubmit:
+		h, ok = b.chdr.GetHandleFunc(i.ModalSubmitData().CustomID)
 	default:
 		return
+	}
+
+	if ok {
+		h(s, i)
 	}
 }

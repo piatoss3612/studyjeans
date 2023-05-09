@@ -257,11 +257,20 @@ func (b *StudyBot) sendFeedbackCmdHandler(s *discordgo.Session, i *discordgo.Int
 		return
 	}
 
-	if user.ID == presentor.ID {
-		// TODO: error response
-		log.Println("user and presentor is same")
-		return
-	}
+	/*
+		if presentor.Bot {
+			// TODO: error response
+			log.Println("presentor is bot")
+			return
+		}
+
+
+		if user.ID == presentor.ID {
+			// TODO: error response
+			log.Println("user and presentor is same")
+			return
+		}
+	*/
 
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseModal,
@@ -273,7 +282,7 @@ func (b *StudyBot) sendFeedbackCmdHandler(s *discordgo.Session, i *discordgo.Int
 				discordgo.ActionsRow{
 					Components: []discordgo.MessageComponent{
 						discordgo.TextInput{
-							CustomID:    "id",
+							CustomID:    "presentor-id",
 							Label:       "발표자",
 							Style:       discordgo.TextInputShort,
 							Placeholder: "발표자의 ID 입니다. 임의로 변경하지 마세요.",
@@ -285,17 +294,7 @@ func (b *StudyBot) sendFeedbackCmdHandler(s *discordgo.Session, i *discordgo.Int
 					},
 				},
 				discordgo.ActionsRow{
-					Components: []discordgo.MessageComponent{
-						discordgo.TextInput{
-							CustomID:    "feedback",
-							Label:       "피드백",
-							Style:       discordgo.TextInputParagraph,
-							Placeholder: "피드백을 입력해주세요.",
-							Required:    true,
-							MaxLength:   1000,
-							MinLength:   10,
-						},
-					},
+					Components: []discordgo.MessageComponent{feedbackTextInput},
 				},
 			},
 		},
