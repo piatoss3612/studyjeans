@@ -16,6 +16,7 @@ var (
 	ErrMemberNotFound         = errors.New("스터디 멤버를 찾을 수 없습니다.")
 	ErrPresentorNotRegistered = errors.New("발표자로 등록되지 않은 멤버입니다.")
 	ErrReviewByYourself       = errors.New("자기 자신을 리뷰할 수 없습니다.")
+	ErrEmptyStudyContent      = errors.New("발표 자료 링크가 비어있습니다.")
 )
 
 type Service interface {
@@ -31,6 +32,7 @@ type Service interface {
 	StartPresentation(ctx context.Context, guildID, managerID string) error
 	SetPresentorAttended(ctx context.Context, guildID, managerID, memberID string, attended bool) error
 	FinishPresentation(ctx context.Context, guildID, managerID string) error
+	SetStudyContent(ctx context.Context, guildID, managerID, contentURL string) error
 	OpenReview(ctx context.Context, guildID, managerID string) error
 	SetReviewer(ctx context.Context, guildID, reviewerID, revieweeID string) error
 	CloseReview(ctx context.Context, guildID, managerID string) error
@@ -616,6 +618,62 @@ func (svc *serviceImpl) FinishPresentation(ctx context.Context, guildID, manager
 		m.SetUpdatedAt(time.Now())
 
 		err = svc.tx.UpdateManagement(sc, *m)
+		return nil, err
+	}
+
+	// execute transaction
+	_, err := svc.tx.ExecTx(ctx, txFn)
+	return err
+}
+
+// set study content
+func (svc *serviceImpl) SetStudyContent(ctx context.Context, guildID, managerID, content string) error {
+	defer svc.mtx.Unlock()
+	svc.mtx.Lock()
+
+	txFn := func(sc context.Context) (interface{}, error) {
+		// find management
+		m, err := svc.tx.FindManagement(sc, guildID)
+		if err != nil {
+			return nil, err
+		}
+
+		// if there is no management, return error
+		if m == nil {
+			return nil, ErrManagementNotFound
+		}
+
+		// check if valid manager
+		if !m.IsManager(managerID) {
+			return nil, ErrNotManager
+		}
+
+		// check if presentation is finished
+		if m.CurrentStudyStage < StudyStagePresentationFinished {
+			return nil, errors.Join(ErrInvalidStudyStage, errors.New("스터디 자료 링크 등록이 불가능한 단계입니다."))
+		}
+
+		// find ongoing study
+		s, err := svc.tx.FindStudy(sc, m.OngoingStudyID)
+		if err != nil {
+			return nil, err
+		}
+
+		// if there is no ongoing study, return error
+		if s == nil {
+			return nil, ErrStudyNotFound
+		}
+
+		if content == "" {
+			return nil, ErrEmptyStudyContent
+		}
+
+		// set content
+		s.SetContentURL(content)
+		s.SetUpdatedAt(time.Now())
+
+		// update study
+		err = svc.tx.UpdateStudy(sc, *s)
 		return nil, err
 	}
 

@@ -86,6 +86,7 @@ func (si StoreImpl) UpdateStudy(ctx context.Context, s Study) error {
 		{
 			Key: "$set", Value: bson.D{
 				{Key: "title", Value: s.Title},
+				{Key: "content_url", Value: s.ContentURL},
 				{Key: "members", Value: s.Members},
 				{Key: "updated_at", Value: s.UpdatedAt},
 			},

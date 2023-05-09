@@ -55,6 +55,10 @@ var adminCmd = discordgo.ApplicationCommand{
 					Value: "end-presentation",
 				},
 				{
+					Name:  "발표 녹화 자료 등록",
+					Value: "register-presentation-video",
+				},
+				{
 					Name:  "피드백 시작",
 					Value: "start-feedback",
 				},
@@ -146,6 +150,8 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 		err = b.confirmPresentationHandler(s, i, u)
 	case "end-presentation":
 		err = b.endPresentationHandler(s, i)
+	case "register-presentation-video":
+		err = b.registerPresentationVideoHandler(s, i, txt)
 	case "start-feedback":
 		err = b.startFeedbackHandler(s, i)
 	case "end-feedback":
@@ -581,6 +587,48 @@ func (b *StudyBot) endPresentationHandler(s *discordgo.Session, i *discordgo.Int
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: "발표가 종료되었습니다.",
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	})
+}
+
+func (b *StudyBot) registerPresentationVideoHandler(s *discordgo.Session, i *discordgo.InteractionCreate, contentURL string) error {
+	var admin *discordgo.User
+
+	if i.Member != nil && i.Member.User != nil {
+		admin = i.Member.User
+	}
+
+	if admin == nil {
+		return ErrAdminNotFound
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// register presentation video
+	err := b.svc.SetStudyContent(ctx, i.GuildID, admin.ID, contentURL)
+	if err != nil {
+		return err
+	}
+
+	// get management
+	m, err := b.svc.GetManagement(ctx, i.GuildID)
+	if err != nil {
+		return err
+	}
+
+	// send a notice message
+	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "발표 영상 등록", "발표 영상이 등록되었습니다.\n"+contentURL))
+	if err != nil {
+		return err
+	}
+
+	// send a response message
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: "발표 영상이 등록되었습니다.",
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})

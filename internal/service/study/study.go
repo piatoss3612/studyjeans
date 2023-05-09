@@ -8,10 +8,11 @@ type Study struct {
 	ID      string `bson:"_id,omitempty"`
 	GuildID string `bson:"guild_id"`
 
-	Title     string            `bson:"title"`
-	Members   map[string]Member `bson:"members"`
-	CreatedAt time.Time         `bson:"created_at"`
-	UpdatedAt time.Time         `bson:"updated_at"`
+	Title      string            `bson:"title"`
+	ContentURL string            `bson:"content_url"`
+	Members    map[string]Member `bson:"members"`
+	CreatedAt  time.Time         `bson:"created_at"`
+	UpdatedAt  time.Time         `bson:"updated_at"`
 }
 
 func New() Study {
@@ -35,6 +36,10 @@ func (s *Study) SetGuildID(guildID string) {
 
 func (s *Study) SetTitle(title string) {
 	s.Title = title
+}
+
+func (s *Study) SetContentURL(contentURL string) {
+	s.ContentURL = contentURL
 }
 
 func (s *Study) SetMember(memberID string, member Member) {
