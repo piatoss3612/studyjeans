@@ -36,22 +36,13 @@ func New(sess *discordgo.Session, svc study.Service, sugar *zap.SugaredLogger) *
 }
 
 func (b *StudyBot) Setup() *StudyBot {
-	b.sess.Identify.Intents = discordgo.IntentGuildMembers | discordgo.IntentGuildMessages | discordgo.IntentGuilds | discordgo.IntentDirectMessages
+	b.sess.Identify.Intents = discordgo.IntentGuildMembers | discordgo.IntentGuildMessages |
+		discordgo.IntentGuilds | discordgo.IntentDirectMessages
 
 	b.sess.AddHandler(b.ready)
 	b.sess.AddHandler(b.handleApplicationCommand)
 
-	b.hdr.AddCommand(adminCmd, b.adminHandler)
-	b.hdr.AddCommand(helpCmd, b.helpCmdHandler)
-	b.hdr.AddCommand(profileCmd, b.profileCmdHandler)
-	b.hdr.AddCommand(myStudyInfoCmd, b.myStudyInfoCmdHandler)
-	b.hdr.AddCommand(registerCmd, b.registerCmdHandler)
-	b.hdr.AddCommand(unregisterCmd, b.unregisterCmdHandler)
-	b.hdr.AddCommand(submitContentCmd, b.submitContentCmdHandler)
-	b.hdr.AddCommand(sendFeedbackCmd, b.sendFeedbackCmdHandler)
-
-	b.chdr.AddHandleFunc(helpSelectMenu.CustomID, b.helpSelectMenuHandler)
-	b.chdr.AddHandleFunc("feedback-modal", b.feedbackSubmitHandler)
+	b.addCommands()
 
 	return b
 }
@@ -116,4 +107,14 @@ func (b *StudyBot) handleApplicationCommand(s *discordgo.Session, i *discordgo.I
 	if ok {
 		h(s, i)
 	}
+}
+
+func (b *StudyBot) addCommands() {
+	b.addAdminCmd()
+	b.addHelpCmd()
+	b.addProfileCmd()
+	b.addMyStudyInfoCmd()
+	b.addRegistrationCmd()
+	b.addSubmitContentCmd()
+	b.addSendFeedbackCmd()
 }

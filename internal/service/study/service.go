@@ -129,6 +129,11 @@ func (svc *serviceImpl) GetOngoingStudy(ctx context.Context, guildID string) (*S
 			return nil, ErrManagementNotFound
 		}
 
+		// if there is no ongoing study, return error
+		if m.OngoingStudyID == "" {
+			return nil, ErrStudyNotFound
+		}
+
 		// find ongoing study
 		s, err := svc.tx.FindStudy(sc, m.OngoingStudyID)
 		if err != nil {

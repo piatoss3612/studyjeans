@@ -31,11 +31,11 @@ var adminCmd = discordgo.ApplicationCommand{
 					Value: "close-registration",
 				},
 				{
-					Name:  "발표자료 제출 시작",
+					Name:  "발표 자료 제출 시작",
 					Value: "start-submission",
 				},
 				{
-					Name:  "발표자료 제출 마감",
+					Name:  "발표 자료 제출 마감",
 					Value: "close-submission",
 				},
 				{
@@ -85,6 +85,10 @@ var adminCmd = discordgo.ApplicationCommand{
 			Type:        discordgo.ApplicationCommandOptionChannel,
 		},
 	},
+}
+
+func (b *StudyBot) addAdminCmd() {
+	b.hdr.AddCommand(adminCmd, b.adminHandler)
 }
 
 func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -237,14 +241,14 @@ func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.Interac
 		return err
 	}
 
-	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "스터디 생성", fmt.Sprintf("**<%s>**가 생성되었습니다.", title)))
+	// update game status
+	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
 	if err != nil {
 		return err
 	}
 
-	// update game status
-	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
+	// send a notice message
+	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "스터디 생성", fmt.Sprintf("**<%s>**가 생성되었습니다.", title)))
 	if err != nil {
 		return err
 	}
@@ -285,14 +289,14 @@ func (b *StudyBot) closeRegistrationHandler(s *discordgo.Session, i *discordgo.I
 		return err
 	}
 
-	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "발표자 등록 마감", "발표자 등록이 마감되었습니다."))
+	// update game status
+	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
 	if err != nil {
 		return err
 	}
 
-	// update game status
-	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
+	// send a notice message
+	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "발표자 등록 마감", "발표자 등록이 마감되었습니다."))
 	if err != nil {
 		return err
 	}
@@ -333,14 +337,14 @@ func (b *StudyBot) startSubmissionHandler(s *discordgo.Session, i *discordgo.Int
 		return err
 	}
 
-	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "발표자료 제출 시작", "발표자료 제출이 시작되었습니다."))
+	// update game status
+	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
 	if err != nil {
 		return err
 	}
 
-	// update game status
-	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
+	// send a notice message
+	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "발표자료 제출 시작", "발표자료 제출이 시작되었습니다."))
 	if err != nil {
 		return err
 	}
@@ -377,6 +381,12 @@ func (b *StudyBot) closeSubmissionHandler(s *discordgo.Session, i *discordgo.Int
 
 	// get management
 	m, err := b.svc.GetManagement(ctx, i.GuildID)
+	if err != nil {
+		return err
+	}
+
+	// update game status
+	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
 	if err != nil {
 		return err
 	}
@@ -423,14 +433,14 @@ func (b *StudyBot) startPresentationHandler(s *discordgo.Session, i *discordgo.I
 		return err
 	}
 
-	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "발표 시작", "발표가 시작되었습니다."))
+	// update game status
+	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
 	if err != nil {
 		return err
 	}
 
-	// update game status
-	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
+	// send a notice message
+	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "발표 시작", "발표가 시작되었습니다."))
 	if err != nil {
 		return err
 	}
@@ -505,14 +515,14 @@ func (b *StudyBot) endPresentationHandler(s *discordgo.Session, i *discordgo.Int
 		return err
 	}
 
-	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "발표 종료", "발표가 종료되었습니다."))
+	// update game status
+	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
 	if err != nil {
 		return err
 	}
 
-	// update game status
-	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
+	// send a notice message
+	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "발표 종료", "발표가 종료되었습니다."))
 	if err != nil {
 		return err
 	}
@@ -553,14 +563,14 @@ func (b *StudyBot) startFeedbackHandler(s *discordgo.Session, i *discordgo.Inter
 		return err
 	}
 
-	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "피드백 시작", "피드백이 시작되었습니다."))
+	// update game status
+	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
 	if err != nil {
 		return err
 	}
 
-	// update game status
-	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
+	// send a notice message
+	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "피드백 시작", "피드백이 시작되었습니다."))
 	if err != nil {
 		return err
 	}
@@ -597,6 +607,12 @@ func (b *StudyBot) endFeedbackHandler(s *discordgo.Session, i *discordgo.Interac
 
 	// get management
 	m, err := b.svc.GetManagement(ctx, i.GuildID)
+	if err != nil {
+		return err
+	}
+
+	// update game status
+	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
 	if err != nil {
 		return err
 	}
@@ -639,6 +655,12 @@ func (b *StudyBot) endStudyHandler(s *discordgo.Session, i *discordgo.Interactio
 
 	// get management
 	m, err := b.svc.GetManagement(ctx, i.GuildID)
+	if err != nil {
+		return err
+	}
+
+	// update game status
+	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
 	if err != nil {
 		return err
 	}
