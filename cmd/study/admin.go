@@ -149,13 +149,7 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 	}
 
 	if err != nil {
-		_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Flags:  discordgo.MessageFlagsEphemeral,
-				Embeds: []*discordgo.MessageEmbed{ErrorEmbed(err.Error())},
-			},
-		})
+		_ = errorInteractionRespond(s, i, err)
 	}
 }
 
@@ -167,7 +161,7 @@ func (b *StudyBot) refreshStatusHandler(s *discordgo.Session, i *discordgo.Inter
 	}
 
 	if admin == nil {
-		return errors.New("admin is nil")
+		return ErrAdminNotFound
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -203,12 +197,12 @@ func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.Interac
 	}
 
 	if admin == nil {
-		return errors.New("admin is nil")
+		return ErrAdminNotFound
 	}
 
 	// check if title is empty
 	if title == "" {
-		return errors.New("title is empty")
+		return errors.Join(ErrRequiredArgs, errors.New("스터디 제목을 입력해주세요."))
 	}
 
 	// get all members in the guild
@@ -273,7 +267,7 @@ func (b *StudyBot) closeRegistrationHandler(s *discordgo.Session, i *discordgo.I
 	}
 
 	if admin == nil {
-		return errors.New("admin is nil")
+		return ErrAdminNotFound
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -321,7 +315,7 @@ func (b *StudyBot) startSubmissionHandler(s *discordgo.Session, i *discordgo.Int
 	}
 
 	if admin == nil {
-		return errors.New("admin is nil")
+		return ErrAdminNotFound
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -369,7 +363,7 @@ func (b *StudyBot) closeSubmissionHandler(s *discordgo.Session, i *discordgo.Int
 	}
 
 	if admin == nil {
-		return errors.New("admin is nil")
+		return ErrAdminNotFound
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -411,7 +405,7 @@ func (b *StudyBot) startPresentationHandler(s *discordgo.Session, i *discordgo.I
 	}
 
 	if admin == nil {
-		return errors.New("admin is nil")
+		return ErrAdminNotFound
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -459,11 +453,11 @@ func (b *StudyBot) confirmPresentationHandler(s *discordgo.Session, i *discordgo
 	}
 
 	if admin == nil {
-		return errors.New("admin is nil")
+		return ErrAdminNotFound
 	}
 
 	if u == nil {
-		return errors.New("user not found")
+		return ErrUserNotFound
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -493,7 +487,7 @@ func (b *StudyBot) endPresentationHandler(s *discordgo.Session, i *discordgo.Int
 	}
 
 	if admin == nil {
-		return errors.New("admin is nil")
+		return ErrAdminNotFound
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -541,7 +535,7 @@ func (b *StudyBot) startFeedbackHandler(s *discordgo.Session, i *discordgo.Inter
 	}
 
 	if admin == nil {
-		return errors.New("admin is nil")
+		return ErrAdminNotFound
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -589,7 +583,7 @@ func (b *StudyBot) endFeedbackHandler(s *discordgo.Session, i *discordgo.Interac
 	}
 
 	if admin == nil {
-		return errors.New("admin is nil")
+		return ErrAdminNotFound
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -631,7 +625,7 @@ func (b *StudyBot) endStudyHandler(s *discordgo.Session, i *discordgo.Interactio
 	}
 
 	if admin == nil {
-		return errors.New("admin is nil")
+		return ErrAdminNotFound
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -673,12 +667,12 @@ func (b *StudyBot) setNoticeChannelHandler(s *discordgo.Session, i *discordgo.In
 	}
 
 	if admin == nil {
-		return errors.New("admin is nil")
+		return ErrAdminNotFound
 	}
 
 	// check if the channel is nil
 	if ch == nil {
-		return errors.New("channel is nil")
+		return ErrChannelNotFound
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
