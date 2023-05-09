@@ -11,6 +11,7 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/piatoss3612/presentation-helper-bot/internal/db"
 	"github.com/piatoss3612/presentation-helper-bot/internal/service/study"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -26,6 +27,13 @@ func main() {
 }
 
 func run() {
+	logger, _ := zap.NewProduction()
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	sugar := logger.Sugar()
+
 	cfg, err := NewConfig(os.Getenv("CONFIG_FILE"))
 	if err != nil {
 		log.Fatal(err)
@@ -58,7 +66,7 @@ func run() {
 		log.Fatal(err)
 	}
 
-	bot := NewStudyBot(sess, svc).Setup()
+	bot := NewStudyBot(sess, svc, sugar).Setup()
 
 	stop, err := bot.Run()
 	if err != nil {

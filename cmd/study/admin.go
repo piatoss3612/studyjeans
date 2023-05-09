@@ -43,7 +43,7 @@ var adminCmd = discordgo.ApplicationCommand{
 					Value: "start-presentation",
 				},
 				{
-					Name:  "발표 참여 확인",
+					Name:  "발표 참여 확정",
 					Value: "confirm-presentation",
 				},
 				{

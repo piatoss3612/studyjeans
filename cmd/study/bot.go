@@ -9,25 +9,29 @@ import (
 	"github.com/bwmarrin/discordgo"
 	handler "github.com/piatoss3612/presentation-helper-bot/internal/handler/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/service/study"
+	"go.uber.org/zap"
 )
 
 type StudyBot struct {
-	sess    *discordgo.Session
-	hdr     handler.Handler
-	chdr    handler.ComponentHandler
-	svc     study.Service
-	guildID string
+	sess *discordgo.Session
+	hdr  handler.Handler
+	chdr handler.ComponentHandler
+	svc  study.Service
 
+	guildID   string
 	startedAt time.Time
+
+	sugar *zap.SugaredLogger
 }
 
-func NewStudyBot(sess *discordgo.Session, svc study.Service) *StudyBot {
+func NewStudyBot(sess *discordgo.Session, svc study.Service, sugar *zap.SugaredLogger) *StudyBot {
 	return &StudyBot{
 		sess:      sess,
 		hdr:       handler.New(),
 		chdr:      handler.NewComponent(),
 		svc:       svc,
 		startedAt: time.Now(),
+		sugar:     sugar,
 	}
 }
 
