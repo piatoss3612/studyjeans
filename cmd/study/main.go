@@ -9,8 +9,10 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	_ "github.com/joho/godotenv/autoload"
+	app "github.com/piatoss3612/presentation-helper-bot/internal/app/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/db"
 	"github.com/piatoss3612/presentation-helper-bot/internal/service/study"
+	svc "github.com/piatoss3612/presentation-helper-bot/internal/service/study"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 )
@@ -50,13 +52,13 @@ func run() {
 
 	sugar.Info("Connected to MongoDB!")
 
-	svc := mustInitStudyService(ctx, study.NewTx(mongoClient, cfg.DBName), cfg.GuildID, cfg.ManagerID, cfg.NoticeChannelID)
+	svc := mustInitStudyService(ctx, svc.NewTx(mongoClient, cfg.DBName), cfg.GuildID, cfg.ManagerID, cfg.NoticeChannelID)
 
 	sugar.Info("Study service is ready!")
 
 	sess := mustOpenDiscordSession(cfg.BotToken)
 
-	bot := NewStudyBot(sess, svc, sugar).Setup()
+	bot := app.New(sess, svc, sugar).Setup()
 
 	stop, err := bot.Run()
 	if err != nil {

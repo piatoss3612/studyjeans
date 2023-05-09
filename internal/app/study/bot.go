@@ -1,4 +1,4 @@
-package main
+package study
 
 import (
 	"os"
@@ -24,7 +24,7 @@ type StudyBot struct {
 	sugar *zap.SugaredLogger
 }
 
-func NewStudyBot(sess *discordgo.Session, svc study.Service, sugar *zap.SugaredLogger) *StudyBot {
+func New(sess *discordgo.Session, svc study.Service, sugar *zap.SugaredLogger) *StudyBot {
 	return &StudyBot{
 		sess:      sess,
 		hdr:       handler.New(),
