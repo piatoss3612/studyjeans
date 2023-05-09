@@ -220,3 +220,88 @@ func (b *StudyBot) submitContentCmdHandler(s *discordgo.Session, i *discordgo.In
 		return
 	}
 }
+
+func (b *StudyBot) sendFeedbackCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	guildID := b.svc.GetGuildID()
+
+	if i.GuildID != guildID {
+		// TODO: error response
+		log.Println("guildID not matched")
+		return
+	}
+
+	var user *discordgo.User
+
+	if i.Member != nil && i.Member.User != nil {
+		user = i.Member.User
+	}
+
+	if user == nil {
+		// TODO: error response
+		log.Println("user not found")
+		return
+	}
+
+	var presentor *discordgo.User
+
+	for _, option := range i.ApplicationCommandData().Options {
+		switch option.Name {
+		case "발표자":
+			presentor = option.UserValue(s)
+		}
+	}
+
+	if presentor == nil {
+		// TODO: error response
+		log.Println("presentor not found")
+		return
+	}
+
+	if user.ID == presentor.ID {
+		// TODO: error response
+		log.Println("user and presentor is same")
+		return
+	}
+
+	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseModal,
+		Data: &discordgo.InteractionResponseData{
+			CustomID: "feedback-modal",
+			Title:    "피드백 작성",
+			Flags:    discordgo.MessageFlagsEphemeral,
+			Components: []discordgo.MessageComponent{
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						discordgo.TextInput{
+							CustomID:    "id",
+							Label:       "발표자",
+							Style:       discordgo.TextInputShort,
+							Placeholder: "발표자의 ID 입니다. 임의로 변경하지 마세요.",
+							Value:       presentor.ID,
+							Required:    true,
+							MaxLength:   20,
+							MinLength:   1,
+						},
+					},
+				},
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						discordgo.TextInput{
+							CustomID:    "feedback",
+							Label:       "피드백",
+							Style:       discordgo.TextInputParagraph,
+							Placeholder: "피드백을 입력해주세요.",
+							Required:    true,
+							MaxLength:   1000,
+							MinLength:   10,
+						},
+					},
+				},
+			},
+		},
+	})
+	if err != nil {
+		// TODO: error response
+		log.Println(err)
+	}
+}

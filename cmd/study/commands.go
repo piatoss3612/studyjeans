@@ -48,3 +48,16 @@ var submitContentCmd = discordgo.ApplicationCommand{
 		},
 	},
 }
+
+var sendFeedbackCmd = discordgo.ApplicationCommand{
+	Name:        "피드백",
+	Description: "발표자에게 피드백을 보냅니다.",
+	Options: []*discordgo.ApplicationCommandOption{
+		{
+			Name:        "발표자",
+			Description: "피드백을 받을 발표자를 선택해주세요.",
+			Type:        discordgo.ApplicationCommandOptionUser,
+			Required:    true,
+		},
+	},
+}
