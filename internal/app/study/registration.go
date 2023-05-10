@@ -11,7 +11,7 @@ import (
 var (
 	registerCmd = discordgo.ApplicationCommand{
 		Name:        "발표자-등록",
-		Description: "발표자로 등록합니다.",
+		Description: "발표자 정보를 등록합니다.",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
 				Name:        "이름",
@@ -69,7 +69,7 @@ func (b *StudyBot) registerCmdHandler(s *discordgo.Session, i *discordgo.Interac
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		err := b.svc.SetMemberRegistered(ctx, i.GuildID, user.ID, name, subject, true)
+		err := b.svc.SetMemberRegistration(ctx, i.GuildID, user.ID, name, subject, true)
 		if err != nil {
 			return err
 		}
@@ -108,7 +108,7 @@ func (b *StudyBot) unregisterCmdHandler(s *discordgo.Session, i *discordgo.Inter
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		err := b.svc.SetMemberRegistered(ctx, i.GuildID, user.ID, "", "", false)
+		err := b.svc.SetMemberRegistration(ctx, i.GuildID, user.ID, "", "", false)
 		if err != nil {
 			return err
 		}
