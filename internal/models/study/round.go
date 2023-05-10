@@ -29,43 +29,43 @@ func NewRound() Round {
 	}
 }
 
-func (s *Round) SetID(id string) {
-	s.ID = id
+func (r *Round) SetID(id string) {
+	r.ID = id
 }
 
-func (s *Round) SetGuildID(guildID string) {
-	s.GuildID = guildID
+func (r *Round) SetGuildID(guildID string) {
+	r.GuildID = guildID
 }
 
-func (s *Round) SetNumber(number int8) {
-	s.Number = number
+func (r *Round) SetNumber(number int8) {
+	r.Number = number
 }
 
-func (s *Round) SetTitle(title string) {
-	s.Title = title
+func (r *Round) SetTitle(title string) {
+	r.Title = title
 }
 
-func (s *Round) SetContentURL(contentURL string) {
-	s.ContentURL = contentURL
+func (r *Round) SetContentURL(contentURL string) {
+	r.ContentURL = contentURL
 }
 
-func (s *Round) SetMember(memberID string, member Member) {
-	s.Members[memberID] = member
+func (r *Round) SetMember(memberID string, member Member) {
+	r.Members[memberID] = member
 }
 
-func (s *Round) GetMember(memberID string) (Member, bool) {
-	member, ok := s.Members[memberID]
+func (r *Round) GetMember(memberID string) (Member, bool) {
+	member, ok := r.Members[memberID]
 	return member, ok
 }
 
-func (s *Round) GetMembers() []Member {
+func (r *Round) GetMembers() []Member {
 	members := []Member{}
-	for _, v := range s.Members {
+	for _, v := range r.Members {
 		members = append(members, v)
 	}
 	return members
 }
 
-func (s *Round) SetUpdatedAt(updatedAt time.Time) {
-	s.UpdatedAt = updatedAt
+func (r *Round) SetUpdatedAt(updatedAt time.Time) {
+	r.UpdatedAt = updatedAt
 }
