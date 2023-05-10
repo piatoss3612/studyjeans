@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/piatoss3612/presentation-helper-bot/internal/service/study"
+	"github.com/piatoss3612/presentation-helper-bot/internal/models/study"
 )
 
 var myStudyInfoCmd = discordgo.ApplicationCommand{
 	Name:        "내-정보",
-	Description: "내 스터디 등록 정보를 확인합니다.",
+	Description: "내 스터디 회차 등록 정보를 확인합니다.",
 }
 
 func (b *StudyBot) addMyStudyInfoCmd() {
@@ -33,16 +33,16 @@ func (b *StudyBot) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.Inte
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		study, err := b.svc.GetOngoingStudy(ctx, i.GuildID)
+		round, err := b.svc.GetOngoingRound(ctx, i.GuildID)
 		if err != nil {
 			return err
 		}
 
-		if study == nil {
-			return ErrStudyNotFound
+		if round == nil {
+			return ErrRoundNotFound
 		}
 
-		member, ok := study.GetMember(user.ID)
+		member, ok := round.GetMember(user.ID)
 		if !ok {
 			return ErrMemberNotFound
 		}
