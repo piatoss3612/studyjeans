@@ -50,7 +50,7 @@ func (svc *serviceImpl) setup(ctx context.Context, guildID, managerID, noticeChI
 	// transaction for setup
 	txFn := func(sc context.Context) (interface{}, error) {
 		// find study of guild
-		s, err := svc.tx.FindStudy(ctx, guildID)
+		s, err := svc.tx.FindStudy(sc, guildID)
 		if err != nil {
 			return nil, err
 		}
@@ -101,9 +101,13 @@ func (svc *serviceImpl) NewStudyRound(ctx context.Context, guildID, title string
 			return nil, ErrStudyExists
 		}
 
+		// increment total round
+		s.IncrementTotalRound()
+
 		// create new round
 		r := models.NewRound()
 		r.SetGuildID(s.GuildID)
+		r.SetNumber(s.TotalRound)
 		r.SetTitle(title)
 
 		// set initial members

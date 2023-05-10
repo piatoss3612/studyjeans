@@ -66,8 +66,6 @@ func (s Stage) CanMoveTo(target Stage) bool {
 		return target == StageReviewOpened
 	case StageReviewOpened:
 		return target == StageReviewClosed
-	case StageReviewClosed:
-		return false
 	default:
 		return false
 	}
