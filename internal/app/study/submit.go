@@ -53,7 +53,7 @@ func (b *StudyBot) submitContentCmdHandler(s *discordgo.Session, i *discordgo.In
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		err := b.svc.SubmitContent(ctx, i.GuildID, user.ID, content)
+		err := b.svc.SetMemberContent(ctx, i.GuildID, user.ID, content)
 		if err != nil {
 			return err
 		}
