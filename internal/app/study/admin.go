@@ -9,94 +9,108 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-var adminCmd = discordgo.ApplicationCommand{
-	Name:        "매니저",
-	Description: "스터디 관리 명령어입니다. 매니저만 사용할 수 있습니다.",
-	Options: []*discordgo.ApplicationCommandOption{
-		{
-			Name:        "명령어",
-			Description: "사용할 명령어를 선택해주세요.",
-			Type:        discordgo.ApplicationCommandOptionString,
-			Choices: []*discordgo.ApplicationCommandOptionChoice{
-				{
-					Name:  "공지",
-					Value: "notice",
+var (
+	adminCmd = discordgo.ApplicationCommand{
+		Name:        "매니저",
+		Description: "스터디 관리 명령어입니다. 매니저만 사용할 수 있습니다.",
+		Options: []*discordgo.ApplicationCommandOption{
+			{
+				Name:        "명령어",
+				Description: "사용할 명령어를 선택해주세요.",
+				Type:        discordgo.ApplicationCommandOptionString,
+				Choices: []*discordgo.ApplicationCommandOptionChoice{
+					{
+						Name:  "공지",
+						Value: "notice",
+					},
+					{
+						Name:  "상태 갱신",
+						Value: "refresh-status",
+					},
+					{
+						Name:  "스터디 생성",
+						Value: "create-study",
+					},
+					{
+						Name:  "발표자 등록 마감",
+						Value: "close-registration",
+					},
+					{
+						Name:  "발표 자료 제출 시작",
+						Value: "start-submission",
+					},
+					{
+						Name:  "발표 자료 제출 마감",
+						Value: "close-submission",
+					},
+					{
+						Name:  "발표 시작",
+						Value: "start-presentation",
+					},
+					{
+						Name:  "발표 참여 확정",
+						Value: "confirm-presentation",
+					},
+					{
+						Name:  "발표 종료",
+						Value: "end-presentation",
+					},
+					{
+						Name:  "발표 녹화 자료 등록",
+						Value: "register-presentation-video",
+					},
+					{
+						Name:  "피드백 시작",
+						Value: "start-feedback",
+					},
+					{
+						Name:  "피드백 종료",
+						Value: "end-feedback",
+					},
+					{
+						Name:  "스터디 종료",
+						Value: "end-study",
+					},
+					{
+						Name:  "공지 채널 설정",
+						Value: "set-notice-channel",
+					},
 				},
-				{
-					Name:  "상태 갱신",
-					Value: "refresh-status",
-				},
-				{
-					Name:  "스터디 생성",
-					Value: "create-study",
-				},
-				{
-					Name:  "발표자 등록 마감",
-					Value: "close-registration",
-				},
-				{
-					Name:  "발표 자료 제출 시작",
-					Value: "start-submission",
-				},
-				{
-					Name:  "발표 자료 제출 마감",
-					Value: "close-submission",
-				},
-				{
-					Name:  "발표 시작",
-					Value: "start-presentation",
-				},
-				{
-					Name:  "발표 참여 확정",
-					Value: "confirm-presentation",
-				},
-				{
-					Name:  "발표 종료",
-					Value: "end-presentation",
-				},
-				{
-					Name:  "발표 녹화 자료 등록",
-					Value: "register-presentation-video",
-				},
-				{
-					Name:  "피드백 시작",
-					Value: "start-feedback",
-				},
-				{
-					Name:  "피드백 종료",
-					Value: "end-feedback",
-				},
-				{
-					Name:  "스터디 종료",
-					Value: "end-study",
-				},
-				{
-					Name:  "공지 채널 설정",
-					Value: "set-notice-channel",
-				},
+				Required: true,
 			},
-			Required: true,
+			{
+				Name:        "텍스트",
+				Description: "텍스트를 입력해주세요.",
+				Type:        discordgo.ApplicationCommandOptionString,
+			},
+			{
+				Name:        "사용자",
+				Description: "사용자를 선택해주세요.",
+				Type:        discordgo.ApplicationCommandOptionUser,
+			},
+			{
+				Name:        "채널",
+				Description: "채널을 선택해주세요.",
+				Type:        discordgo.ApplicationCommandOptionChannel,
+			},
 		},
-		{
-			Name:        "텍스트",
-			Description: "텍스트를 입력해주세요.",
-			Type:        discordgo.ApplicationCommandOptionString,
-		},
-		{
-			Name:        "사용자",
-			Description: "사용자를 선택해주세요.",
-			Type:        discordgo.ApplicationCommandOptionUser,
-		},
-		{
-			Name:        "채널",
-			Description: "채널을 선택해주세요.",
-			Type:        discordgo.ApplicationCommandOptionChannel,
-		},
-	},
-}
+	}
+	noticeTextInput = discordgo.TextInput{
+		CustomID:    "notice",
+		Label:       "공지",
+		Style:       discordgo.TextInputParagraph,
+		Placeholder: "공지 내용을 입력해주세요.",
+		Required:    true,
+		MaxLength:   1000,
+		MinLength:   10,
+	}
+)
+
+const NoticeModalCustomID = "notice"
 
 func (b *StudyBot) addAdminCmd() {
 	b.hdr.AddCommand(adminCmd, b.adminHandler)
+	b.chdr.AddHandleFunc(NoticeModalCustomID, b.noticeSubmitHandler)
 }
 
 func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -165,6 +179,7 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 	}
 
 	if err != nil {
+		b.sugar.Errorw(err.Error(), "event", cmd)
 		_ = errorInteractionRespond(s, i, err)
 	}
 }
@@ -189,27 +204,108 @@ func (b *StudyBot) noticeHandler(s *discordgo.Session, i *discordgo.InteractionC
 		return err
 	}
 
-	embed := &discordgo.MessageEmbed{
-		Title:       "공지",
-		Description: fmt.Sprintf("@everyone %s", txt),
-		Timestamp:   time.Now().Format(time.RFC3339),
-		Color:       0x00ff00,
+	if m.ManagerID != admin.ID {
+		return ErrAdminNotFound
 	}
 
-	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, embed)
-	if err != nil {
-		return err
-	}
-
-	// send a response message
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Type: discordgo.InteractionResponseModal,
 		Data: &discordgo.InteractionResponseData{
-			Content: "공지를 전송했습니다.",
-			Flags:   discordgo.MessageFlagsEphemeral,
+			CustomID: NoticeModalCustomID,
+			Title:    "공지",
+			Flags:    discordgo.MessageFlagsEphemeral,
+			Components: []discordgo.MessageComponent{
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{noticeTextInput},
+				},
+			},
 		},
 	})
+}
+
+func (b *StudyBot) noticeSubmitHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	cmd := func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+		var admin *discordgo.User
+
+		if i.Member != nil && i.Member.User != nil {
+			admin = i.Member.User
+		}
+
+		if admin == nil {
+			return ErrAdminNotFound
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		// get management
+		m, err := b.svc.GetManagement(ctx, i.GuildID)
+		if err != nil {
+			return err
+		}
+
+		if m.ManagerID != admin.ID {
+			return ErrAdminNotFound
+		}
+
+		data := i.ModalSubmitData()
+
+		var notice string
+
+		for _, c := range data.Components {
+			row, ok := c.(*discordgo.ActionsRow)
+			if !ok {
+				continue
+			}
+
+			for _, c := range row.Components {
+				input, ok := c.(*discordgo.TextInput)
+				if !ok {
+					continue
+				}
+
+				notice = input.Value
+			}
+		}
+
+		if notice == "" {
+			return errors.Join(ErrRequiredArgs, errors.New("공지 내용을 입력해주세요"))
+		}
+
+		bot := s.State.User
+
+		// get notice channel
+		embed := &discordgo.MessageEmbed{
+			Author: &discordgo.MessageEmbedAuthor{
+				Name:    bot.Username,
+				IconURL: bot.AvatarURL(""),
+			},
+			Title:       "공지",
+			Description: notice,
+			Timestamp:   time.Now().Format(time.RFC3339),
+			Color:       0x00ff00,
+		}
+
+		// send notice
+		_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, embed)
+		if err != nil {
+			return err
+		}
+
+		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "공지를 전송했습니다.",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+	}
+
+	err := cmd(s, i)
+	if err != nil {
+		b.sugar.Errorw(err.Error(), "event", "notice-modal-submit")
+		_ = errorInteractionRespond(s, i, err)
+	}
 }
 
 func (b *StudyBot) refreshStatusHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
@@ -619,7 +715,7 @@ func (b *StudyBot) registerPresentationVideoHandler(s *discordgo.Session, i *dis
 	}
 
 	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "발표 영상 등록", "발표 영상이 등록되었습니다.\n"+contentURL))
+	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "발표 영상 등록", "발표 영상이 등록되었습니다.", contentURL))
 	if err != nil {
 		return err
 	}
