@@ -5,9 +5,9 @@ type Stage uint8
 const (
 	StageNone                 Stage = 0
 	StageWait                 Stage = 1
-	StageRegistrationOpend    Stage = 2
+	StageRegistrationOpened   Stage = 2
 	StageRegistrationClosed   Stage = 3
-	StageSubmissionOpend      Stage = 4
+	StageSubmissionOpened     Stage = 4
 	StageSubmissionClosed     Stage = 5
 	StagePresentationStarted  Stage = 6
 	StagePresentationFinished Stage = 7
@@ -19,11 +19,11 @@ func (s Stage) String() string {
 	switch s {
 	case StageWait:
 		return "다음 회차 대기"
-	case StageRegistrationOpend:
+	case StageRegistrationOpened:
 		return "발표자 등록"
 	case StageRegistrationClosed:
 		return "발표자 등록 마감"
-	case StageSubmissionOpend:
+	case StageSubmissionOpened:
 		return "발표 자료 제출"
 	case StageSubmissionClosed:
 		return "발표 자료 제출 마감"
@@ -48,34 +48,50 @@ func (s Stage) IsWait() bool {
 	return s == StageWait
 }
 
-func (s Stage) IsRegistrationOpened() bool {
-	return s == StageRegistrationOpend
+func (s Stage) CanMoveTo(target Stage) bool {
+	switch s {
+	case StageWait:
+		return target == StageRegistrationOpened
+	case StageRegistrationOpened:
+		return target == StageRegistrationClosed
+	case StageRegistrationClosed:
+		return target == StageSubmissionOpened
+	case StageSubmissionOpened:
+		return target == StageSubmissionClosed
+	case StageSubmissionClosed:
+		return target == StagePresentationStarted
+	case StagePresentationStarted:
+		return target == StagePresentationFinished
+	case StagePresentationFinished:
+		return target == StageReviewOpened
+	case StageReviewOpened:
+		return target == StageReviewClosed
+	case StageReviewClosed:
+		return false
+	default:
+		return false
+	}
 }
 
-func (s Stage) IsRegistrationClosed() bool {
-	return s == StageRegistrationClosed
-}
-
-func (s Stage) IsSubmissionOpened() bool {
-	return s == StageSubmissionOpend
-}
-
-func (s Stage) IsSubmissionClosed() bool {
-	return s == StageSubmissionClosed
-}
-
-func (s Stage) IsPresentationStarted() bool {
-	return s == StagePresentationStarted
-}
-
-func (s Stage) IsPresentationFinished() bool {
-	return s == StagePresentationFinished
-}
-
-func (s Stage) IsReviewOpened() bool {
-	return s == StageReviewOpened
-}
-
-func (s Stage) IsReviewClosed() bool {
-	return s == StageReviewClosed
+func (s Stage) Next() Stage {
+	switch s {
+	case StageWait:
+		return StageRegistrationOpened
+	case StageRegistrationOpened:
+		return StageRegistrationClosed
+	case StageRegistrationClosed:
+		return StageSubmissionOpened
+	case StageSubmissionOpened:
+		return StageSubmissionClosed
+	case StageSubmissionClosed:
+		return StagePresentationStarted
+	case StagePresentationStarted:
+		return StagePresentationFinished
+	case StagePresentationFinished:
+		return StageReviewOpened
+	case StageReviewOpened:
+		return StageReviewClosed
+	default:
+		return StageNone
+	}
 }
