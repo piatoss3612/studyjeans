@@ -34,6 +34,7 @@ func (b *StudyBot) profileCmdHandler(s *discordgo.Session, i *discordgo.Interact
 		},
 	})
 	if err != nil {
+		b.sugar.Errorw(err.Error(), "event", "profile")
 		_ = errorInteractionRespond(s, i, err)
 	}
 }

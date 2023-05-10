@@ -173,6 +173,7 @@ func (b *StudyBot) feedbackSubmitHandler(s *discordgo.Session, i *discordgo.Inte
 
 	err := fn(s, i)
 	if err != nil {
+		b.sugar.Errorw(err.Error(), "event", "feedback-submit")
 		_ = errorInteractionRespond(s, i, err)
 	}
 }

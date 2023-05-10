@@ -88,6 +88,7 @@ func (b *StudyBot) registerCmdHandler(s *discordgo.Session, i *discordgo.Interac
 
 	err := cmd(s, i)
 	if err != nil {
+		b.sugar.Errorw(err.Error(), "event", "register-presentation")
 		_ = errorInteractionRespond(s, i, err)
 	}
 }
@@ -126,6 +127,7 @@ func (b *StudyBot) unregisterCmdHandler(s *discordgo.Session, i *discordgo.Inter
 
 	err := cmd(s, i)
 	if err != nil {
+		b.sugar.Errorw(err.Error(), "event", "unregister-presentation")
 		_ = errorInteractionRespond(s, i, err)
 	}
 }

@@ -61,6 +61,7 @@ func (b *StudyBot) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.Inte
 
 	err := cmd(s, i)
 	if err != nil {
+		b.sugar.Errorw(err.Error(), "event", "my-study-info")
 		_ = errorInteractionRespond(s, i, err)
 	}
 }

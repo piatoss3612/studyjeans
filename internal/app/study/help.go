@@ -167,6 +167,10 @@ func HelpStudyEmbed(u *discordgo.User) *discordgo.MessageEmbed {
 				Value: "발표자로 등록",
 			},
 			{
+				Name:  "발표자-등록-취소",
+				Value: "발표자 등록 취소",
+			},
+			{
 				Name:  "발표-자료-제출",
 				Value: "발표 자료 제출",
 			},

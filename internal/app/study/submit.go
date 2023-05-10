@@ -72,6 +72,7 @@ func (b *StudyBot) submitContentCmdHandler(s *discordgo.Session, i *discordgo.In
 
 	err := cmd(s, i)
 	if err != nil {
+		b.sugar.Errorw(err.Error(), "event", "submit-content")
 		_ = errorInteractionRespond(s, i, err)
 	}
 }
