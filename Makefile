@@ -1,6 +1,10 @@
-run:
+study:
 	@echo "Run discord bot"
 	go run ./cmd/study/
+
+recorder:
+	@echo "Run recorder"
+	go run ./cmd/recorder/
 
 up:
 	@echo "Run docker compose"
