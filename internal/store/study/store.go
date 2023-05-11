@@ -52,7 +52,7 @@ func (si *StoreImpl) CreateRound(ctx context.Context, r models.Round) (*models.R
 }
 
 func (si *StoreImpl) UpdateStudy(ctx context.Context, s models.Study) (*models.Study, error) {
-	collection := si.client.Database(si.dbname).Collection("management")
+	collection := si.client.Database(si.dbname).Collection("study")
 
 	objID, err := primitive.ObjectIDFromHex(s.ID)
 	if err != nil {

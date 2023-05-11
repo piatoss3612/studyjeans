@@ -8,6 +8,7 @@ import (
 
 var (
 	ErrManagerNotFound = errors.New("매니저 정보를 찾을 수 없습니다.")
+	ErrNotManager      = errors.New("매니저만 사용할 수 있는 명령어입니다.")
 	ErrUserNotFound    = errors.New("사용자 정보를 찾을 수 없습니다.")
 	ErrChannelNotFound = errors.New("채널 정보를 찾을 수 없습니다.")
 	ErrRequiredArgs    = errors.New("필수 인자가 없습니다.")

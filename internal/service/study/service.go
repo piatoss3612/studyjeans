@@ -23,7 +23,7 @@ type Service interface {
 	SetReviewer(ctx context.Context, guildID, reviewerID, revieweeID string) error
 
 	NewStudyRound(ctx context.Context, guildID, title string, memberIDs []string) (*models.Study, error)
-	MoveStage(ctx context.Context, guildID string, stage models.Stage) (*models.Study, error)
+	MoveStage(ctx context.Context, guildID string) (*models.Study, error)
 	CloseStudyRound(ctx context.Context, guildID string) (*models.Study, error)
 }
 
@@ -140,7 +140,7 @@ func (svc *serviceImpl) NewStudyRound(ctx context.Context, guildID, title string
 }
 
 // move study to next stage
-func (svc *serviceImpl) MoveStage(ctx context.Context, guildID string, stage models.Stage) (*models.Study, error) {
+func (svc *serviceImpl) MoveStage(ctx context.Context, guildID string) (*models.Study, error) {
 	defer svc.mtx.Unlock()
 	svc.mtx.Lock()
 
@@ -156,13 +156,15 @@ func (svc *serviceImpl) MoveStage(ctx context.Context, guildID string, stage mod
 			return nil, ErrStudyNotFound
 		}
 
+		next := s.CurrentStage.Next()
+
 		// check if stage is valid
-		if !s.CurrentStage.CanMoveTo(stage) {
+		if !s.CurrentStage.CanMoveTo(next) {
 			return nil, errors.Join(ErrInvalidStage, errors.New(fmt.Sprintf("스터디 라운드 %s 종료가 불가능한 단계입니다.", s.CurrentStage.String())))
 		}
 
 		// move to next stage
-		s.SetCurrentStage(s.CurrentStage.Next())
+		s.SetCurrentStage(next)
 
 		// update study
 		return svc.tx.UpdateStudy(sc, *s)

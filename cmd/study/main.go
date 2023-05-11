@@ -12,7 +12,7 @@ import (
 	app "github.com/piatoss3612/presentation-helper-bot/internal/app/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/db"
 	"github.com/piatoss3612/presentation-helper-bot/internal/service/study"
-	svc "github.com/piatoss3612/presentation-helper-bot/internal/service/study"
+	store "github.com/piatoss3612/presentation-helper-bot/internal/store/study"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 )
@@ -52,7 +52,7 @@ func run() {
 
 	sugar.Info("Connected to MongoDB!")
 
-	svc := mustInitStudyService(ctx, svc.NewTx(mongoClient, cfg.DBName), cfg.GuildID, cfg.ManagerID, cfg.NoticeChannelID)
+	svc := mustInitStudyService(ctx, store.NewTx(mongoClient, cfg.DBName), cfg.GuildID, cfg.ManagerID, cfg.NoticeChannelID)
 
 	sugar.Info("Study service is ready!")
 
@@ -101,7 +101,7 @@ func mustConnectMongoDB(ctx context.Context, uri string) *mongo.Client {
 	return mongoClient
 }
 
-func mustInitStudyService(ctx context.Context, tx study.Tx, guildID, managerID, noticeChID string) study.Service {
+func mustInitStudyService(ctx context.Context, tx store.Tx, guildID, managerID, noticeChID string) study.Service {
 	svc, err := study.NewService(ctx, tx, guildID, managerID, noticeChID)
 	if err != nil {
 		sugar.Fatal(err)

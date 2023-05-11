@@ -28,25 +28,24 @@ var (
 						Value: "refresh-status",
 					},
 					{
-						Name:  "스터디 생성",
-						Value: "create-study",
+						Name:  "스터디 라운드 생성",
+						Value: "create-study-round",
 					},
 					{
-						Name:  "발표 단계 이동",
-						Value: "move-presentation-stage",
+						Name:  "스터디 라운드 이동",
+						Value: "move-round-stage",
 					},
 					{
-						Name:  "발표 참여 확정",
+						Name:  "발표자 참여 확정",
 						Value: "confirm-attendance",
 					},
-
 					{
 						Name:  "발표 녹화 자료 등록",
 						Value: "register-presentation-video",
 					},
 					{
-						Name:  "스터디 종료",
-						Value: "end-study",
+						Name:  "스터디 라운드 종료",
+						Value: "end-study-round",
 					},
 					{
 						Name:  "공지 채널 설정",
@@ -98,8 +97,8 @@ const NoticeModalCustomID = "notice"
 func (b *StudyBot) addAdminCmd() {
 	b.hdr.AddCommand(adminCmd, b.adminHandler)
 	b.chdr.AddHandleFunc(NoticeModalCustomID, b.noticeSubmitHandler)
-	b.chdr.AddHandleFunc(stageMoveConfirmButton.CustomID, nil) // TODO: add handler
-	b.chdr.AddHandleFunc(stageMoveCancelButton.CustomID, nil)  // TODO: add handler
+	b.chdr.AddHandleFunc(stageMoveConfirmButton.CustomID, b.stageMoveConfirmHandler)
+	b.chdr.AddHandleFunc(stageMoveCancelButton.CustomID, b.stageMoveCancelHandler)
 }
 
 func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -139,16 +138,16 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 		err = b.noticeHandler(s, i, txt)
 	case "refresh-status":
 		err = b.refreshStatusHandler(s, i)
-	case "create-study":
-		err = b.createStudyHandler(s, i, txt)
-	case "move-presentation-stage":
-		err = b.movePresentationStageHandler(s, i)
+	case "create-study-round":
+		err = b.createStudyRoundHandler(s, i, txt)
+	case "move-round-stage":
+		err = b.moveRoundStageHandler(s, i)
 	case "confirm-attendance":
 		err = b.confirmAttendanceHandler(s, i, u)
 	case "register-presentation-video":
 		err = b.registerPresentationVideoHandler(s, i, txt)
-	case "end-study":
-		err = b.endStudyHandler(s, i)
+	case "end-study-round":
+		err = b.endStudyRoundHandler(s, i)
 	case "set-notice-channel":
 		err = b.setNoticeChannelHandler(s, i, ch)
 	default:
@@ -182,7 +181,7 @@ func (b *StudyBot) noticeHandler(s *discordgo.Session, i *discordgo.InteractionC
 	}
 
 	if !study.IsManager(manager.ID) {
-		return ErrManagerNotFound
+		return ErrNotManager
 	}
 
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -223,7 +222,7 @@ func (b *StudyBot) noticeSubmitHandler(s *discordgo.Session, i *discordgo.Intera
 
 		// check manager
 		if !study.IsManager(manager.ID) {
-			return ErrManagerNotFound
+			return ErrNotManager
 		}
 
 		data := i.ModalSubmitData()
@@ -308,7 +307,7 @@ func (b *StudyBot) refreshStatusHandler(s *discordgo.Session, i *discordgo.Inter
 
 	// check manager
 	if !study.IsManager(manager.ID) {
-		return ErrManagerNotFound
+		return ErrNotManager
 	}
 
 	// update game status
@@ -327,7 +326,7 @@ func (b *StudyBot) refreshStatusHandler(s *discordgo.Session, i *discordgo.Inter
 	})
 }
 
-func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.InteractionCreate, title string) error {
+func (b *StudyBot) createStudyRoundHandler(s *discordgo.Session, i *discordgo.InteractionCreate, title string) error {
 	var manager *discordgo.User
 
 	if i.Member != nil && i.Member.User != nil {
@@ -371,7 +370,7 @@ func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.Interac
 
 	// check manager
 	if !study.IsManager(manager.ID) {
-		return ErrManagerNotFound
+		return ErrNotManager
 	}
 
 	// check if study round is already set
@@ -407,7 +406,7 @@ func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.Interac
 	})
 }
 
-func (b *StudyBot) movePresentationStageHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+func (b *StudyBot) moveRoundStageHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	var manager *discordgo.User
 
 	if i.Member != nil && i.Member.User != nil {
@@ -429,7 +428,7 @@ func (b *StudyBot) movePresentationStageHandler(s *discordgo.Session, i *discord
 
 	// check manager
 	if !study.IsManager(manager.ID) {
-		return ErrManagerNotFound
+		return ErrNotManager
 	}
 
 	next := study.CurrentStage.Next()
@@ -438,7 +437,7 @@ func (b *StudyBot) movePresentationStageHandler(s *discordgo.Session, i *discord
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Embeds: []*discordgo.MessageEmbed{
-				EmbedTemplate(s.State.User, "발표 진행 단계 변경", fmt.Sprintf("발표 진행 단계가 **<%s>**로 변경됩니다. 진행하시겠습니까?", next.String())),
+				EmbedTemplate(s.State.User, "스터디 라운드 진행 단계 변경", fmt.Sprintf("스터디 라운드 진행 단계가 **<%s>**로 변경됩니다. 진행하시겠습니까?", next.String())),
 			},
 			Flags: discordgo.MessageFlagsEphemeral,
 			Components: []discordgo.MessageComponent{
@@ -478,7 +477,7 @@ func (b *StudyBot) confirmAttendanceHandler(s *discordgo.Session, i *discordgo.I
 
 	// check manager
 	if !study.IsManager(manager.ID) {
-		return ErrManagerNotFound
+		return ErrNotManager
 	}
 
 	// check attendance
@@ -519,7 +518,7 @@ func (b *StudyBot) registerPresentationVideoHandler(s *discordgo.Session, i *dis
 
 	// check manager
 	if !study.IsManager(manager.ID) {
-		return ErrManagerNotFound
+		return ErrNotManager
 	}
 
 	// register presentation video
@@ -544,7 +543,7 @@ func (b *StudyBot) registerPresentationVideoHandler(s *discordgo.Session, i *dis
 	})
 }
 
-func (b *StudyBot) endStudyHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+func (b *StudyBot) endStudyRoundHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	var manager *discordgo.User
 
 	if i.Member != nil && i.Member.User != nil {
@@ -566,7 +565,7 @@ func (b *StudyBot) endStudyHandler(s *discordgo.Session, i *discordgo.Interactio
 
 	// check manager
 	if !study.IsManager(manager.ID) {
-		return ErrManagerNotFound
+		return ErrNotManager
 	}
 
 	// end study
@@ -624,7 +623,7 @@ func (b *StudyBot) setNoticeChannelHandler(s *discordgo.Session, i *discordgo.In
 
 	// check manager
 	if !study.IsManager(manager.ID) {
-		return ErrManagerNotFound
+		return ErrNotManager
 	}
 
 	// set notice channel
@@ -641,4 +640,64 @@ func (b *StudyBot) setNoticeChannelHandler(s *discordgo.Session, i *discordgo.In
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
+}
+
+func (b *StudyBot) stageMoveConfirmHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	cmd := func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		// move stage
+		study, err := b.svc.MoveStage(ctx, i.GuildID)
+		if err != nil {
+			return err
+		}
+
+		// update game status
+		err = s.UpdateGameStatus(0, study.CurrentStage.String())
+		if err != nil {
+			return err
+		}
+
+		// send a notice message
+		_, err = s.ChannelMessageSendEmbed(study.NoticeChannelID,
+			EmbedTemplate(s.State.User, study.CurrentStage.String(), fmt.Sprintf("**<%s>**이(가) 시작되었습니다.", study.CurrentStage.String())))
+		if err != nil {
+			return err
+		}
+
+		// send a response message
+		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "스터디 라운드가 이동되었습니다.",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+	}
+
+	err := cmd(s, i)
+	if err != nil {
+		b.sugar.Errorw(err.Error(), "event", "stage-move-confirm")
+		_ = errorInteractionRespond(s, i, err)
+	}
+}
+
+func (b *StudyBot) stageMoveCancelHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	cmd := func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+		// send a response message
+		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "스터디 라운드 이동이 취소되었습니다.",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+	}
+
+	err := cmd(s, i)
+	if err != nil {
+		b.sugar.Errorw(err.Error(), "event", "stage-move-cancel")
+		_ = errorInteractionRespond(s, i, err)
+	}
 }
