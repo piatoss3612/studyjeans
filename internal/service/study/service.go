@@ -101,14 +101,16 @@ func (svc *serviceImpl) NewStudyRound(ctx context.Context, guildID, title string
 			return nil, ErrStudyExists
 		}
 
-		// increment total round
+		// increment total round and set current stage
 		s.IncrementTotalRound()
+		s.SetCurrentStage(models.StageRegistrationOpened)
 
 		// create new round
 		r := models.NewRound()
 		r.SetGuildID(s.GuildID)
 		r.SetNumber(s.TotalRound)
 		r.SetTitle(title)
+		r.SetStage(models.StageRegistrationOpened)
 
 		// set initial members
 		for _, id := range memberIDs {
@@ -123,7 +125,6 @@ func (svc *serviceImpl) NewStudyRound(ctx context.Context, guildID, title string
 		}
 
 		s.SetOngoingRoundID(ur.ID)
-		s.SetCurrentStage(models.StageRegistrationOpened)
 
 		// update study
 		return svc.tx.UpdateStudy(sc, *s)
@@ -165,6 +166,26 @@ func (svc *serviceImpl) MoveStage(ctx context.Context, guildID string) (*models.
 
 		// move to next stage
 		s.SetCurrentStage(next)
+
+		// find ongoing round
+		r, err := svc.tx.FindRound(sc, s.OngoingRoundID)
+		if err != nil {
+			return nil, err
+		}
+
+		// if there is no ongoing round, return error
+		if r == nil {
+			return nil, ErrRoundNotFound
+		}
+
+		// move round to next stage
+		r.SetStage(next)
+
+		// update round
+		_, err = svc.tx.UpdateRound(sc, *r)
+		if err != nil {
+			return nil, err
+		}
 
 		// update study
 		return svc.tx.UpdateStudy(sc, *s)

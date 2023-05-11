@@ -49,6 +49,10 @@ func (r *Round) SetContentURL(contentURL string) {
 	r.ContentURL = contentURL
 }
 
+func (r *Round) SetStage(stage Stage) {
+	r.Stage = stage
+}
+
 func (r *Round) SetMember(memberID string, member Member) {
 	r.Members[memberID] = member
 }
