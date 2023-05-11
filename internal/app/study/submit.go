@@ -47,7 +47,7 @@ func (b *StudyBot) submitContentCmdHandler(s *discordgo.Session, i *discordgo.In
 		}
 
 		if content == "" {
-			return errors.Join(ErrRequiredArgs, errors.New("발표 자료 링크는 필수 입력 사항입니다."))
+			return errors.Join(ErrRequiredArgs, errors.New("발표 자료 링크는 필수 입력 사항입니다"))
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

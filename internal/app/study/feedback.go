@@ -51,21 +51,21 @@ func (b *StudyBot) sendFeedbackCmdHandler(s *discordgo.Session, i *discordgo.Int
 			return ErrUserNotFound
 		}
 
-		var presentor *discordgo.User
+		var speaker *discordgo.User
 
 		for _, option := range i.ApplicationCommandData().Options {
 			switch option.Name {
 			case "발표자":
-				presentor = option.UserValue(s)
+				speaker = option.UserValue(s)
 			}
 		}
 
-		if presentor == nil {
-			return errors.Join(ErrRequiredArgs, errors.New("리뷰 대상자는 필수 입력 사항입니다."))
+		if speaker == nil {
+			return errors.Join(ErrRequiredArgs, errors.New("리뷰 대상자는 필수 입력 사항입니다"))
 		}
 
-		if presentor.Bot {
-			return errors.New("봇은 리뷰 대상자로 지정할 수 없습니다.")
+		if speaker.Bot {
+			return errors.New("봇은 리뷰 대상자로 지정할 수 없습니다")
 		}
 
 		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -78,11 +78,11 @@ func (b *StudyBot) sendFeedbackCmdHandler(s *discordgo.Session, i *discordgo.Int
 					discordgo.ActionsRow{
 						Components: []discordgo.MessageComponent{
 							discordgo.TextInput{
-								CustomID:    "presentor-id",
+								CustomID:    "speaker-id",
 								Label:       "발표자",
 								Style:       discordgo.TextInputShort,
 								Placeholder: "발표자의 ID 입니다. 임의로 변경하지 마세요.",
-								Value:       presentor.ID,
+								Value:       speaker.ID,
 								Required:    true,
 								MaxLength:   20,
 								MinLength:   1,
@@ -112,7 +112,7 @@ func (b *StudyBot) feedbackSubmitHandler(s *discordgo.Session, i *discordgo.Inte
 		}
 
 		if reviewer == nil {
-			return errors.Join(ErrUserNotFound, errors.New("리뷰어 정보를 찾을 수 없습니다."))
+			return errors.Join(ErrUserNotFound, errors.New("리뷰어 정보를 찾을 수 없습니다"))
 		}
 
 		data := i.ModalSubmitData()
@@ -132,7 +132,7 @@ func (b *StudyBot) feedbackSubmitHandler(s *discordgo.Session, i *discordgo.Inte
 				}
 
 				switch input.CustomID {
-				case "presentor-id":
+				case "speaker-id":
 					revieweeID = input.Value
 				case "feedback":
 					feedback = input.Value
@@ -141,7 +141,7 @@ func (b *StudyBot) feedbackSubmitHandler(s *discordgo.Session, i *discordgo.Inte
 		}
 
 		if revieweeID == "" || feedback == "" {
-			return errors.Join(ErrRequiredArgs, errors.New("리뷰 대상자의 아이디 또는 피드백 정보를 찾을 수 없습니다."))
+			return errors.Join(ErrRequiredArgs, errors.New("리뷰 대상자의 아이디 또는 피드백 정보를 찾을 수 없습니다"))
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

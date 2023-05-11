@@ -18,7 +18,6 @@ type StudyBot struct {
 	chdr handler.ComponentHandler
 	svc  study.Service
 
-	guildID   string
 	startedAt time.Time
 
 	sugar *zap.SugaredLogger

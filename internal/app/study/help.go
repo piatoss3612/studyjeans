@@ -76,8 +76,8 @@ func (b *StudyBot) helpSelectMenuHandler(s *discordgo.Session, i *discordgo.Inte
 		var embed *discordgo.MessageEmbed
 
 		data := i.MessageComponentData().Values
-		if data == nil || len(data) == 0 {
-			return errors.Join(ErrRequiredArgs, errors.New("옵션을 찾을 수 없습니다."))
+		if len(data) == 0 {
+			return errors.Join(ErrRequiredArgs, errors.New("옵션을 찾을 수 없습니다"))
 		}
 
 		switch data[0] {
@@ -86,7 +86,7 @@ func (b *StudyBot) helpSelectMenuHandler(s *discordgo.Session, i *discordgo.Inte
 		case "study":
 			embed = HelpStudyEmbed(s.State.User)
 		default:
-			return errors.Join(ErrRequiredArgs, errors.New("옵션을 찾을 수 없습니다."))
+			return errors.Join(ErrRequiredArgs, errors.New("옵션을 찾을 수 없습니다"))
 		}
 
 		response := &discordgo.InteractionResponse{

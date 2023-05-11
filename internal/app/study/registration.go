@@ -63,7 +63,7 @@ func (b *StudyBot) registerCmdHandler(s *discordgo.Session, i *discordgo.Interac
 		}
 
 		if name == "" || subject == "" {
-			return errors.Join(ErrRequiredArgs, errors.New("이름과 발표 주제는 필수 입력 사항입니다."))
+			return errors.Join(ErrRequiredArgs, errors.New("이름과 발표 주제는 필수 입력 사항입니다"))
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
