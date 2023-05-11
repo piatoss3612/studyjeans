@@ -24,7 +24,7 @@ type Service interface {
 
 	NewStudyRound(ctx context.Context, guildID, title string, memberIDs []string) (*models.Study, error)
 	MoveStage(ctx context.Context, guildID string, stage models.Stage) (*models.Study, error)
-	CloseStudyRound(ctx context.Context, guildID, managerID string) (*models.Study, error)
+	CloseStudyRound(ctx context.Context, guildID string) (*models.Study, error)
 }
 
 type serviceImpl struct {
@@ -179,7 +179,7 @@ func (svc *serviceImpl) MoveStage(ctx context.Context, guildID string, stage mod
 }
 
 // close study round
-func (svc *serviceImpl) CloseStudyRound(ctx context.Context, guildID, managerID string) (*models.Study, error) {
+func (svc *serviceImpl) CloseStudyRound(ctx context.Context, guildID string) (*models.Study, error) {
 	defer svc.mtx.Unlock()
 	svc.mtx.Lock()
 

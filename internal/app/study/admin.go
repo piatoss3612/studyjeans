@@ -32,40 +32,17 @@ var (
 						Value: "create-study",
 					},
 					{
-						Name:  "발표자 등록 마감",
-						Value: "close-registration",
-					},
-					{
-						Name:  "발표 자료 제출 시작",
-						Value: "start-submission",
-					},
-					{
-						Name:  "발표 자료 제출 마감",
-						Value: "close-submission",
-					},
-					{
-						Name:  "발표 시작",
-						Value: "start-presentation",
+						Name:  "발표 단계 이동",
+						Value: "move-presentation-stage",
 					},
 					{
 						Name:  "발표 참여 확정",
-						Value: "confirm-presentation",
+						Value: "confirm-attendance",
 					},
-					{
-						Name:  "발표 종료",
-						Value: "end-presentation",
-					},
+
 					{
 						Name:  "발표 녹화 자료 등록",
 						Value: "register-presentation-video",
-					},
-					{
-						Name:  "피드백 시작",
-						Value: "start-feedback",
-					},
-					{
-						Name:  "피드백 종료",
-						Value: "end-feedback",
 					},
 					{
 						Name:  "스터디 종료",
@@ -104,6 +81,16 @@ var (
 		MaxLength:   1000,
 		MinLength:   10,
 	}
+	stageMoveConfirmButton = discordgo.Button{
+		CustomID: "confirm-move-stage",
+		Label:    "확인",
+		Style:    discordgo.SuccessButton,
+	}
+	stageMoveCancelButton = discordgo.Button{
+		CustomID: "cancel-move-stage",
+		Label:    "취소",
+		Style:    discordgo.DangerButton,
+	}
 )
 
 const NoticeModalCustomID = "notice"
@@ -111,6 +98,8 @@ const NoticeModalCustomID = "notice"
 func (b *StudyBot) addAdminCmd() {
 	b.hdr.AddCommand(adminCmd, b.adminHandler)
 	b.chdr.AddHandleFunc(NoticeModalCustomID, b.noticeSubmitHandler)
+	b.chdr.AddHandleFunc(stageMoveConfirmButton.CustomID, nil) // TODO: add handler
+	b.chdr.AddHandleFunc(stageMoveCancelButton.CustomID, nil)  // TODO: add handler
 }
 
 func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -152,30 +141,18 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 		err = b.refreshStatusHandler(s, i)
 	case "create-study":
 		err = b.createStudyHandler(s, i, txt)
-	case "close-registration":
-		err = b.closeRegistrationHandler(s, i)
-	case "start-submission":
-		err = b.startSubmissionHandler(s, i)
-	case "close-submission":
-		err = b.closeSubmissionHandler(s, i)
-	case "start-presentation":
-		err = b.startPresentationHandler(s, i)
-	case "confirm-presentation":
-		err = b.confirmPresentationHandler(s, i, u)
-	case "end-presentation":
-		err = b.endPresentationHandler(s, i)
+	case "move-presentation-stage":
+		err = b.movePresentationStageHandler(s, i)
+	case "confirm-attendance":
+		err = b.confirmAttendanceHandler(s, i, u)
 	case "register-presentation-video":
 		err = b.registerPresentationVideoHandler(s, i, txt)
-	case "start-feedback":
-		err = b.startFeedbackHandler(s, i)
-	case "end-feedback":
-		err = b.endFeedbackHandler(s, i)
 	case "end-study":
 		err = b.endStudyHandler(s, i)
 	case "set-notice-channel":
 		err = b.setNoticeChannelHandler(s, i, ch)
 	default:
-		err = errors.New("invalid command")
+		err = ErrInvalidCommand
 	}
 
 	if err != nil {
@@ -185,34 +162,34 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 }
 
 func (b *StudyBot) noticeHandler(s *discordgo.Session, i *discordgo.InteractionCreate, txt string) error {
-	var admin *discordgo.User
+	var manager *discordgo.User
 
 	if i.Member != nil && i.Member.User != nil {
-		admin = i.Member.User
+		manager = i.Member.User
 	}
 
-	if admin == nil {
-		return ErrAdminNotFound
+	if manager == nil {
+		return ErrManagerNotFound
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// get management
-	m, err := b.svc.GetManagement(ctx, i.GuildID)
+	// get study
+	study, err := b.svc.GetStudy(ctx, i.GuildID)
 	if err != nil {
 		return err
 	}
 
-	if m.ManagerID != admin.ID {
-		return ErrAdminNotFound
+	if !study.IsManager(manager.ID) {
+		return ErrManagerNotFound
 	}
 
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseModal,
 		Data: &discordgo.InteractionResponseData{
 			CustomID: NoticeModalCustomID,
-			Title:    "공지",
+			Title:    "공지 입력",
 			Flags:    discordgo.MessageFlagsEphemeral,
 			Components: []discordgo.MessageComponent{
 				discordgo.ActionsRow{
@@ -225,27 +202,28 @@ func (b *StudyBot) noticeHandler(s *discordgo.Session, i *discordgo.InteractionC
 
 func (b *StudyBot) noticeSubmitHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	cmd := func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-		var admin *discordgo.User
+		var manager *discordgo.User
 
 		if i.Member != nil && i.Member.User != nil {
-			admin = i.Member.User
+			manager = i.Member.User
 		}
 
-		if admin == nil {
-			return ErrAdminNotFound
+		if manager == nil {
+			return ErrManagerNotFound
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		// get management
-		m, err := b.svc.GetManagement(ctx, i.GuildID)
+		// get study
+		study, err := b.svc.GetStudy(ctx, i.GuildID)
 		if err != nil {
 			return err
 		}
 
-		if m.ManagerID != admin.ID {
-			return ErrAdminNotFound
+		// check manager
+		if !study.IsManager(manager.ID) {
+			return ErrManagerNotFound
 		}
 
 		data := i.ModalSubmitData()
@@ -287,7 +265,7 @@ func (b *StudyBot) noticeSubmitHandler(s *discordgo.Session, i *discordgo.Intera
 		}
 
 		// send notice
-		_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, embed)
+		_, err = s.ChannelMessageSendEmbed(study.NoticeChannelID, embed)
 		if err != nil {
 			return err
 		}
@@ -309,27 +287,32 @@ func (b *StudyBot) noticeSubmitHandler(s *discordgo.Session, i *discordgo.Intera
 }
 
 func (b *StudyBot) refreshStatusHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var admin *discordgo.User
+	var manager *discordgo.User
 
 	if i.Member != nil && i.Member.User != nil {
-		admin = i.Member.User
+		manager = i.Member.User
 	}
 
-	if admin == nil {
-		return ErrAdminNotFound
+	if manager == nil {
+		return ErrManagerNotFound
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// get management
-	m, err := b.svc.GetManagement(ctx, i.GuildID)
+	// get study
+	study, err := b.svc.GetStudy(ctx, i.GuildID)
 	if err != nil {
 		return err
 	}
 
+	// check manager
+	if !study.IsManager(manager.ID) {
+		return ErrManagerNotFound
+	}
+
 	// update game status
-	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
+	err = s.UpdateGameStatus(0, study.CurrentStage.String())
 	if err != nil {
 		return err
 	}
@@ -345,19 +328,19 @@ func (b *StudyBot) refreshStatusHandler(s *discordgo.Session, i *discordgo.Inter
 }
 
 func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.InteractionCreate, title string) error {
-	var admin *discordgo.User
+	var manager *discordgo.User
 
 	if i.Member != nil && i.Member.User != nil {
-		admin = i.Member.User
+		manager = i.Member.User
 	}
 
-	if admin == nil {
-		return ErrAdminNotFound
+	if manager == nil {
+		return ErrManagerNotFound
 	}
 
 	// check if title is empty
 	if title == "" {
-		return errors.Join(ErrRequiredArgs, errors.New("스터디 제목을 입력해주세요."))
+		return errors.Join(ErrRequiredArgs, errors.New("스터디 제목은 필수입니다"))
 	}
 
 	// get all members in the guild
@@ -380,26 +363,36 @@ func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.Interac
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// create a study
-	err = b.svc.InitNewStudyRound(ctx, i.GuildID, admin.ID, title, memberIDs)
+	// get study
+	study, err := b.svc.GetStudy(ctx, i.GuildID)
 	if err != nil {
 		return err
 	}
 
-	// get management
-	m, err := b.svc.GetManagement(ctx, i.GuildID)
+	// check manager
+	if !study.IsManager(manager.ID) {
+		return ErrManagerNotFound
+	}
+
+	// check if study round is already set
+	if study.OngoingRoundID != "" {
+		return ErrRoundAlreadySet
+	}
+
+	// create a round
+	study, err = b.svc.NewStudyRound(ctx, i.GuildID, title, memberIDs)
 	if err != nil {
 		return err
 	}
 
 	// update game status
-	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
+	err = s.UpdateGameStatus(0, study.CurrentStage.String())
 	if err != nil {
 		return err
 	}
 
 	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "스터디 생성", fmt.Sprintf("**<%s>**가 생성되었습니다.", title)))
+	_, err = s.ChannelMessageSendEmbed(study.NoticeChannelID, EmbedTemplate(s.State.User, "스터디 생성", fmt.Sprintf("**<%s>**가 생성되었습니다.", title)))
 	if err != nil {
 		return err
 	}
@@ -414,207 +407,61 @@ func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.Interac
 	})
 }
 
-func (b *StudyBot) closeRegistrationHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var admin *discordgo.User
+func (b *StudyBot) movePresentationStageHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+	var manager *discordgo.User
 
 	if i.Member != nil && i.Member.User != nil {
-		admin = i.Member.User
+		manager = i.Member.User
 	}
 
-	if admin == nil {
-		return ErrAdminNotFound
+	if manager == nil {
+		return ErrManagerNotFound
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// close registration
-	err := b.svc.CloseRegistration(ctx, i.GuildID, admin.ID)
+	// get study
+	study, err := b.svc.GetStudy(ctx, i.GuildID)
 	if err != nil {
 		return err
 	}
 
-	// get management
-	m, err := b.svc.GetManagement(ctx, i.GuildID)
-	if err != nil {
-		return err
+	// check manager
+	if !study.IsManager(manager.ID) {
+		return ErrManagerNotFound
 	}
 
-	// update game status
-	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
-	if err != nil {
-		return err
-	}
+	next := study.CurrentStage.Next()
 
-	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "발표자 등록 마감", "발표자 등록이 마감되었습니다."))
-	if err != nil {
-		return err
-	}
-
-	// send a response message
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: "발표자 등록이 마감되었습니다.",
-			Flags:   discordgo.MessageFlagsEphemeral,
+			Embeds: []*discordgo.MessageEmbed{
+				EmbedTemplate(s.State.User, "발표 진행 단계 변경", fmt.Sprintf("발표 진행 단계가 **<%s>**로 변경됩니다. 진행하시겠습니까?", next.String())),
+			},
+			Flags: discordgo.MessageFlagsEphemeral,
+			Components: []discordgo.MessageComponent{
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						stageMoveConfirmButton,
+						stageMoveCancelButton,
+					},
+				},
+			},
 		},
 	})
 }
 
-func (b *StudyBot) startSubmissionHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var admin *discordgo.User
+func (b *StudyBot) confirmAttendanceHandler(s *discordgo.Session, i *discordgo.InteractionCreate, u *discordgo.User) error {
+	var manager *discordgo.User
 
 	if i.Member != nil && i.Member.User != nil {
-		admin = i.Member.User
+		manager = i.Member.User
 	}
 
-	if admin == nil {
-		return ErrAdminNotFound
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// start submission
-	err := b.svc.OpenSubmission(ctx, i.GuildID, admin.ID)
-	if err != nil {
-		return err
-	}
-
-	// get management
-	m, err := b.svc.GetManagement(ctx, i.GuildID)
-	if err != nil {
-		return err
-	}
-
-	// update game status
-	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
-	if err != nil {
-		return err
-	}
-
-	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "발표자료 제출 시작", "발표자료 제출이 시작되었습니다."))
-	if err != nil {
-		return err
-	}
-
-	// send a response message
-	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Content: "발표자료 제출이 시작되었습니다.",
-			Flags:   discordgo.MessageFlagsEphemeral,
-		},
-	})
-}
-
-func (b *StudyBot) closeSubmissionHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var admin *discordgo.User
-
-	if i.Member != nil && i.Member.User != nil {
-		admin = i.Member.User
-	}
-
-	if admin == nil {
-		return ErrAdminNotFound
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// close submission
-	err := b.svc.CloseSubmission(ctx, i.GuildID, admin.ID)
-	if err != nil {
-		return err
-	}
-
-	// get management
-	m, err := b.svc.GetManagement(ctx, i.GuildID)
-	if err != nil {
-		return err
-	}
-
-	// update game status
-	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
-	if err != nil {
-		return err
-	}
-
-	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "발표자료 제출 마감", "발표자료 제출이 마감되었습니다."))
-	if err != nil {
-		return err
-	}
-
-	// send a response message
-	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Content: "발표자료 제출이 마감되었습니다.",
-			Flags:   discordgo.MessageFlagsEphemeral,
-		},
-	})
-}
-
-func (b *StudyBot) startPresentationHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var admin *discordgo.User
-
-	if i.Member != nil && i.Member.User != nil {
-		admin = i.Member.User
-	}
-
-	if admin == nil {
-		return ErrAdminNotFound
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// start presentation
-	err := b.svc.StartPresentation(ctx, i.GuildID, admin.ID)
-	if err != nil {
-		return err
-	}
-
-	// get management
-	m, err := b.svc.GetManagement(ctx, i.GuildID)
-	if err != nil {
-		return err
-	}
-
-	// update game status
-	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
-	if err != nil {
-		return err
-	}
-
-	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "발표 시작", "발표가 시작되었습니다."))
-	if err != nil {
-		return err
-	}
-
-	// send a response message
-	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Content: "발표가 시작되었습니다.",
-			Flags:   discordgo.MessageFlagsEphemeral,
-		},
-	})
-}
-
-func (b *StudyBot) confirmPresentationHandler(s *discordgo.Session, i *discordgo.InteractionCreate, u *discordgo.User) error {
-	var admin *discordgo.User
-
-	if i.Member != nil && i.Member.User != nil {
-		admin = i.Member.User
-	}
-
-	if admin == nil {
-		return ErrAdminNotFound
+	if manager == nil {
+		return ErrManagerNotFound
 	}
 
 	if u == nil {
@@ -624,8 +471,18 @@ func (b *StudyBot) confirmPresentationHandler(s *discordgo.Session, i *discordgo
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	study, err := b.svc.GetStudy(ctx, i.GuildID)
+	if err != nil {
+		return err
+	}
+
+	// check manager
+	if !study.IsManager(manager.ID) {
+		return ErrManagerNotFound
+	}
+
 	// check attendance
-	err := b.svc.SetPresentorAttended(ctx, i.GuildID, admin.ID, u.ID, true)
+	err = b.svc.SetSpeakerAttended(ctx, i.GuildID, u.ID, true)
 	if err != nil {
 		return err
 	}
@@ -640,82 +497,39 @@ func (b *StudyBot) confirmPresentationHandler(s *discordgo.Session, i *discordgo
 	})
 }
 
-func (b *StudyBot) endPresentationHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var admin *discordgo.User
-
-	if i.Member != nil && i.Member.User != nil {
-		admin = i.Member.User
-	}
-
-	if admin == nil {
-		return ErrAdminNotFound
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// end presentation
-	err := b.svc.FinishPresentation(ctx, i.GuildID, admin.ID)
-	if err != nil {
-		return err
-	}
-
-	// get management
-	m, err := b.svc.GetManagement(ctx, i.GuildID)
-	if err != nil {
-		return err
-	}
-
-	// update game status
-	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
-	if err != nil {
-		return err
-	}
-
-	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "발표 종료", "발표가 종료되었습니다."))
-	if err != nil {
-		return err
-	}
-
-	// send a response message
-	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Content: "발표가 종료되었습니다.",
-			Flags:   discordgo.MessageFlagsEphemeral,
-		},
-	})
-}
-
 func (b *StudyBot) registerPresentationVideoHandler(s *discordgo.Session, i *discordgo.InteractionCreate, contentURL string) error {
-	var admin *discordgo.User
+	var manager *discordgo.User
 
 	if i.Member != nil && i.Member.User != nil {
-		admin = i.Member.User
+		manager = i.Member.User
 	}
 
-	if admin == nil {
-		return ErrAdminNotFound
+	if manager == nil {
+		return ErrManagerNotFound
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	// get study
+	study, err := b.svc.GetStudy(ctx, i.GuildID)
+	if err != nil {
+		return err
+	}
+
+	// check manager
+	if !study.IsManager(manager.ID) {
+		return ErrManagerNotFound
+	}
 
 	// register presentation video
-	err := b.svc.SetStudyContent(ctx, i.GuildID, admin.ID, contentURL)
-	if err != nil {
-		return err
-	}
-
-	// get management
-	m, err := b.svc.GetManagement(ctx, i.GuildID)
+	err = b.svc.SetStudyContent(ctx, i.GuildID, contentURL)
 	if err != nil {
 		return err
 	}
 
 	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "발표 영상 등록", "발표 영상이 등록되었습니다.", contentURL))
+	_, err = s.ChannelMessageSendEmbed(study.NoticeChannelID, EmbedTemplate(s.State.User, "발표 영상 등록", "발표 영상이 등록되었습니다.", contentURL))
 	if err != nil {
 		return err
 	}
@@ -730,136 +544,45 @@ func (b *StudyBot) registerPresentationVideoHandler(s *discordgo.Session, i *dis
 	})
 }
 
-func (b *StudyBot) startFeedbackHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var admin *discordgo.User
-
-	if i.Member != nil && i.Member.User != nil {
-		admin = i.Member.User
-	}
-
-	if admin == nil {
-		return ErrAdminNotFound
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// start feedback
-	err := b.svc.OpenReview(ctx, i.GuildID, admin.ID)
-	if err != nil {
-		return err
-	}
-
-	// get management
-	m, err := b.svc.GetManagement(ctx, i.GuildID)
-	if err != nil {
-		return err
-	}
-
-	// update game status
-	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
-	if err != nil {
-		return err
-	}
-
-	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "피드백 시작", "피드백이 시작되었습니다."))
-	if err != nil {
-		return err
-	}
-
-	// send a response message
-	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Content: "피드백이 시작되었습니다.",
-			Flags:   discordgo.MessageFlagsEphemeral,
-		},
-	})
-}
-
-func (b *StudyBot) endFeedbackHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var admin *discordgo.User
-
-	if i.Member != nil && i.Member.User != nil {
-		admin = i.Member.User
-	}
-
-	if admin == nil {
-		return ErrAdminNotFound
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// end feedback
-	err := b.svc.CloseReview(ctx, i.GuildID, admin.ID)
-	if err != nil {
-		return err
-	}
-
-	// get management
-	m, err := b.svc.GetManagement(ctx, i.GuildID)
-	if err != nil {
-		return err
-	}
-
-	// update game status
-	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
-	if err != nil {
-		return err
-	}
-
-	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "피드백 종료", "피드백이 종료되었습니다."))
-	if err != nil {
-		return err
-	}
-
-	// send a response message
-	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Content: "피드백이 종료되었습니다.",
-			Flags:   discordgo.MessageFlagsEphemeral,
-		},
-	})
-}
-
 func (b *StudyBot) endStudyHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var admin *discordgo.User
+	var manager *discordgo.User
 
 	if i.Member != nil && i.Member.User != nil {
-		admin = i.Member.User
+		manager = i.Member.User
 	}
 
-	if admin == nil {
-		return ErrAdminNotFound
+	if manager == nil {
+		return ErrManagerNotFound
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	// get study
+	study, err := b.svc.GetStudy(ctx, i.GuildID)
+	if err != nil {
+		return err
+	}
+
+	// check manager
+	if !study.IsManager(manager.ID) {
+		return ErrManagerNotFound
+	}
 
 	// end study
-	err := b.svc.CloseStudyRound(ctx, i.GuildID, admin.ID)
-	if err != nil {
-		return err
-	}
-
-	// get management
-	m, err := b.svc.GetManagement(ctx, i.GuildID)
+	study, err = b.svc.CloseStudyRound(ctx, i.GuildID)
 	if err != nil {
 		return err
 	}
 
 	// update game status
-	err = s.UpdateGameStatus(0, m.CurrentStudyStage.String())
+	err = s.UpdateGameStatus(0, study.CurrentStage.String())
 	if err != nil {
 		return err
 	}
 
 	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(m.NoticeChannelID, EmbedTemplate(s.State.User, "스터디 종료", "스터디가 종료되었습니다."))
+	_, err = s.ChannelMessageSendEmbed(study.NoticeChannelID, EmbedTemplate(s.State.User, "스터디 라운드 종료", "스터디 라운드가 종료되었습니다."))
 	if err != nil {
 		return err
 	}
@@ -868,21 +591,21 @@ func (b *StudyBot) endStudyHandler(s *discordgo.Session, i *discordgo.Interactio
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: "스터디가 종료되었습니다.",
+			Content: "스터디가 라운드가 종료되었습니다.",
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
 }
 
 func (b *StudyBot) setNoticeChannelHandler(s *discordgo.Session, i *discordgo.InteractionCreate, ch *discordgo.Channel) error {
-	var admin *discordgo.User
+	var manager *discordgo.User
 
 	if i.Member != nil && i.Member.User != nil {
-		admin = i.Member.User
+		manager = i.Member.User
 	}
 
-	if admin == nil {
-		return ErrAdminNotFound
+	if manager == nil {
+		return ErrManagerNotFound
 	}
 
 	// check if the channel is nil
@@ -893,8 +616,19 @@ func (b *StudyBot) setNoticeChannelHandler(s *discordgo.Session, i *discordgo.In
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	// get study
+	study, err := b.svc.GetStudy(ctx, i.GuildID)
+	if err != nil {
+		return err
+	}
+
+	// check manager
+	if !study.IsManager(manager.ID) {
+		return ErrManagerNotFound
+	}
+
 	// set notice channel
-	err := b.svc.SetNoticeChannelID(ctx, i.GuildID, admin.ID, ch.ID)
+	err = b.svc.SetNoticeChannelID(ctx, i.GuildID, ch.ID)
 	if err != nil {
 		return err
 	}
