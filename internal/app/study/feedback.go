@@ -68,6 +68,10 @@ func (b *StudyBot) sendFeedbackCmdHandler(s *discordgo.Session, i *discordgo.Int
 			return errors.New("봇은 리뷰 대상자로 지정할 수 없습니다")
 		}
 
+		if speaker.ID == user.ID {
+			return ErrFeedbackYourself
+		}
+
 		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseModal,
 			Data: &discordgo.InteractionResponseData{
