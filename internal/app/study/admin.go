@@ -77,7 +77,7 @@ var (
 		Style:       discordgo.TextInputParagraph,
 		Placeholder: "공지 내용을 입력해주세요.",
 		Required:    true,
-		MaxLength:   1000,
+		MaxLength:   3000,
 		MinLength:   10,
 	}
 	stageMoveConfirmButton = discordgo.Button{
@@ -269,6 +269,9 @@ func (b *StudyBot) noticeSubmitHandler(s *discordgo.Session, i *discordgo.Intera
 			return err
 		}
 
+		// send notice DM to all members with confirm button
+		go b.sendDMsToAllMember(s, embed, i.GuildID)
+
 		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
@@ -390,11 +393,16 @@ func (b *StudyBot) createStudyRoundHandler(s *discordgo.Session, i *discordgo.In
 		return err
 	}
 
+	embed := EmbedTemplate(s.State.User, "스터디 생성", fmt.Sprintf("**<%s>**가 생성되었습니다.", title))
+
 	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(study.NoticeChannelID, EmbedTemplate(s.State.User, "스터디 생성", fmt.Sprintf("**<%s>**가 생성되었습니다.", title)))
+	_, err = s.ChannelMessageSendEmbed(study.NoticeChannelID, embed)
 	if err != nil {
 		return err
 	}
+
+	// send a DM to all members
+	go b.sendDMsToAllMember(s, embed, i.GuildID)
 
 	// send a response message
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -486,11 +494,16 @@ func (b *StudyBot) confirmAttendanceHandler(s *discordgo.Session, i *discordgo.I
 		return err
 	}
 
+	embed := EmbedTemplate(s.State.User, "발표 출석 확인", fmt.Sprintf("**<@%s>**님의 발표 출석이 확인되었습니다.", u.Username))
+
+	// send a DM to the user
+	go b.sendDMToMember(s, u, embed)
+
 	// send a response message
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: fmt.Sprintf("<@%s>님의 발표 참석 여부가 확인되었습니다.", u.ID),
+			Content: fmt.Sprintf("**<@%s>**님의 발표 출석이 확인되었습니다.", u.Username),
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
@@ -527,8 +540,13 @@ func (b *StudyBot) registerPresentationVideoHandler(s *discordgo.Session, i *dis
 		return err
 	}
 
+	embed := EmbedTemplate(s.State.User, "발표 영상 등록", "발표 영상이 등록되었습니다.", contentURL)
+
+	// send a DM to all members
+	go b.sendDMsToAllMember(s, embed, i.GuildID)
+
 	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(study.NoticeChannelID, EmbedTemplate(s.State.User, "발표 영상 등록", "발표 영상이 등록되었습니다.", contentURL))
+	_, err = s.ChannelMessageSendEmbed(study.NoticeChannelID, embed)
 	if err != nil {
 		return err
 	}
@@ -580,8 +598,13 @@ func (b *StudyBot) endStudyRoundHandler(s *discordgo.Session, i *discordgo.Inter
 		return err
 	}
 
+	embed := EmbedTemplate(s.State.User, "스터디 라운드 종료", "스터디 라운드가 종료되었습니다.")
+
+	// send a DM to all members
+	go b.sendDMsToAllMember(s, embed, i.GuildID)
+
 	// send a notice message
-	_, err = s.ChannelMessageSendEmbed(study.NoticeChannelID, EmbedTemplate(s.State.User, "스터디 라운드 종료", "스터디 라운드가 종료되었습니다."))
+	_, err = s.ChannelMessageSendEmbed(study.NoticeChannelID, embed)
 	if err != nil {
 		return err
 	}
@@ -659,9 +682,13 @@ func (b *StudyBot) stageMoveConfirmHandler(s *discordgo.Session, i *discordgo.In
 			return err
 		}
 
+		embed := EmbedTemplate(s.State.User, study.CurrentStage.String(), fmt.Sprintf("**<%s>**이(가) 시작되었습니다.", study.CurrentStage.String()))
+
+		// send a DM to all members
+		go b.sendDMsToAllMember(s, embed, i.GuildID)
+
 		// send a notice message
-		_, err = s.ChannelMessageSendEmbed(study.NoticeChannelID,
-			EmbedTemplate(s.State.User, study.CurrentStage.String(), fmt.Sprintf("**<%s>**이(가) 시작되었습니다.", study.CurrentStage.String())))
+		_, err = s.ChannelMessageSendEmbed(study.NoticeChannelID, embed)
 		if err != nil {
 			return err
 		}
@@ -699,5 +726,60 @@ func (b *StudyBot) stageMoveCancelHandler(s *discordgo.Session, i *discordgo.Int
 	if err != nil {
 		b.sugar.Errorw(err.Error(), "event", "stage-move-cancel")
 		_ = errorInteractionRespond(s, i, err)
+	}
+}
+
+func (b *StudyBot) sendDMsToAllMember(s *discordgo.Session, e *discordgo.MessageEmbed, guildID string) {
+	// get all members
+	members, err := s.GuildMembers(guildID, "", 1000)
+	if err != nil {
+		b.sugar.Errorw(err.Error(), "event", "send-dms-to-all-member")
+		return
+	}
+
+	for i := 1; i <= 10; i++ {
+		candidates := make([]*discordgo.Member, 0, 1000)
+
+		for _, member := range members {
+			// skip if the member is a bot
+			if member.User.Bot {
+				continue
+			}
+
+			// create a dm channel
+			ch, err := s.UserChannelCreate(member.User.ID)
+			if err != nil {
+				b.sugar.Errorw(err.Error(), "event", "send-dms-to-all-member")
+				candidates = append(candidates, member)
+				continue
+			}
+
+			_, err = s.ChannelMessageSendEmbed(ch.ID, e)
+			if err != nil {
+				b.sugar.Errorw(err.Error(), "event", "send-dms-to-all-member")
+				candidates = append(candidates, member)
+			}
+		}
+
+		if len(candidates) == 0 {
+			b.sugar.Infow("sent dms to all members", "event", "send-dms-to-all-member", "guild_id", guildID)
+			break
+		}
+
+		members = candidates
+	}
+}
+
+func (b *StudyBot) sendDMToMember(s *discordgo.Session, u *discordgo.User, e *discordgo.MessageEmbed) {
+	ch, err := s.UserChannelCreate(u.ID)
+	if err != nil {
+		b.sugar.Errorw(err.Error(), "event", "send-dm-to-member")
+		return
+	}
+
+	_, err = s.ChannelMessageSendEmbed(ch.ID, e)
+	if err != nil {
+		b.sugar.Errorw(err.Error(), "event", "send-dm-to-member")
+		return
 	}
 }
