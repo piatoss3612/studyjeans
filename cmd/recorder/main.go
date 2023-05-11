@@ -6,6 +6,7 @@ import (
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/piatoss3612/presentation-helper-bot/internal/app/recorder"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
@@ -35,19 +36,12 @@ func main() {
 
 func run() {
 	sheetsSrv := mustInitSheetsService()
+	spreadsheetID := os.Getenv("SPREADSHEET_ID")
 
 	sugar.Info("Sheets service is ready!")
 
-	spreadsheetID := os.Getenv("SPREADSHEET_ID")
-
-	resp, err := sheetsSrv.Spreadsheets.Get(spreadsheetID).Do()
-	if err != nil {
-		sugar.Fatal(err)
-	}
-
-	for _, sheet := range resp.Sheets {
-		sugar.Info(sheet.Properties.Title)
-	}
+	rest := recorder.New(sheetsSrv, spreadsheetID, os.Getenv("PORT"), sugar)
+	<-rest.Run()
 }
 
 func mustInitSheetsService() *sheets.Service {
