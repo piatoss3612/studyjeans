@@ -2,6 +2,7 @@ package study
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -129,6 +130,70 @@ func (b *StudyBot) studyRoundInfoCmdHandler(s *discordgo.Session, i *discordgo.I
 
 func (b *StudyBot) speakerInfoSelectMenuHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	// TODO: implement
+	cmd := func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+		var user *discordgo.User
+
+		// command should be invoked only in guild
+		if i.Member != nil && i.Member.User != nil {
+			user = i.Member.User
+		}
+
+		if user == nil {
+			return ErrUserNotFound
+		}
+
+		// get data
+		data := i.MessageComponentData().Values
+		if len(data) == 0 {
+			return errors.Join(ErrRequiredArgs, errors.New("옵션을 찾을 수 없습니다"))
+		}
+
+		selectedUserID := data[0]
+
+		// TODO: load cached round info or fetch from db if not exists
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		round, err := b.svc.GetOngoingRound(ctx, i.GuildID)
+		if err != nil {
+			return err
+		}
+
+		if round == nil {
+			return ErrRoundNotFound
+		}
+
+		var embed *discordgo.MessageEmbed
+
+		member, ok := round.GetMember(selectedUserID)
+		if !ok {
+			embed = ErrorEmbed("발표자 정보를 찾을 수 없습니다")
+		} else {
+			embed = SpeakerInfoEmbed(user, member)
+		}
+
+		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseUpdateMessage,
+			Data: &discordgo.InteractionResponseData{
+				Flags:  discordgo.MessageFlagsEphemeral,
+				Embeds: []*discordgo.MessageEmbed{embed},
+				Components: []discordgo.MessageComponent{
+					discordgo.ActionsRow{
+						Components: []discordgo.MessageComponent{
+							speakerInfoSelectMenu,
+						},
+					},
+				},
+			},
+		})
+	}
+
+	err := cmd(s, i)
+	if err != nil {
+		b.sugar.Errorw(err.Error(), "event", "study-round-info")
+		_ = errorInteractionRespond(s, i, err)
+	}
 }
 
 func studyRoundInfoEmbed(u *discordgo.User, r *study.Round) *discordgo.MessageEmbed {
@@ -172,7 +237,7 @@ func studyRoundInfoEmbed(u *discordgo.User, r *study.Round) *discordgo.MessageEm
 
 func SpeakerInfoEmbed(u *discordgo.User, m study.Member) *discordgo.MessageEmbed {
 	return &discordgo.MessageEmbed{
-		Title: "나의 스터디 등록 정보",
+		Title: "발표자 등록 정보",
 		Thumbnail: &discordgo.MessageEmbedThumbnail{
 			URL: u.AvatarURL(""),
 		},
@@ -208,7 +273,7 @@ func SpeakerInfoEmbed(u *discordgo.User, m study.Member) *discordgo.MessageEmbed
 				Inline: true,
 			},
 			{
-				Name: "발표주제",
+				Name: "발표 주제",
 				Value: func() string {
 					if m.Subject == "" {
 						return "```미등록```"
@@ -217,7 +282,7 @@ func SpeakerInfoEmbed(u *discordgo.User, m study.Member) *discordgo.MessageEmbed
 				}(),
 			},
 			{
-				Name: "발표자료",
+				Name: "발표 자료",
 				Value: func() string {
 					if m.ContentURL == "" {
 						return "```미등록```"
