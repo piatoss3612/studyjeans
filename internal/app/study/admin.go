@@ -51,6 +51,10 @@ var (
 						Name:  "공지 채널 설정",
 						Value: "set-notice-channel",
 					},
+					{
+						Name:  "회고 채널 설정",
+						Value: "set-reflection-channel",
+					},
 				},
 				Required: true,
 			},
@@ -150,6 +154,8 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 		err = b.endStudyRoundHandler(s, i)
 	case "set-notice-channel":
 		err = b.setNoticeChannelHandler(s, i, ch)
+	case "set-reflection-channel":
+		err = b.setReflectionChannelHandler(s, i, ch)
 	default:
 		err = ErrInvalidCommand
 	}
@@ -660,6 +666,52 @@ func (b *StudyBot) setNoticeChannelHandler(s *discordgo.Session, i *discordgo.In
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: fmt.Sprintf("공지 채널이 %s로 설정되었습니다.", ch.Mention()),
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	})
+}
+
+func (b *StudyBot) setReflectionChannelHandler(s *discordgo.Session, i *discordgo.InteractionCreate, ch *discordgo.Channel) error {
+	var manager *discordgo.User
+
+	if i.Member != nil && i.Member.User != nil {
+		manager = i.Member.User
+	}
+
+	if manager == nil {
+		return ErrManagerNotFound
+	}
+
+	// check if the channel is nil
+	if ch == nil {
+		return ErrChannelNotFound
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// get study
+	study, err := b.svc.GetStudy(ctx, i.GuildID)
+	if err != nil {
+		return err
+	}
+
+	// check manager
+	if !study.IsManager(manager.ID) {
+		return ErrNotManager
+	}
+
+	// set notice channel
+	err = b.svc.SetReflectionChannelID(ctx, i.GuildID, ch.ID)
+	if err != nil {
+		return err
+	}
+
+	// send a response message
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: fmt.Sprintf("회고 채널이 %s로 설정되었습니다.", ch.Mention()),
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
