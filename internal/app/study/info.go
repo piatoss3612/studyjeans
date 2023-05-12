@@ -61,6 +61,8 @@ func (b *StudyBot) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.Inte
 			return ErrMemberNotFound
 		}
 
+		go b.setRoundRetry(round, 5*time.Minute)
+
 		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
@@ -93,18 +95,40 @@ func (b *StudyBot) studyRoundInfoCmdHandler(s *discordgo.Session, i *discordgo.I
 			return ErrUserNotFound
 		}
 
-		// TODO: load cached round info or fetch from db if not exists
-
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		round, err := b.svc.GetOngoingRound(ctx, i.GuildID)
+		var round *study.Round
+		var err error
+
+		exists := b.roundExists(ctx, i.GuildID)
+
+		// check if round exists in cache
+		if exists {
+			// get round from cache
+			round, err = b.getRound(ctx, i.GuildID)
+		} else {
+			// get round from database
+			round, err = b.svc.GetOngoingRound(ctx, i.GuildID)
+		}
 		if err != nil {
 			return err
 		}
 
+		// if round does not exist, return error
+		if round == nil {
+			return ErrRoundNotFound
+		}
+
+		// round info embed
 		embed := studyRoundInfoEmbed(s.State.User, round)
 
+		// if round does not exist in cache, set round to cache
+		if !exists {
+			go b.setRoundRetry(round, 5*time.Second)
+		}
+
+		// send response
 		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
@@ -150,12 +174,22 @@ func (b *StudyBot) speakerInfoSelectMenuHandler(s *discordgo.Session, i *discord
 
 		selectedUserID := data[0]
 
-		// TODO: load cached round info or fetch from db if not exists
-
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		round, err := b.svc.GetOngoingRound(ctx, i.GuildID)
+		var round *study.Round
+		var err error
+
+		exists := b.roundExists(ctx, i.GuildID)
+
+		// check if round exists in cache
+		if exists {
+			// get round from cache
+			round, err = b.getRound(ctx, i.GuildID)
+		} else {
+			// get round from database
+			round, err = b.svc.GetOngoingRound(ctx, i.GuildID)
+		}
 		if err != nil {
 			return err
 		}
@@ -171,6 +205,11 @@ func (b *StudyBot) speakerInfoSelectMenuHandler(s *discordgo.Session, i *discord
 			embed = ErrorEmbed("발표자 정보를 찾을 수 없습니다")
 		} else {
 			embed = SpeakerInfoEmbed(user, member)
+		}
+
+		// if round does not exist in cache, set round to cache
+		if !exists {
+			go b.setRoundRetry(round, 5*time.Second)
 		}
 
 		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{

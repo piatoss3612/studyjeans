@@ -11,6 +11,8 @@ services:
     configs:
       - source: bot-config
         target: /app/config.json
+    depends_on:
+      - redis
 
   redis:
     container_name: redis

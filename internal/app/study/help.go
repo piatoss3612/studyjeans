@@ -178,6 +178,10 @@ func HelpStudyEmbed(u *discordgo.User) *discordgo.MessageEmbed {
 				Name:  "피드백",
 				Value: "발표자에게 피드백 전송",
 			},
+			{
+				Name:  "발표회고",
+				Value: "발표회고 작성",
+			},
 		},
 	}
 }

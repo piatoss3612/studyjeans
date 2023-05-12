@@ -52,7 +52,7 @@ func run() {
 
 	sugar.Info("Connected to MongoDB!")
 
-	cache := mustInitStudyCache(ctx, cfg.RedisAddr, 5*time.Minute)
+	cache := mustInitStudyCache(ctx, cfg.RedisAddr, 1*time.Minute)
 
 	sugar.Info("Study cache is ready!")
 
