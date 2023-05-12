@@ -116,4 +116,5 @@ func (b *StudyBot) addCommands() {
 	b.addRegistrationCmd()
 	b.addSubmitContentCmd()
 	b.addSendFeedbackCmd()
+	b.addReflectionCmd()
 }
