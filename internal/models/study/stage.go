@@ -18,7 +18,7 @@ const (
 func (s Stage) String() string {
 	switch s {
 	case StageWait:
-		return "다음 회차 대기"
+		return "다음 라운드 대기"
 	case StageRegistrationOpened:
 		return "발표자 등록"
 	case StageRegistrationClosed:

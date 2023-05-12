@@ -12,6 +12,20 @@ services:
       - source: bot-config
         target: /app/config.json
 
+  redis:
+    container_name: redis
+    image: redis:7.0.11-alpine
+    command: redis-server /usr/local/etc/redis/redis.conf
+    labels:
+      - "name=redis"
+      - "mode=standalone"
+    restart: always
+    ports:
+      - 6379:6379
+    volumes:
+      - ./configs/redis.conf:/usr/local/etc/redis/redis.conf
+    
+
 configs:
   bot-config:
-    file: ./config-dev.json
+    file: ./configs/config-dev.json
