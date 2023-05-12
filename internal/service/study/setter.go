@@ -83,7 +83,7 @@ func (svc *serviceImpl) SetMemberRegistration(ctx context.Context, guildID, memb
 		}
 
 		if s.CurrentStage != models.StageRegistrationOpened {
-			return nil, errors.Join(ErrInvalidStage, errors.New("발표자 등록 및 등록 해지가 불가능한 단계입니다."))
+			return nil, errors.Join(ErrInvalidStage, errors.New("발표자 등록 및 등록 해지가 불가능한 단계입니다"))
 		}
 
 		// if there is no ongoing round, return error
@@ -156,7 +156,7 @@ func (svc *serviceImpl) SetMemberContent(ctx context.Context, guildID, memberID,
 
 		// check if study is in submission stage
 		if s.CurrentStage != models.StageSubmissionOpened {
-			return nil, errors.Join(ErrInvalidStage, errors.New("발표 자료 제출이 불가능합니다."))
+			return nil, errors.Join(ErrInvalidStage, errors.New("발표 자료 제출이 불가능합니다"))
 		}
 
 		// if there is no ongoing round, return error
@@ -220,7 +220,7 @@ func (svc *serviceImpl) SetSpeakerAttended(ctx context.Context, guildID, memberI
 
 		// check if presentation is started
 		if s.CurrentStage < models.StagePresentationStarted {
-			return nil, errors.Join(ErrInvalidStage, errors.New("발표자 출석 확인이 불가능합니다."))
+			return nil, errors.Join(ErrInvalidStage, errors.New("발표자 출석 확인이 불가능합니다"))
 		}
 
 		// if there is no ongoing round, return error
@@ -284,7 +284,7 @@ func (svc *serviceImpl) SetStudyContent(ctx context.Context, guildID, content st
 
 		// check if presentation is finished
 		if s.CurrentStage < models.StagePresentationFinished {
-			return nil, errors.Join(ErrInvalidStage, errors.New("스터디 자료 링크 등록이 불가능합니다."))
+			return nil, errors.Join(ErrInvalidStage, errors.New("스터디 자료 링크 등록이 불가능합니다"))
 		}
 
 		// if there is no ongoing round, return error
@@ -338,7 +338,7 @@ func (svc *serviceImpl) SetReviewer(ctx context.Context, guildID, reviewerID, re
 
 		// check if review is ongoing
 		if s.CurrentStage < models.StageReviewOpened {
-			return nil, errors.Join(ErrInvalidStage, errors.New("리뷰어 지정이 불가능합니다."))
+			return nil, errors.Join(ErrInvalidStage, errors.New("리뷰어 지정이 불가능합니다"))
 		}
 
 		// if there is no ongoing round, return error
@@ -360,23 +360,23 @@ func (svc *serviceImpl) SetReviewer(ctx context.Context, guildID, reviewerID, re
 		// check if reviewer is member of ongoing study
 		_, ok := r.GetMember(reviewerID)
 		if !ok {
-			return nil, errors.Join(ErrMemberNotFound, errors.New("스터디에 참여한 사용자만 리뷰 참여가 가능합니다."))
+			return nil, errors.Join(ErrMemberNotFound, errors.New("스터디에 참여한 사용자만 리뷰 참여가 가능합니다"))
 		}
 
 		// check if reviewee is member of ongoing study
 		reviewee, ok := r.GetMember(revieweeID)
 		if !ok {
-			return nil, errors.Join(ErrMemberNotFound, errors.New("리뷰 대상자는 스터디에 참여한 사용자여야 합니다."))
+			return nil, errors.Join(ErrMemberNotFound, errors.New("리뷰 대상자는 스터디에 참여한 사용자여야 합니다"))
 		}
 
 		// check if reviewee is registered and attended presentation
 		if !reviewee.Registered || !reviewee.Attended {
-			return nil, errors.New("리뷰 대상자는 발표에 참여한 사용자여야 합니다.")
+			return nil, errors.New("리뷰 대상자는 발표에 참여한 사용자여야 합니다")
 		}
 
 		// check if reviewer already reviewed
 		if reviewee.IsReviewer(reviewerID) {
-			return nil, errors.New("이미 리뷰를 작성하였습니다.")
+			return nil, errors.New("이미 리뷰를 작성하였습니다")
 		}
 
 		// set reviewer

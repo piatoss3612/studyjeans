@@ -164,7 +164,7 @@ func (svc *serviceImpl) MoveStage(ctx context.Context, guildID string) (*models.
 
 		// check if stage is valid
 		if !s.CurrentStage.CanMoveTo(next) {
-			return nil, errors.Join(ErrInvalidStage, errors.New(fmt.Sprintf("스터디 라운드 %s 종료가 불가능한 단계입니다.", s.CurrentStage.String())))
+			return nil, errors.Join(ErrInvalidStage, fmt.Errorf("스터디 라운드 %s 종료가 불가능한 단계입니다", s.CurrentStage.String()))
 		}
 
 		// move to next stage
@@ -223,7 +223,7 @@ func (svc *serviceImpl) CloseStudyRound(ctx context.Context, guildID string) (*m
 
 		// check if review is finished
 		if s.CurrentStage != models.StageReviewClosed {
-			return nil, errors.Join(ErrInvalidStage, errors.New(fmt.Sprintf("스터디 라운드 %s 종료가 불가능한 단계입니다.", s.CurrentStage.String())))
+			return nil, errors.Join(ErrInvalidStage, fmt.Errorf("스터디 라운드 %s 종료가 불가능합니다", s.CurrentStage.String()))
 		}
 
 		// update management
