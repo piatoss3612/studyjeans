@@ -68,6 +68,7 @@ func (si *StoreImpl) UpdateStudy(ctx context.Context, s models.Study) (*models.S
 			Key: "$set", Value: bson.D{
 				{Key: "guild_id", Value: s.GuildID},
 				{Key: "notice_channel_id", Value: s.NoticeChannelID},
+				{Key: "reflection_channel_id", Value: s.ReflectionChannelID},
 				{Key: "manager_id", Value: s.ManagerID},
 				{Key: "ongoing_round_id", Value: s.OngoingRoundID},
 				{Key: "current_stage", Value: s.CurrentStage},

@@ -16,6 +16,7 @@ type Service interface {
 	GetRounds(ctx context.Context, guildID string) ([]*models.Round, error)
 
 	SetNoticeChannelID(ctx context.Context, guildID, channelID string) error
+	SetReflectionChannelID(ctx context.Context, guildID, channelID string) error
 	SetMemberRegistration(ctx context.Context, guildID, memberID, name, subject string, register bool) error
 	SetMemberContent(ctx context.Context, guildID, memberID, contentURL string) error
 	SetSpeakerAttended(ctx context.Context, guildID, memberID string, attended bool) error

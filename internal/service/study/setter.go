@@ -35,6 +35,34 @@ func (svc *serviceImpl) SetNoticeChannelID(ctx context.Context, guildID, channel
 	return err
 }
 
+// set reflection channel id
+func (svc *serviceImpl) SetReflectionChannelID(ctx context.Context, guildID, channelID string) error {
+	defer svc.mtx.Unlock()
+	svc.mtx.Lock()
+
+	txFn := func(sc context.Context) (interface{}, error) {
+		// find study
+		s, err := svc.tx.FindStudy(sc, guildID)
+		if err != nil {
+			return nil, err
+		}
+
+		// if there is no study, return error
+		if s == nil {
+			return nil, ErrStudyNotFound
+		}
+
+		s.SetReflectionChannelID(channelID)
+
+		// update study
+		return svc.tx.UpdateStudy(sc, *s)
+	}
+
+	// execute transaction
+	_, err := svc.tx.ExecTx(ctx, txFn)
+	return err
+}
+
 // set member registration
 func (svc *serviceImpl) SetMemberRegistration(ctx context.Context, guildID, memberID, name, subject string, register bool) error {
 	defer svc.mtx.Unlock()
