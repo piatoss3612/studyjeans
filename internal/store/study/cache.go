@@ -10,7 +10,7 @@ import (
 type Cache interface {
 	Exists(ctx context.Context, key string) bool
 	Get(ctx context.Context, key string, value interface{}) error
-	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
+	Set(ctx context.Context, key string, value interface{}, ttl ...time.Duration) error
 }
 
 type cacheImpl struct {
@@ -29,11 +29,16 @@ func (c *cacheImpl) Get(ctx context.Context, key string, value interface{}) erro
 	return c.client.Get(ctx, key, value)
 }
 
-func (c *cacheImpl) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
-	return c.client.Set(&cache.Item{
+func (c *cacheImpl) Set(ctx context.Context, key string, value interface{}, ttl ...time.Duration) error {
+	item := &cache.Item{
 		Ctx:   ctx,
 		Key:   key,
 		Value: value,
-		TTL:   ttl,
-	})
+	}
+
+	if len(ttl) > 0 {
+		item.TTL = ttl[0]
+	}
+
+	return c.client.Set(item)
 }
