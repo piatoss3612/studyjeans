@@ -5,13 +5,14 @@ import (
 )
 
 type Study struct {
-	ID              string `bson:"_id,omitempty"`
-	GuildID         string `bson:"guild_id"`
-	NoticeChannelID string `bson:"notice_channel_id"`
-	ManagerID       string `bson:"manager_id"`
-	OngoingRoundID  string `bson:"ongoing_round_id"`
-	CurrentStage    Stage  `bson:"current_stage"`
-	TotalRound      int8   `bson:"total_round"`
+	ID                  string `bson:"_id,omitempty"`
+	GuildID             string `bson:"guild_id"`
+	NoticeChannelID     string `bson:"notice_channel_id"`
+	ReflectionChannelID string `bson:"reflection_channel_id"`
+	ManagerID           string `bson:"manager_id"`
+	OngoingRoundID      string `bson:"ongoing_round_id"`
+	CurrentStage        Stage  `bson:"current_stage"`
+	TotalRound          int8   `bson:"total_round"`
 
 	CreatedAt time.Time `bson:"created_at"`
 	UpdatedAt time.Time `bson:"updated_at"`
@@ -19,13 +20,14 @@ type Study struct {
 
 func New() Study {
 	return Study{
-		GuildID:         "",
-		NoticeChannelID: "",
-		ManagerID:       "",
-		OngoingRoundID:  "",
-		CurrentStage:    StageNone,
-		CreatedAt:       time.Now(),
-		UpdatedAt:       time.Now(),
+		GuildID:             "",
+		NoticeChannelID:     "",
+		ReflectionChannelID: "",
+		ManagerID:           "",
+		OngoingRoundID:      "",
+		CurrentStage:        StageNone,
+		CreatedAt:           time.Now(),
+		UpdatedAt:           time.Now(),
 	}
 }
 
@@ -39,6 +41,10 @@ func (s *Study) SetGuildID(guildID string) {
 
 func (s *Study) SetNoticeChannelID(channelID string) {
 	s.NoticeChannelID = channelID
+}
+
+func (s *Study) SetReflectionChannelID(channelID string) {
+	s.ReflectionChannelID = channelID
 }
 
 func (s *Study) SetManagerID(userID string) {

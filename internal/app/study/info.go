@@ -13,11 +13,11 @@ import (
 var (
 	myStudyInfoCmd = discordgo.ApplicationCommand{
 		Name:        "내-정보",
-		Description: "내 스터디 회차 등록 정보를 확인합니다.",
+		Description: "나의 스터디 라운드 등록 정보를 확인합니다.",
 	}
 	studyRoundInfoCmd = discordgo.ApplicationCommand{
 		Name:        "라운드-정보",
-		Description: "현재 진행중인 스터디 라운드 정보를 확인합니다.",
+		Description: "진행중인 스터디 라운드 정보를 확인합니다.",
 	}
 	speakerInfoSelectMenu = discordgo.SelectMenu{
 		CustomID:    "speaker-info",
