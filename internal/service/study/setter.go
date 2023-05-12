@@ -436,9 +436,14 @@ func (svc *serviceImpl) SetSentReflection(ctx context.Context, guildID, memberID
 		}
 
 		// check if member exists
-		m, ok := r.Members[memberID]
+		m, ok := r.GetMember(memberID)
 		if !ok {
 			return nil, ErrMemberNotFound
+		}
+
+		// check if member is registered and attended presentation
+		if !m.Registered || !m.Attended {
+			return nil, errors.New("발표에 참여한 사용자만 회고를 작성할 수 있습니다")
 		}
 
 		// check if member already sent reflection
@@ -448,6 +453,9 @@ func (svc *serviceImpl) SetSentReflection(ctx context.Context, guildID, memberID
 
 		// set sent reflection
 		m.SetSentReflection(true)
+
+		// set updated member to round
+		r.SetMember(memberID, m)
 
 		// update round
 		_, err = svc.tx.UpdateRound(sc, *r)
