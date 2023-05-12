@@ -22,6 +22,7 @@ type Service interface {
 	SetSpeakerAttended(ctx context.Context, guildID, memberID string, attended bool) error
 	SetStudyContent(ctx context.Context, guildID, content string) error
 	SetReviewer(ctx context.Context, guildID, reviewerID, revieweeID string) error
+	SetSentReflection(ctx context.Context, guildID, memberID string) (string, error)
 
 	NewStudyRound(ctx context.Context, guildID, title string, memberIDs []string) (*models.Study, error)
 	MoveStage(ctx context.Context, guildID string) (*models.Study, error)

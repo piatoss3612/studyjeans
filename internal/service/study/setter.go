@@ -3,6 +3,7 @@ package study
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	models "github.com/piatoss3612/presentation-helper-bot/internal/models/study"
 )
@@ -391,4 +392,78 @@ func (svc *serviceImpl) SetReviewer(ctx context.Context, guildID, reviewerID, re
 	// execute transaction
 	_, err := svc.tx.ExecTx(ctx, txFn)
 	return err
+}
+
+// set sentReflection of member
+func (svc *serviceImpl) SetSentReflection(ctx context.Context, guildID, memberID string) (string, error) {
+	defer svc.mtx.Unlock()
+	svc.mtx.Lock()
+
+	txFn := func(sc context.Context) (interface{}, error) {
+		// find study
+		s, err := svc.tx.FindStudy(sc, guildID)
+		if err != nil {
+			return nil, err
+		}
+
+		// if there is no study, return error
+		if s == nil {
+			return nil, ErrStudyNotFound
+		}
+
+		if s.CurrentStage < models.StagePresentationFinished {
+			return nil, errors.Join(ErrInvalidStage, fmt.Errorf("%s 단계에서는 회고를 작성할 수 없습니다", s.CurrentStage.String()))
+		}
+
+		// check if there is ongoing round
+		if s.OngoingRoundID == "" {
+			return nil, ErrRoundNotFound
+		}
+
+		if s.ReflectionChannelID == "" {
+			return nil, errors.New("회고 채널이 설정되지 않았습니다")
+		}
+
+		// find ongoing round
+		r, err := svc.tx.FindRound(sc, s.OngoingRoundID)
+		if err != nil {
+			return nil, err
+		}
+
+		// if there is no ongoing round, return error
+		if r == nil {
+			return nil, ErrRoundNotFound
+		}
+
+		// check if member exists
+		m, ok := r.Members[memberID]
+		if !ok {
+			return nil, ErrMemberNotFound
+		}
+
+		// check if member already sent reflection
+		if m.SentReflection {
+			return nil, ErrAlreadySentReflection
+		}
+
+		// set sent reflection
+		m.SetSentReflection(true)
+
+		// update round
+		_, err = svc.tx.UpdateRound(sc, *r)
+		if err != nil {
+			return nil, err
+		}
+
+		return s.ReflectionChannelID, nil
+	}
+
+	// execute transaction
+	id, err := svc.tx.ExecTx(ctx, txFn)
+	if err != nil {
+		return "", err
+	}
+
+	// return reflection channel id
+	return id.(string), nil
 }
