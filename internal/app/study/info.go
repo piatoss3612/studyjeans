@@ -18,11 +18,17 @@ var (
 		Name:        "라운드-정보",
 		Description: "현재 진행중인 스터디 라운드 정보를 확인합니다.",
 	}
+	speakerInfoSelectMenu = discordgo.SelectMenu{
+		CustomID:    "speaker-info",
+		Placeholder: "발표자 등록 정보 검색 🔍",
+		MenuType:    discordgo.UserSelectMenu,
+	}
 )
 
-func (b *StudyBot) addMyStudyInfoCmd() {
+func (b *StudyBot) addStudyInfoCmd() {
 	b.hdr.AddCommand(myStudyInfoCmd, b.myStudyInfoCmdHandler)
 	b.hdr.AddCommand(studyRoundInfoCmd, b.studyRoundInfoCmdHandler)
+	b.chdr.AddHandleFunc(speakerInfoSelectMenu.CustomID, b.speakerInfoSelectMenuHandler)
 }
 
 func (b *StudyBot) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -60,7 +66,7 @@ func (b *StudyBot) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.Inte
 				Content: user.Mention(),
 				Flags:   discordgo.MessageFlagsEphemeral,
 				Embeds: []*discordgo.MessageEmbed{
-					MyStudyInfoEmbed(user, member),
+					SpeakerInfoEmbed(user, member),
 				},
 			},
 		})
@@ -74,10 +80,93 @@ func (b *StudyBot) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.Inte
 }
 
 func (b *StudyBot) studyRoundInfoCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	// TODO: 라운드 정보를 보여주는 기능 추가
+	cmd := func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+		var user *discordgo.User
+
+		// command should be invoked only in guild
+		if i.Member != nil && i.Member.User != nil {
+			user = i.Member.User
+		}
+
+		if user == nil {
+			return ErrUserNotFound
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		round, err := b.svc.GetOngoingRound(ctx, i.GuildID)
+		if err != nil {
+			return err
+		}
+
+		bot := s.State.User
+
+		embed := &discordgo.MessageEmbed{
+			Author: &discordgo.MessageEmbedAuthor{
+				Name:    bot.Username,
+				IconURL: bot.AvatarURL(""),
+			},
+			Title:     "현재 진행중인 스터디 라운드 정보",
+			Thumbnail: &discordgo.MessageEmbedThumbnail{URL: bot.AvatarURL("")},
+			Fields: []*discordgo.MessageEmbedField{
+
+				{
+					Name:   "번호",
+					Value:  fmt.Sprintf("```%d```", round.Number),
+					Inline: true,
+				},
+				{
+					Name:   "제목",
+					Value:  fmt.Sprintf("```%s```", round.Title),
+					Inline: true,
+				},
+				{
+					Name:   "진행 단계",
+					Value:  fmt.Sprintf("```%s```", round.Stage.String()),
+					Inline: true,
+				},
+				{
+					Name: "발표 결과 자료",
+					Value: fmt.Sprintf("```%s```", func() string {
+						if round.ContentURL == "" {
+							return "미등록"
+						}
+						return round.ContentURL
+					}()),
+				},
+			},
+			Timestamp: time.Now().Format(time.RFC3339),
+		}
+
+		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Flags:  discordgo.MessageFlagsEphemeral,
+				Embeds: []*discordgo.MessageEmbed{embed},
+				Components: []discordgo.MessageComponent{
+					discordgo.ActionsRow{
+						Components: []discordgo.MessageComponent{
+							speakerInfoSelectMenu,
+						},
+					},
+				},
+			},
+		})
+	}
+
+	err := cmd(s, i)
+	if err != nil {
+		b.sugar.Errorw(err.Error(), "event", "study-round-info")
+		_ = errorInteractionRespond(s, i, err)
+	}
 }
 
-func MyStudyInfoEmbed(u *discordgo.User, m study.Member) *discordgo.MessageEmbed {
+func (b *StudyBot) speakerInfoSelectMenuHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	// TODO: implement
+}
+
+func SpeakerInfoEmbed(u *discordgo.User, m study.Member) *discordgo.MessageEmbed {
 	return &discordgo.MessageEmbed{
 		Title: "나의 스터디 등록 정보",
 		Thumbnail: &discordgo.MessageEmbedThumbnail{

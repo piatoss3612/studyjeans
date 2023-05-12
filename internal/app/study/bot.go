@@ -112,7 +112,7 @@ func (b *StudyBot) addCommands() {
 	b.addAdminCmd()
 	b.addHelpCmd()
 	b.addProfileCmd()
-	b.addMyStudyInfoCmd()
+	b.addStudyInfoCmd()
 	b.addRegistrationCmd()
 	b.addSubmitContentCmd()
 	b.addSendFeedbackCmd()
