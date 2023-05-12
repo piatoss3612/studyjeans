@@ -52,13 +52,17 @@ func run() {
 
 	sugar.Info("Connected to MongoDB!")
 
+	cache := mustInitStudyCache(ctx, cfg.RedisAddr, 5*time.Minute)
+
+	sugar.Info("Study cache is ready!")
+
 	svc := mustInitStudyService(ctx, store.NewTx(mongoClient, cfg.DBName), cfg.GuildID, cfg.ManagerID, cfg.NoticeChannelID, cfg.ReflectionChannelID)
 
 	sugar.Info("Study service is ready!")
 
 	sess := mustOpenDiscordSession(cfg.BotToken)
 
-	bot := app.New(sess, svc, sugar).Setup()
+	bot := app.New(sess, svc, cache, sugar).Setup()
 
 	stop, err := bot.Run()
 	if err != nil {
@@ -99,6 +103,15 @@ func mustConnectMongoDB(ctx context.Context, uri string) *mongo.Client {
 	}
 
 	return mongoClient
+}
+
+func mustInitStudyCache(ctx context.Context, addr string, ttl time.Duration) store.Cache {
+	cache, err := db.ConnectRedisCache(ctx, addr, ttl)
+	if err != nil {
+		sugar.Fatal(err)
+	}
+
+	return store.NewCache(cache)
 }
 
 func mustInitStudyService(ctx context.Context, tx store.Tx, guildID, managerID, noticeChID, reflectionChID string) study.Service {
