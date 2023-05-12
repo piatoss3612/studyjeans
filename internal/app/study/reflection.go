@@ -55,9 +55,24 @@ func (b *StudyBot) reflectionCmdHandler(s *discordgo.Session, i *discordgo.Inter
 		}
 
 		// TODO: create embed
+		embed := &discordgo.MessageEmbed{
+			Author: &discordgo.MessageEmbedAuthor{
+				Name:    user.Username,
+				IconURL: user.AvatarURL(""),
+			},
+			Title: "발표회고",
+			Fields: []*discordgo.MessageEmbedField{
+				{
+					Name:  "내용",
+					Value: content,
+				},
+			},
+			Color:     0x00ffff,
+			Timestamp: time.Now().Format(time.RFC3339),
+		}
 
 		// send reflection
-		_, err = s.ChannelMessageSend(reflectionChID, content)
+		_, err = s.ChannelMessageSendEmbed(reflectionChID, embed)
 		if err != nil {
 			return err
 		}
