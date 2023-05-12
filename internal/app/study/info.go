@@ -92,6 +92,8 @@ func (b *StudyBot) studyRoundInfoCmdHandler(s *discordgo.Session, i *discordgo.I
 			return ErrUserNotFound
 		}
 
+		// TODO: load cached round info or fetch from db if not exists
+
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
@@ -100,44 +102,7 @@ func (b *StudyBot) studyRoundInfoCmdHandler(s *discordgo.Session, i *discordgo.I
 			return err
 		}
 
-		bot := s.State.User
-
-		embed := &discordgo.MessageEmbed{
-			Author: &discordgo.MessageEmbedAuthor{
-				Name:    bot.Username,
-				IconURL: bot.AvatarURL(""),
-			},
-			Title:     "현재 진행중인 스터디 라운드 정보",
-			Thumbnail: &discordgo.MessageEmbedThumbnail{URL: bot.AvatarURL("")},
-			Fields: []*discordgo.MessageEmbedField{
-
-				{
-					Name:   "번호",
-					Value:  fmt.Sprintf("```%d```", round.Number),
-					Inline: true,
-				},
-				{
-					Name:   "제목",
-					Value:  fmt.Sprintf("```%s```", round.Title),
-					Inline: true,
-				},
-				{
-					Name:   "진행 단계",
-					Value:  fmt.Sprintf("```%s```", round.Stage.String()),
-					Inline: true,
-				},
-				{
-					Name: "발표 결과 자료",
-					Value: fmt.Sprintf("```%s```", func() string {
-						if round.ContentURL == "" {
-							return "미등록"
-						}
-						return round.ContentURL
-					}()),
-				},
-			},
-			Timestamp: time.Now().Format(time.RFC3339),
-		}
+		embed := studyRoundInfoEmbed(s.State.User, round)
 
 		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -164,6 +129,45 @@ func (b *StudyBot) studyRoundInfoCmdHandler(s *discordgo.Session, i *discordgo.I
 
 func (b *StudyBot) speakerInfoSelectMenuHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	// TODO: implement
+}
+
+func studyRoundInfoEmbed(u *discordgo.User, r *study.Round) *discordgo.MessageEmbed {
+	return &discordgo.MessageEmbed{
+		Author: &discordgo.MessageEmbedAuthor{
+			Name:    u.Username,
+			IconURL: u.AvatarURL(""),
+		},
+		Title:     "현재 진행중인 스터디 라운드 정보",
+		Thumbnail: &discordgo.MessageEmbedThumbnail{URL: u.AvatarURL("")},
+		Fields: []*discordgo.MessageEmbedField{
+
+			{
+				Name:   "번호",
+				Value:  fmt.Sprintf("```%d```", r.Number),
+				Inline: true,
+			},
+			{
+				Name:   "제목",
+				Value:  fmt.Sprintf("```%s```", r.Title),
+				Inline: true,
+			},
+			{
+				Name:   "진행 단계",
+				Value:  fmt.Sprintf("```%s```", r.Stage.String()),
+				Inline: true,
+			},
+			{
+				Name: "발표 결과 자료",
+				Value: fmt.Sprintf("```%s```", func() string {
+					if r.ContentURL == "" {
+						return "미등록"
+					}
+					return r.ContentURL
+				}()),
+			},
+		},
+		Timestamp: time.Now().Format(time.RFC3339),
+	}
 }
 
 func SpeakerInfoEmbed(u *discordgo.User, m study.Member) *discordgo.MessageEmbed {
