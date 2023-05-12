@@ -52,7 +52,7 @@ func run() {
 
 	sugar.Info("Connected to MongoDB!")
 
-	svc := mustInitStudyService(ctx, store.NewTx(mongoClient, cfg.DBName), cfg.GuildID, cfg.ManagerID, cfg.NoticeChannelID)
+	svc := mustInitStudyService(ctx, store.NewTx(mongoClient, cfg.DBName), cfg.GuildID, cfg.ManagerID, cfg.NoticeChannelID, cfg.ReflectionChannelID)
 
 	sugar.Info("Study service is ready!")
 
@@ -101,8 +101,8 @@ func mustConnectMongoDB(ctx context.Context, uri string) *mongo.Client {
 	return mongoClient
 }
 
-func mustInitStudyService(ctx context.Context, tx store.Tx, guildID, managerID, noticeChID string) study.Service {
-	svc, err := study.NewService(ctx, tx, guildID, managerID, noticeChID)
+func mustInitStudyService(ctx context.Context, tx store.Tx, guildID, managerID, noticeChID, reflectionChID string) study.Service {
+	svc, err := study.NewService(ctx, tx, guildID, managerID, noticeChID, reflectionChID)
 	if err != nil {
 		sugar.Fatal(err)
 	}

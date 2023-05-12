@@ -35,16 +35,16 @@ type serviceImpl struct {
 }
 
 // create new service
-func NewService(ctx context.Context, tx store.Tx, guildID, managerID, noticeChID string) (Service, error) {
+func NewService(ctx context.Context, tx store.Tx, guildID, managerID, noticeChID, reflectionChID string) (Service, error) {
 	svc := &serviceImpl{
 		tx:  tx,
 		mtx: &sync.Mutex{},
 	}
-	return svc.setup(ctx, guildID, managerID, noticeChID)
+	return svc.setup(ctx, guildID, managerID, noticeChID, reflectionChID)
 }
 
 // setup service
-func (svc *serviceImpl) setup(ctx context.Context, guildID, managerID, noticeChID string) (*serviceImpl, error) {
+func (svc *serviceImpl) setup(ctx context.Context, guildID, managerID, noticeChID, reflectionChID string) (*serviceImpl, error) {
 	svc.mtx.Lock()
 	defer svc.mtx.Unlock()
 
@@ -63,6 +63,7 @@ func (svc *serviceImpl) setup(ctx context.Context, guildID, managerID, noticeChI
 			ns.SetGuildID(guildID)
 			ns.SetManagerID(managerID)
 			ns.SetNoticeChannelID(noticeChID)
+			ns.SetReflectionChannelID(reflectionChID)
 
 			_, err := svc.tx.CreateStudy(ctx, ns)
 			return nil, err
