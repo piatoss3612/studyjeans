@@ -9,13 +9,20 @@ import (
 	"github.com/piatoss3612/presentation-helper-bot/internal/models/study"
 )
 
-var myStudyInfoCmd = discordgo.ApplicationCommand{
-	Name:        "내-정보",
-	Description: "내 스터디 회차 등록 정보를 확인합니다.",
-}
+var (
+	myStudyInfoCmd = discordgo.ApplicationCommand{
+		Name:        "내-정보",
+		Description: "내 스터디 회차 등록 정보를 확인합니다.",
+	}
+	studyRoundInfoCmd = discordgo.ApplicationCommand{
+		Name:        "라운드-정보",
+		Description: "현재 진행중인 스터디 라운드 정보를 확인합니다.",
+	}
+)
 
 func (b *StudyBot) addMyStudyInfoCmd() {
 	b.hdr.AddCommand(myStudyInfoCmd, b.myStudyInfoCmdHandler)
+	b.hdr.AddCommand(studyRoundInfoCmd, b.studyRoundInfoCmdHandler)
 }
 
 func (b *StudyBot) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -64,6 +71,10 @@ func (b *StudyBot) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.Inte
 		b.sugar.Errorw(err.Error(), "event", "my-study-info")
 		_ = errorInteractionRespond(s, i, err)
 	}
+}
+
+func (b *StudyBot) studyRoundInfoCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	// TODO: 라운드 정보를 보여주는 기능 추가
 }
 
 func MyStudyInfoEmbed(u *discordgo.User, m study.Member) *discordgo.MessageEmbed {
