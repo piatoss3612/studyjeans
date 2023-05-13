@@ -5,23 +5,24 @@ import (
 )
 
 type Round struct {
-	ID      string `bson:"_id,omitempty"`
-	GuildID string `bson:"guild_id"`
+	ID      string `bson:"_id,omitempty" json:"id,omitempty"`
+	GuildID string `bson:"guild_id" json:"guild_id,omitempty"`
 
-	Number     int8              `bson:"number"`
-	Title      string            `bson:"title"`
-	ContentURL string            `bson:"content_url"`
-	Stage      Stage             `bson:"stage"`
-	Members    map[string]Member `bson:"members"`
+	Number     int8              `bson:"number" json:"number"`
+	Title      string            `bson:"title" json:"title"`
+	ContentURL string            `bson:"content_url" json:"content_url"`
+	Stage      Stage             `bson:"stage" json:"stage"`
+	Members    map[string]Member `bson:"members" json:"members"`
 
-	CreatedAt time.Time `bson:"created_at"`
-	UpdatedAt time.Time `bson:"updated_at"`
+	CreatedAt time.Time `bson:"created_at" json:"created_at"`
+	UpdatedAt time.Time `bson:"updated_at" json:"updated_at"`
 }
 
 func NewRound() Round {
 	return Round{
 		ID:        "",
 		GuildID:   "",
+		Number:    0,
 		Title:     "",
 		Members:   map[string]Member{},
 		CreatedAt: time.Now(),

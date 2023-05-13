@@ -1,13 +1,13 @@
 package study
 
 type Member struct {
-	Name           string          `bson:"name"`
-	Subject        string          `bson:"subject"`
-	ContentURL     string          `bson:"content_url"`
-	Registered     bool            `bson:"registered"`
-	Attended       bool            `bson:"attended"`
-	SentReflection bool            `bson:"sent_reflection"`
-	Reviewers      map[string]bool `bson:"reviewers"`
+	Name           string          `bson:"name" json:"name"`
+	Subject        string          `bson:"subject" json:"subject"`
+	ContentURL     string          `bson:"content_url" json:"content_url"`
+	Registered     bool            `bson:"registered" json:"registered"`
+	Attended       bool            `bson:"attended" json:"attended"`
+	SentReflection bool            `bson:"sent_reflection" json:"sent_reflection,omitempty"`
+	Reviewers      map[string]bool `bson:"reviewers" json:"reviewers,omitempty"`
 }
 
 func NewMember() Member {
