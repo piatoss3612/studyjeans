@@ -399,7 +399,7 @@ func (b *StudyBot) createStudyRoundHandler(s *discordgo.Session, i *discordgo.In
 		return err
 	}
 
-	embed := EmbedTemplate(s.State.User, "스터디 생성", fmt.Sprintf("**<%s>**가 생성되었습니다.", title))
+	embed := EmbedTemplate(s.State.User, "스터디 라운드 생성", fmt.Sprintf("**<%s>**가 생성되었습니다.", title))
 
 	// send a notice message
 	_, err = s.ChannelMessageSendEmbed(study.NoticeChannelID, embed)

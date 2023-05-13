@@ -204,7 +204,12 @@ func (b *StudyBot) speakerInfoSelectMenuHandler(s *discordgo.Session, i *discord
 		if !ok {
 			embed = ErrorEmbed("발표자 정보를 찾을 수 없습니다")
 		} else {
-			embed = SpeakerInfoEmbed(user, member)
+			selectedUser, err := s.User(selectedUserID)
+			if err != nil {
+				return err
+			}
+
+			embed = SpeakerInfoEmbed(selectedUser, member)
 		}
 
 		// if round does not exist in cache, set round to cache
@@ -276,7 +281,7 @@ func studyRoundInfoEmbed(u *discordgo.User, r *study.Round) *discordgo.MessageEm
 
 func SpeakerInfoEmbed(u *discordgo.User, m study.Member) *discordgo.MessageEmbed {
 	return &discordgo.MessageEmbed{
-		Title: "발표자 등록 정보",
+		Title: fmt.Sprintf("%s님의 발표 정보", u.Username),
 		Thumbnail: &discordgo.MessageEmbedThumbnail{
 			URL: u.AvatarURL(""),
 		},
@@ -302,7 +307,7 @@ func SpeakerInfoEmbed(u *discordgo.User, m study.Member) *discordgo.MessageEmbed
 				Inline: true,
 			},
 			{
-				Name: "발표 완료",
+				Name: "발표 참여",
 				Value: func() string {
 					if m.Attended {
 						return "```O```"

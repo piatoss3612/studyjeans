@@ -337,7 +337,7 @@ func (svc *serviceImpl) SetReviewer(ctx context.Context, guildID, reviewerID, re
 		}
 
 		// check if review is ongoing
-		if s.CurrentStage < models.StageReviewOpened {
+		if s.CurrentStage != models.StageReviewOpened {
 			return nil, errors.Join(ErrInvalidStage, errors.New("리뷰어 지정이 불가능합니다"))
 		}
 
