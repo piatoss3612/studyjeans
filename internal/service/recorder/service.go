@@ -16,10 +16,10 @@ type Service interface {
 type serviceImpl struct {
 	s             *sheets.Service
 	spreadsheetID string
-	eventSheetID  string
+	eventSheetID  int64
 }
 
-func NewService(s *sheets.Service, spreadsheetID, eventSheetID string) Service {
+func New(s *sheets.Service, spreadsheetID string, eventSheetID int64) Service {
 	return &serviceImpl{
 		s:             s,
 		spreadsheetID: spreadsheetID,

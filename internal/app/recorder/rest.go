@@ -5,41 +5,38 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
+	"github.com/piatoss3612/presentation-helper-bot/internal/service/recorder"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
-	"google.golang.org/api/sheets/v4"
 )
+
+var defaultPort = "8080"
 
 type Rest struct {
 	*http.Server
 
-	sheetsSrv     *sheets.Service
-	spreadsheetID string
-
+	svc recorder.Service
 	// TODO: message consumer
 
 	sugar *zap.SugaredLogger
 }
 
-func New(sheetsSrv *sheets.Service, spreadsheetID string, port string, sugar *zap.SugaredLogger) *Rest {
-	_, err := strconv.Atoi(port)
-	if err != nil {
-		port = "8080"
+func New(svc recorder.Service, sugar *zap.SugaredLogger, port ...string) *Rest {
+	srv := &http.Server{
+		Addr: fmt.Sprintf(":%s", defaultPort),
 	}
 
-	srv := &http.Server{
-		Addr: fmt.Sprintf(":%s", port),
+	if len(port) > 0 {
+		srv.Addr = fmt.Sprintf(":%s", port[0])
 	}
 
 	return &Rest{
-		Server:        srv,
-		sheetsSrv:     sheetsSrv,
-		spreadsheetID: spreadsheetID,
-		sugar:         sugar,
+		Server: srv,
+		svc:    svc,
+		sugar:  sugar,
 	}
 }
 
