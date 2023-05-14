@@ -4,7 +4,10 @@ go 1.20
 
 require (
 	github.com/bwmarrin/discordgo v0.27.1
+	github.com/go-redis/cache/v8 v8.4.4
+	github.com/go-redis/redis/v8 v8.11.3
 	github.com/joho/godotenv v1.5.1
+	github.com/rabbitmq/amqp091-go v1.8.1
 	github.com/spf13/viper v1.8.1
 	go.mongodb.org/mongo-driver v1.11.6
 	go.uber.org/zap v1.24.0
@@ -18,8 +21,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/go-redis/cache/v8 v8.4.4 // indirect
-	github.com/go-redis/redis/v8 v8.11.3 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
