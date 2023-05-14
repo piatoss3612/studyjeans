@@ -10,6 +10,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	_ "github.com/joho/godotenv/autoload"
 	app "github.com/piatoss3612/presentation-helper-bot/internal/app/study"
+	"github.com/piatoss3612/presentation-helper-bot/internal/config"
 	"github.com/piatoss3612/presentation-helper-bot/internal/service/study"
 	store "github.com/piatoss3612/presentation-helper-bot/internal/store/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/tools"
@@ -44,7 +45,7 @@ func run() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	mongoClient := mustConnectMongoDB(ctx, cfg.MongoURI)
+	mongoClient := mustConnectMongoDB(ctx, cfg.MongoDB.URI)
 	defer func() {
 		_ = mongoClient.Disconnect(context.Background())
 		sugar.Info("Disconnected from MongoDB!")
@@ -52,15 +53,18 @@ func run() {
 
 	sugar.Info("Connected to MongoDB!")
 
-	cache := mustInitStudyCache(ctx, cfg.RedisAddr, 1*time.Minute)
+	cache := mustInitStudyCache(ctx, cfg.Redis.Addr, 1*time.Minute)
 
 	sugar.Info("Study cache is ready!")
 
-	svc := mustInitStudyService(ctx, store.NewTx(mongoClient, cfg.DBName), cfg.GuildID, cfg.ManagerID, cfg.NoticeChannelID, cfg.ReflectionChannelID)
+	svc := mustInitStudyService(
+		ctx, store.NewTx(mongoClient, cfg.MongoDB.DBName),
+		cfg.Discord.GuildID, cfg.Discord.ManagerID, cfg.Discord.NoticeChannelID, cfg.Discord.ReflectionChannelID,
+	)
 
 	sugar.Info("Study service is ready!")
 
-	sess := mustOpenDiscordSession(cfg.BotToken)
+	sess := mustOpenDiscordSession(cfg.Discord.BotToken)
 
 	bot := app.New(sess, svc, cache, sugar).Setup()
 
@@ -87,8 +91,8 @@ func mustSetTimezone(tz string) {
 	time.Local = loc
 }
 
-func mustLoadConfig(path string) *Config {
-	cfg, err := NewConfig(path)
+func mustLoadConfig(path string) *config.StudyConfig {
+	cfg, err := config.NewStudyConfig(path)
 	if err != nil {
 		sugar.Fatal(err)
 	}
