@@ -47,14 +47,19 @@ func run() {
 	defer cancel()
 
 	sub, close := mustInitSubscriber(ctx, cfg.RabbitMQ.Addr, cfg.RabbitMQ.Exchange, cfg.RabbitMQ.Kind, cfg.RabbitMQ.Queue)
-	defer func() { _ = close() }()
+	defer func() {
+		_ = close()
+		sugar.Info("RabbitMQ connection is closed!")
+	}()
 
 	svc := mustInitRecorderService()
 
 	sugar.Info("Recorder service is ready!")
 
 	rest := app.New(svc, sub, sugar)
-	<-rest.Run()
+	stop := rest.Run()
+
+	rest.Listen(stop, cfg.RabbitMQ.Topics)
 }
 
 func mustLoadConfig(path string) *config.RecorderConfig {

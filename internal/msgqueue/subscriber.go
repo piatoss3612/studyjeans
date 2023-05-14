@@ -1,7 +1,6 @@
 package msgqueue
 
 import (
-	"context"
 	"errors"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -15,7 +14,7 @@ type Message struct {
 }
 
 type Subscriber interface {
-	Subscribe(ctx context.Context, topics ...string) (<-chan Message, <-chan error, error)
+	Subscribe(topics ...string) (<-chan Message, <-chan error, func(), error)
 }
 
 type subscriberImpl struct {
@@ -54,46 +53,42 @@ func (s *subscriberImpl) setup(exchange, kind, queue string) (Subscriber, error)
 	return s, nil
 }
 
-func (s *subscriberImpl) Subscribe(ctx context.Context, topics ...string) (<-chan Message, <-chan error, error) {
+func (s *subscriberImpl) Subscribe(topics ...string) (<-chan Message, <-chan error, func(), error) {
 	ch, err := s.conn.Channel()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	for _, topic := range topics {
 		if err := ch.QueueBind(s.queue, topic, s.exchange, false, nil); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 
 	delivery, err := ch.Consume(s.queue, "", false, false, false, false, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	messages := make(chan Message)
-	errors := make(chan error)
+	msgs := make(chan Message)
+	errs := make(chan error)
 
-	go s.handleMessage(ctx, delivery, messages, errors)
+	go s.handleMessage(delivery, msgs, errs)
 
-	return messages, errors, nil
-}
-
-func (s *subscriberImpl) handleMessage(ctx context.Context, delivery <-chan amqp.Delivery, msgs chan Message, errs chan error) {
-	defer func() {
+	return msgs, errs, func() {
+		_ = ch.Close()
 		close(msgs)
 		close(errs)
-	}()
+	}, nil
+}
 
-	select {
-	case <-ctx.Done():
-		return
-	case d := <-delivery:
+func (s *subscriberImpl) handleMessage(delivery <-chan amqp.Delivery, msgs chan<- Message, errs chan<- error) {
+	for d := range delivery {
 		eventName, ok := d.Headers["x-event-name"]
 		if !ok {
 			errs <- ErrMissingEventNameHeader
-			_ = d.Ack(false)
-			break
+			_ = d.Nack(false, false)
+			continue
 		}
 
 		msg := Message{
