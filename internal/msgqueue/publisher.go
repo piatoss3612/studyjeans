@@ -1,4 +1,4 @@
-package publisher
+package msgqueue
 
 import (
 	"context"
@@ -16,7 +16,7 @@ type publisherImpl struct {
 	exchange string
 }
 
-func New(conn *amqp.Connection, exchange, kind string) (Publisher, error) {
+func NewPublisher(conn *amqp.Connection, exchange, kind string) (Publisher, error) {
 	pub := &publisherImpl{
 		conn:     conn,
 		exchange: exchange,

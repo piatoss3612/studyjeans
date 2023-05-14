@@ -11,6 +11,7 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	app "github.com/piatoss3612/presentation-helper-bot/internal/app/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/config"
+	"github.com/piatoss3612/presentation-helper-bot/internal/msgqueue"
 	"github.com/piatoss3612/presentation-helper-bot/internal/service/study"
 	store "github.com/piatoss3612/presentation-helper-bot/internal/store/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/tools"
@@ -56,6 +57,10 @@ func run() {
 	cache := mustInitStudyCache(ctx, cfg.Redis.Addr, 1*time.Minute)
 
 	sugar.Info("Study cache is ready!")
+
+	_ = mustInitPublisher(ctx, cfg.RabbitMQ.Addr, cfg.RabbitMQ.Exchange, cfg.RabbitMQ.Kind)
+
+	sugar.Info("Study/Event publisher is ready!")
 
 	svc := mustInitStudyService(
 		ctx, store.NewTx(mongoClient, cfg.MongoDB.DBName),
@@ -116,6 +121,17 @@ func mustInitStudyCache(ctx context.Context, addr string, ttl time.Duration) sto
 	}
 
 	return store.NewCache(cache)
+}
+
+func mustInitPublisher(ctx context.Context, addr, exchange, kind string) msgqueue.Publisher {
+	rabbit := <-tools.RedialRabbitMQ(ctx, addr)
+
+	pub, err := msgqueue.NewPublisher(rabbit, exchange, kind)
+	if err != nil {
+		sugar.Fatal(err)
+	}
+
+	return pub
 }
 
 func mustInitStudyService(ctx context.Context, tx store.Tx, guildID, managerID, noticeChID, reflectionChID string) study.Service {
