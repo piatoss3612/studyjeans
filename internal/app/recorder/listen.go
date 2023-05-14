@@ -28,7 +28,7 @@ func (r *Rest) Listen(stop <-chan bool, topics []string) {
 			switch fields[0] {
 			case "study":
 				switch fields[1] {
-				case "finished":
+				case "closed":
 					round := models.NewRound()
 					if err := json.Unmarshal(msg.Body, &round); err != nil {
 						r.sugar.Errorf("Failed to unmarshal message body", "error", err)

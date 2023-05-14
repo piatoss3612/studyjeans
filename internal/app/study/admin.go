@@ -592,11 +592,24 @@ func (b *StudyBot) endStudyRoundHandler(s *discordgo.Session, i *discordgo.Inter
 		return ErrNotManager
 	}
 
+	// get round
+	round, err := b.svc.GetOngoingRound(ctx, i.GuildID)
+	if err != nil {
+		return err
+	}
+
+	if round == nil {
+		return ErrRoundNotFound
+	}
+
 	// end study
 	study, err = b.svc.CloseStudyRound(ctx, i.GuildID)
 	if err != nil {
 		return err
 	}
+
+	// publish round result
+	go b.publishRoundClosed(*round)
 
 	// update game status
 	err = s.UpdateGameStatus(0, study.CurrentStage.String())
