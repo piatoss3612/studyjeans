@@ -14,3 +14,28 @@ const (
 	StageReviewOpened         Stage = 8
 	StageReviewClosed         Stage = 9
 )
+
+func (s Stage) String() string {
+	switch s {
+	case StageWait:
+		return "다음 라운드 대기"
+	case StageRegistrationOpened:
+		return "발표자 등록"
+	case StageRegistrationClosed:
+		return "발표자 등록 마감"
+	case StageSubmissionOpened:
+		return "발표 자료 제출"
+	case StageSubmissionClosed:
+		return "발표 자료 제출 마감"
+	case StagePresentationStarted:
+		return "발표"
+	case StagePresentationFinished:
+		return "발표 종료"
+	case StageReviewOpened:
+		return "피드백"
+	case StageReviewClosed:
+		return "피드백 마감"
+	default:
+		return "초기화"
+	}
+}

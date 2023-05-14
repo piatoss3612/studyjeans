@@ -6,8 +6,8 @@ import (
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
-	"github.com/piatoss3612/presentation-helper-bot/internal/app/recorder"
-	service "github.com/piatoss3612/presentation-helper-bot/internal/service/recorder"
+	app "github.com/piatoss3612/presentation-helper-bot/internal/app/recorder"
+	"github.com/piatoss3612/presentation-helper-bot/internal/service/recorder"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
@@ -36,12 +36,24 @@ func main() {
 }
 
 func run() {
-	srv := service.New(mustInitSheetsService(), os.Getenv("SPREADSHEET_ID"), 0)
+	srv := mustInitRecorderService()
 
 	sugar.Info("Recorder service is ready!")
 
-	rest := recorder.New(srv, sugar)
+	rest := app.New(srv, sugar)
 	<-rest.Run()
+}
+
+func mustInitRecorderService() recorder.Service {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	srv, err := recorder.New(ctx, mustInitSheetsService(), os.Getenv("SPREADSHEET_ID"), 0)
+	if err != nil {
+		sugar.Fatal(err)
+	}
+
+	return srv
 }
 
 func mustInitSheetsService() *sheets.Service {
