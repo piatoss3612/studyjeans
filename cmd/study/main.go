@@ -118,6 +118,10 @@ func mustInitStudyCache(ctx context.Context, addr string, ttl time.Duration) sto
 func mustInitPublisher(ctx context.Context, addr, exchange, kind string) (msgqueue.Publisher, func() error) {
 	rabbit := <-tools.RedialRabbitMQ(ctx, addr)
 
+	if rabbit == nil {
+		sugar.Fatal("Failed to connect to RabbitMQ")
+	}
+
 	pub, err := msgqueue.NewPublisher(rabbit, exchange, kind)
 	if err != nil {
 		sugar.Fatal(err)

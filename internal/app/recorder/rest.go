@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/piatoss3612/presentation-helper-bot/internal/msgqueue"
 	"github.com/piatoss3612/presentation-helper-bot/internal/service/recorder"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
@@ -19,12 +20,12 @@ type Rest struct {
 	*http.Server
 
 	svc recorder.Service
-	// TODO: message consumer
+	sub msgqueue.Subscriber
 
 	sugar *zap.SugaredLogger
 }
 
-func New(svc recorder.Service, sugar *zap.SugaredLogger, port ...string) *Rest {
+func New(svc recorder.Service, sub msgqueue.Subscriber, sugar *zap.SugaredLogger, port ...string) *Rest {
 	srv := &http.Server{
 		Addr: fmt.Sprintf(":%s", defaultPort),
 	}
@@ -36,6 +37,7 @@ func New(svc recorder.Service, sugar *zap.SugaredLogger, port ...string) *Rest {
 	return &Rest{
 		Server: srv,
 		svc:    svc,
+		sub:    sub,
 		sugar:  sugar,
 	}
 }

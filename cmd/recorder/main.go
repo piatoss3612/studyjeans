@@ -2,13 +2,17 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 	"strconv"
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
 	app "github.com/piatoss3612/presentation-helper-bot/internal/app/recorder"
+	"github.com/piatoss3612/presentation-helper-bot/internal/config"
+	"github.com/piatoss3612/presentation-helper-bot/internal/msgqueue"
 	"github.com/piatoss3612/presentation-helper-bot/internal/service/recorder"
+	"github.com/piatoss3612/presentation-helper-bot/internal/tools"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
@@ -37,12 +41,45 @@ func main() {
 }
 
 func run() {
-	srv := mustInitRecorderService()
+	cfg := mustLoadConfig(os.Getenv("RECORDER_CONFIG_FILE"))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	sub, close := mustInitSubscriber(ctx, cfg.RabbitMQ.Addr, cfg.RabbitMQ.Exchange, cfg.RabbitMQ.Kind, cfg.RabbitMQ.Queue)
+	defer func() { _ = close() }()
+
+	svc := mustInitRecorderService()
 
 	sugar.Info("Recorder service is ready!")
 
-	rest := app.New(srv, sugar)
+	rest := app.New(svc, sub, sugar)
 	<-rest.Run()
+}
+
+func mustLoadConfig(path string) *config.RecorderConfig {
+	cfg, err := config.NewRecorderConfig(path)
+	if err != nil {
+		sugar.Fatal(err)
+	}
+
+	return cfg
+}
+
+func mustInitSubscriber(ctx context.Context, addr, exchange, kind, queue string) (msgqueue.Subscriber, func() error) {
+	rabbit := <-tools.RedialRabbitMQ(ctx, addr)
+
+	if rabbit == nil {
+		sugar.Fatal("Failed to connect to RabbitMQ")
+	}
+
+	sub, err := msgqueue.NewSubscriber(rabbit, exchange, kind, queue)
+	if err != nil {
+		log.Println(err)
+		sugar.Fatal(err)
+	}
+
+	return sub, func() error { return rabbit.Close() }
 }
 
 func mustInitRecorderService() recorder.Service {
