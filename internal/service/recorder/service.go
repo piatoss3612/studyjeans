@@ -11,6 +11,21 @@ import (
 	"google.golang.org/api/sheets/v4"
 )
 
+var labelFormat = &sheets.CellFormat{
+	TextFormat: &sheets.TextFormat{
+		Bold: true,
+		ForegroundColor: &sheets.Color{
+			Red:   1.0,
+			Green: 1.0,
+			Blue:  1.0,
+		},
+	},
+	BackgroundColor: &sheets.Color{
+		Blue: 0.8,
+	},
+	HorizontalAlignment: "CENTER",
+}
+
 type Service interface {
 	RecordRound(ctx context.Context, r models.Round) error
 	RecordEvent(ctx context.Context, e event.Event) error
@@ -33,7 +48,95 @@ func New(ctx context.Context, s *sheets.Service, spreadsheetID string, eventShee
 }
 
 func (svc *serviceImpl) setup(ctx context.Context) (Service, error) {
-	// TODO: setup spreadsheet
+	// get spreadsheet
+	resp, err := svc.s.Spreadsheets.Get(svc.spreadsheetID).Context(ctx).Do()
+	if err != nil {
+		return nil, err
+	}
+
+	// check status code
+	if resp.HTTPStatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code while getting spreadsheet: %d", resp.HTTPStatusCode)
+	}
+
+	// check event sheet exists
+	var eventSheetExists bool
+
+	for _, sheet := range resp.Sheets {
+		if sheet.Properties.SheetId == svc.eventSheetID {
+			eventSheetExists = true
+			break
+		}
+	}
+
+	if !eventSheetExists {
+		// create event sheet
+		addSheetReq := &sheets.AddSheetRequest{
+			Properties: &sheets.SheetProperties{
+				Title:     "이벤트 로그",
+				SheetId:   svc.eventSheetID,
+				SheetType: "GRID",
+			},
+		}
+
+		appendCellsReq := &sheets.AppendCellsRequest{
+			SheetId: svc.eventSheetID,
+			Fields:  "*",
+			Rows: []*sheets.RowData{
+				{
+					Values: []*sheets.CellData{
+						{
+							UserEnteredFormat: labelFormat,
+							UserEnteredValue: &sheets.ExtendedValue{
+								StringValue: func() *string {
+									s := "이벤트 이름"
+									return &s
+								}(),
+							},
+						},
+						{
+							UserEnteredFormat: labelFormat,
+							UserEnteredValue: &sheets.ExtendedValue{
+								StringValue: func() *string {
+									s := "설명"
+									return &s
+								}(),
+							},
+						},
+						{
+							UserEnteredFormat: labelFormat,
+							UserEnteredValue: &sheets.ExtendedValue{
+								StringValue: func() *string {
+									s := "시간"
+									return &s
+								}(),
+							},
+						},
+					},
+				},
+			},
+		}
+
+		resp, err := svc.s.Spreadsheets.BatchUpdate(svc.spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
+			Requests: []*sheets.Request{
+				{
+					AddSheet: addSheetReq,
+				},
+				{
+					AppendCells: appendCellsReq,
+				},
+			},
+		}).Context(ctx).Do()
+		if err != nil {
+			return nil, err
+		}
+
+		// check status code
+		if resp.HTTPStatusCode != http.StatusOK {
+			return nil, fmt.Errorf("unexpected status code while adding sheet: %d", resp.HTTPStatusCode)
+		}
+	}
+
 	return svc, nil
 }
 
@@ -134,21 +237,6 @@ func (svc *serviceImpl) RecordEvent(ctx context.Context, e event.Event) error {
 }
 
 func (svc *serviceImpl) rowsFromRoundData(r models.Round) []*sheets.RowData {
-	labelFormat := &sheets.CellFormat{
-		TextFormat: &sheets.TextFormat{
-			Bold: true,
-			ForegroundColor: &sheets.Color{
-				Red:   1.0,
-				Green: 1.0,
-				Blue:  1.0,
-			},
-		},
-		BackgroundColor: &sheets.Color{
-			Blue: 0.8,
-		},
-		HorizontalAlignment: "CENTER",
-	}
-
 	rows := []*sheets.RowData{
 		{
 			Values: []*sheets.CellData{

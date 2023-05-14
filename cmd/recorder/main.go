@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os"
+	"strconv"
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
@@ -48,7 +49,12 @@ func mustInitRecorderService() recorder.Service {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	srv, err := recorder.New(ctx, mustInitSheetsService(), os.Getenv("SPREADSHEET_ID"), 0)
+	eventSheetID, err := strconv.ParseInt(os.Getenv("EVENT_SHEET_ID"), 10, 64)
+	if err != nil {
+		sugar.Fatal(err)
+	}
+
+	srv, err := recorder.New(ctx, mustInitSheetsService(), os.Getenv("SPREADSHEET_ID"), eventSheetID)
 	if err != nil {
 		sugar.Fatal(err)
 	}
