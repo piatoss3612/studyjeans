@@ -19,18 +19,18 @@ build_image: build_study_image build_recorder_image
 
 build_study_image:
 	@echo "Build docker image for study bot"
-	docker build -t piatoss3612/presentation-helper-bot:$(version) -f ./build/study/Dockerfile .
+	docker build -t piatoss3612/study-bot:$(version) -f ./build/study/Dockerfile .
 
 build_recorder_image:
 	@echo "Build docker image for recorder"
-	docker build -t piatoss3612/spreadsheets-recorder:$(version) -f ./build/recorder/Dockerfile .
+	docker build -t piatoss3612/recorder:$(version) -f ./build/recorder/Dockerfile .
 
 push_image: push_study_image push_recorder_image
 
 push_study_image:
 	@echo "Push study bot docker image"
-	docker push piatoss3612/presentation-helper-bot:$(version)
+	docker push piatoss3612/study-bot:$(version)
 
 push_recorder_image:
 	@echo "Push recorder docker image"
-	docker push piatoss3612/spreadsheets-recorder:$(version)
+	docker push piatoss3612/recorder:$(version)

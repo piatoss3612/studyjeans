@@ -1,9 +1,9 @@
 version: '3.9'
 
 services:
-  presentation-helper-bot:
-    container_name: presentation-helper-bot
-    image: piatoss3612/presentation-helper-bot:latest
+  study-bot:
+    container_name: study-bot
+    image: piatoss3612/study-bot:latest
     restart: always
     environment:
       CONFIG_FILE: config.json
@@ -13,6 +13,24 @@ services:
         target: /app/config.json
     depends_on:
       - redis
+      - rabbitmq
+
+  recorder:
+    container_name: recorder
+    image: piatoss3612/recorder:latest
+    restart: always
+    environment:
+      RECORDER_CONFIG_FILE: config.json
+      SHEETS_CREDENTIALS: creds.json
+      SPREADSHEET_ID: 1a4VByiDovdJjEcLRsZjCNMAWab-stdKdsN23JVKA7rk
+      EVENT_SHEET_ID: 1024
+      TIME_ZONE: Asia/Seoul
+    configs:
+      - source: recorder-config
+        target: /app/config.json
+      - source: sheets-creds
+        target: /app/creds.json
+    depends_on:
       - rabbitmq
 
   redis:
@@ -39,3 +57,7 @@ services:
 configs:
   bot-config:
     file: ./configs/config-dev.json
+  recorder-config:
+    file: ./configs/config-recorder-dev.json
+  sheets-creds:
+    file: ./configs/config-sheets-dev.json
