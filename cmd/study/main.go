@@ -10,9 +10,9 @@ import (
 	"github.com/bwmarrin/discordgo"
 	_ "github.com/joho/godotenv/autoload"
 	app "github.com/piatoss3612/presentation-helper-bot/internal/app/study"
-	"github.com/piatoss3612/presentation-helper-bot/internal/db"
 	"github.com/piatoss3612/presentation-helper-bot/internal/service/study"
 	store "github.com/piatoss3612/presentation-helper-bot/internal/store/study"
+	"github.com/piatoss3612/presentation-helper-bot/internal/tools"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 )
@@ -97,7 +97,7 @@ func mustLoadConfig(path string) *Config {
 }
 
 func mustConnectMongoDB(ctx context.Context, uri string) *mongo.Client {
-	mongoClient, err := db.ConnectMongoDB(ctx, uri)
+	mongoClient, err := tools.ConnectMongoDB(ctx, uri)
 	if err != nil {
 		sugar.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func mustConnectMongoDB(ctx context.Context, uri string) *mongo.Client {
 }
 
 func mustInitStudyCache(ctx context.Context, addr string, ttl time.Duration) store.Cache {
-	cache, err := db.ConnectRedisCache(ctx, addr, ttl)
+	cache, err := tools.ConnectRedisCache(ctx, addr, ttl)
 	if err != nil {
 		sugar.Fatal(err)
 	}
