@@ -12,7 +12,7 @@ import (
 	app "github.com/piatoss3612/presentation-helper-bot/internal/app/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/config"
 	"github.com/piatoss3612/presentation-helper-bot/internal/msgqueue"
-	"github.com/piatoss3612/presentation-helper-bot/internal/service/study"
+	service "github.com/piatoss3612/presentation-helper-bot/internal/service/study"
 	store "github.com/piatoss3612/presentation-helper-bot/internal/store/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/tools"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -58,7 +58,7 @@ func run() {
 
 	sugar.Info("Study cache is ready!")
 
-	_ = mustInitPublisher(ctx, cfg.RabbitMQ.Addr, cfg.RabbitMQ.Exchange, cfg.RabbitMQ.Kind)
+	pub := mustInitPublisher(ctx, cfg.RabbitMQ.Addr, cfg.RabbitMQ.Exchange, cfg.RabbitMQ.Kind)
 
 	sugar.Info("Study/Event publisher is ready!")
 
@@ -71,7 +71,7 @@ func run() {
 
 	sess := mustOpenDiscordSession(cfg.Discord.BotToken)
 
-	bot := app.New(sess, svc, cache, sugar).Setup()
+	bot := app.New(sess, svc, cache, pub, sugar).Setup()
 
 	stop, err := bot.Run()
 	if err != nil {
@@ -85,15 +85,6 @@ func run() {
 	sugar.Info("Connected to Discord!")
 
 	<-stop
-}
-
-func mustSetTimezone(tz string) {
-	loc, err := time.LoadLocation(tz)
-	if err != nil {
-		sugar.Fatal(err)
-	}
-
-	time.Local = loc
 }
 
 func mustLoadConfig(path string) *config.StudyConfig {
@@ -134,8 +125,8 @@ func mustInitPublisher(ctx context.Context, addr, exchange, kind string) msgqueu
 	return pub
 }
 
-func mustInitStudyService(ctx context.Context, tx store.Tx, guildID, managerID, noticeChID, reflectionChID string) study.Service {
-	svc, err := study.NewService(ctx, tx, guildID, managerID, noticeChID, reflectionChID)
+func mustInitStudyService(ctx context.Context, tx store.Tx, guildID, managerID, noticeChID, reflectionChID string) service.Service {
+	svc, err := service.New(ctx, tx, guildID, managerID, noticeChID, reflectionChID)
 	if err != nil {
 		sugar.Fatal(err)
 	}
@@ -150,4 +141,13 @@ func mustOpenDiscordSession(token string) *discordgo.Session {
 	}
 
 	return sess
+}
+
+func mustSetTimezone(tz string) {
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		sugar.Fatal(err)
+	}
+
+	time.Local = loc
 }

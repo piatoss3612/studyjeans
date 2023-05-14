@@ -36,7 +36,7 @@ type serviceImpl struct {
 }
 
 // create new service
-func NewService(ctx context.Context, tx store.Tx, guildID, managerID, noticeChID, reflectionChID string) (Service, error) {
+func New(ctx context.Context, tx store.Tx, guildID, managerID, noticeChID, reflectionChID string) (Service, error) {
 	svc := &serviceImpl{
 		tx:  tx,
 		mtx: &sync.Mutex{},

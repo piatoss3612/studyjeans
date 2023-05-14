@@ -8,6 +8,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	handler "github.com/piatoss3612/presentation-helper-bot/internal/handler/study"
+	"github.com/piatoss3612/presentation-helper-bot/internal/msgqueue"
 	"github.com/piatoss3612/presentation-helper-bot/internal/service/study"
 	store "github.com/piatoss3612/presentation-helper-bot/internal/store/study"
 	"go.uber.org/zap"
@@ -19,19 +20,21 @@ type StudyBot struct {
 	chdr  handler.ComponentHandler
 	svc   study.Service
 	cache store.Cache
+	pub   msgqueue.Publisher
 
 	startedAt time.Time
 
 	sugar *zap.SugaredLogger
 }
 
-func New(sess *discordgo.Session, svc study.Service, cache store.Cache, sugar *zap.SugaredLogger) *StudyBot {
+func New(sess *discordgo.Session, svc study.Service, cache store.Cache, pub msgqueue.Publisher, sugar *zap.SugaredLogger) *StudyBot {
 	return &StudyBot{
 		sess:      sess,
 		hdr:       handler.New(),
 		chdr:      handler.NewComponent(),
 		svc:       svc,
 		cache:     cache,
+		pub:       pub,
 		startedAt: time.Now(),
 		sugar:     sugar,
 	}
