@@ -15,7 +15,6 @@ import (
 	service "github.com/piatoss3612/presentation-helper-bot/internal/service/study"
 	store "github.com/piatoss3612/presentation-helper-bot/internal/store/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/tools"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 )
 
@@ -46,9 +45,9 @@ func run() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	mongoClient := mustConnectMongoDB(ctx, cfg.MongoDB.URI)
+	tx, close := mustInitTx(ctx, cfg.MongoDB.URI, cfg.MongoDB.DBName)
 	defer func() {
-		_ = mongoClient.Disconnect(context.Background())
+		_ = close()
 		sugar.Info("Disconnected from MongoDB!")
 	}()
 
@@ -58,14 +57,16 @@ func run() {
 
 	sugar.Info("Study cache is ready!")
 
-	pub := mustInitPublisher(ctx, cfg.RabbitMQ.Addr, cfg.RabbitMQ.Exchange, cfg.RabbitMQ.Kind)
+	pub, close := mustInitPublisher(ctx, cfg.RabbitMQ.Addr, cfg.RabbitMQ.Exchange, cfg.RabbitMQ.Kind)
+	defer func() {
+		_ = close()
+		sugar.Info("Disconnected from RabbitMQ!")
+	}()
 
 	sugar.Info("Study/Event publisher is ready!")
 
-	svc := mustInitStudyService(
-		ctx, store.NewTx(mongoClient, cfg.MongoDB.DBName),
-		cfg.Discord.GuildID, cfg.Discord.ManagerID, cfg.Discord.NoticeChannelID, cfg.Discord.ReflectionChannelID,
-	)
+	svc := mustInitStudyService(ctx, tx, cfg.Discord.GuildID,
+		cfg.Discord.ManagerID, cfg.Discord.NoticeChannelID, cfg.Discord.ReflectionChannelID)
 
 	sugar.Info("Study service is ready!")
 
@@ -96,13 +97,13 @@ func mustLoadConfig(path string) *config.StudyConfig {
 	return cfg
 }
 
-func mustConnectMongoDB(ctx context.Context, uri string) *mongo.Client {
+func mustInitTx(ctx context.Context, uri, dbname string) (store.Tx, func() error) {
 	mongoClient, err := tools.ConnectMongoDB(ctx, uri)
 	if err != nil {
 		sugar.Fatal(err)
 	}
 
-	return mongoClient
+	return store.NewTx(mongoClient, dbname), func() error { return mongoClient.Disconnect(context.Background()) }
 }
 
 func mustInitStudyCache(ctx context.Context, addr string, ttl time.Duration) store.Cache {
@@ -114,7 +115,7 @@ func mustInitStudyCache(ctx context.Context, addr string, ttl time.Duration) sto
 	return store.NewCache(cache)
 }
 
-func mustInitPublisher(ctx context.Context, addr, exchange, kind string) msgqueue.Publisher {
+func mustInitPublisher(ctx context.Context, addr, exchange, kind string) (msgqueue.Publisher, func() error) {
 	rabbit := <-tools.RedialRabbitMQ(ctx, addr)
 
 	pub, err := msgqueue.NewPublisher(rabbit, exchange, kind)
@@ -122,7 +123,7 @@ func mustInitPublisher(ctx context.Context, addr, exchange, kind string) msgqueu
 		sugar.Fatal(err)
 	}
 
-	return pub
+	return pub, func() error { return rabbit.Close() }
 }
 
 func mustInitStudyService(ctx context.Context, tx store.Tx, guildID, managerID, noticeChID, reflectionChID string) service.Service {
