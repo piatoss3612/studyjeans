@@ -9,7 +9,7 @@ import (
 	models "github.com/piatoss3612/presentation-helper-bot/internal/models/recorder"
 )
 
-func (r *Rest) Listen(stop <-chan bool, topics []string) {
+func (r *Recorder) Listen(stop <-chan bool, topics []string) {
 	msgs, errs, close, err := r.sub.Subscribe(topics...)
 	if err != nil {
 		r.sugar.Fatal(err)

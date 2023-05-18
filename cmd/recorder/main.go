@@ -56,10 +56,10 @@ func run() {
 
 	sugar.Info("Recorder service is ready!")
 
-	rest := app.New(svc, sub, sugar)
-	stop := rest.Run()
+	recorder := app.New(svc, sub, sugar)
+	stop := recorder.Run()
 
-	rest.Listen(stop, cfg.RabbitMQ.Topics)
+	recorder.Listen(stop, cfg.RabbitMQ.Topics)
 }
 
 func mustLoadConfig(path string) *config.RecorderConfig {
