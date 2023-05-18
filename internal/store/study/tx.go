@@ -14,21 +14,38 @@ type Tx interface {
 	ExecTx(ctx context.Context, fn func(ctx context.Context) (interface{}, error)) (interface{}, error)
 }
 
-type TxImpl struct {
-	Query
-	Store
-	client *mongo.Client
-}
+type TxOptsFn func(*mongoTx)
 
-func NewTx(client *mongo.Client, dbname string) Tx {
-	return &TxImpl{
-		Query:  NewQuery(client, dbname),
-		Store:  NewStore(client, dbname),
-		client: client,
+func WithDBName(dbname string) TxOptsFn {
+	return func(tx *mongoTx) {
+		tx.dbname = dbname
 	}
 }
 
-func (tx *TxImpl) ExecTx(ctx context.Context, fn func(ctx context.Context) (interface{}, error)) (interface{}, error) {
+type mongoTx struct {
+	Query
+	Store
+	client *mongo.Client
+	dbname string
+}
+
+func NewMongoTx(client *mongo.Client, opts ...TxOptsFn) Tx {
+	tx := &mongoTx{
+		client: client,
+		dbname: "default",
+	}
+
+	for _, opt := range opts {
+		opt(tx)
+	}
+
+	tx.Query = NewMongoQuery(client, WithQueryDBName(tx.dbname))
+	tx.Store = NewMongoStore(client, WithStoreDBName(tx.dbname))
+
+	return tx
+}
+
+func (tx *mongoTx) ExecTx(ctx context.Context, fn func(ctx context.Context) (interface{}, error)) (interface{}, error) {
 	sess, err := tx.client.StartSession()
 	if err != nil {
 		return nil, err

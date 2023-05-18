@@ -17,16 +17,30 @@ type Store interface {
 	UpdateRound(ctx context.Context, r models.Round) (*models.Round, error)
 }
 
-type StoreImpl struct {
+type StoreOptsFn func(*mongoStore)
+
+func WithStoreDBName(dbname string) StoreOptsFn {
+	return func(q *mongoStore) {
+		q.dbname = dbname
+	}
+}
+
+type mongoStore struct {
 	client *mongo.Client
 	dbname string
 }
 
-func NewStore(client *mongo.Client, dbname string) Store {
-	return &StoreImpl{client: client, dbname: dbname}
+func NewMongoStore(client *mongo.Client, opts ...StoreOptsFn) Store {
+	s := &mongoStore{client: client, dbname: "default"}
+
+	for _, opt := range opts {
+		opt(s)
+	}
+
+	return s
 }
 
-func (si *StoreImpl) CreateStudy(ctx context.Context, s models.Study) (*models.Study, error) {
+func (si *mongoStore) CreateStudy(ctx context.Context, s models.Study) (*models.Study, error) {
 	collection := si.client.Database(si.dbname).Collection("study")
 
 	res, err := collection.InsertOne(ctx, s)
@@ -38,7 +52,7 @@ func (si *StoreImpl) CreateStudy(ctx context.Context, s models.Study) (*models.S
 	return &s, nil
 }
 
-func (si *StoreImpl) CreateRound(ctx context.Context, r models.Round) (*models.Round, error) {
+func (si *mongoStore) CreateRound(ctx context.Context, r models.Round) (*models.Round, error) {
 	collection := si.client.Database(si.dbname).Collection("round")
 
 	res, err := collection.InsertOne(ctx, r)
@@ -51,7 +65,7 @@ func (si *StoreImpl) CreateRound(ctx context.Context, r models.Round) (*models.R
 	return &r, nil
 }
 
-func (si *StoreImpl) UpdateStudy(ctx context.Context, s models.Study) (*models.Study, error) {
+func (si *mongoStore) UpdateStudy(ctx context.Context, s models.Study) (*models.Study, error) {
 	collection := si.client.Database(si.dbname).Collection("study")
 
 	objID, err := primitive.ObjectIDFromHex(s.ID)
@@ -86,7 +100,7 @@ func (si *StoreImpl) UpdateStudy(ctx context.Context, s models.Study) (*models.S
 	return &s, err
 }
 
-func (si StoreImpl) UpdateRound(ctx context.Context, r models.Round) (*models.Round, error) {
+func (si mongoStore) UpdateRound(ctx context.Context, r models.Round) (*models.Round, error) {
 	collection := si.client.Database(si.dbname).Collection("round")
 
 	objID, err := primitive.ObjectIDFromHex(r.ID)

@@ -103,7 +103,7 @@ func mustInitTx(ctx context.Context, uri, dbname string) (store.Tx, func() error
 		sugar.Fatal(err)
 	}
 
-	return store.NewTx(mongoClient, dbname), func() error { return mongoClient.Disconnect(context.Background()) }
+	return store.NewMongoTx(mongoClient, store.WithDBName(dbname)), func() error { return mongoClient.Disconnect(context.Background()) }
 }
 
 func mustInitStudyCache(ctx context.Context, addr string, ttl time.Duration) store.Cache {

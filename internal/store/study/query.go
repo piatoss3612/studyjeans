@@ -16,16 +16,30 @@ type Query interface {
 	FindRounds(ctx context.Context, guildID string) ([]*models.Round, error)
 }
 
-type QueryImpl struct {
+type QueryOptsFn func(*mongoQuery)
+
+func WithQueryDBName(dbname string) QueryOptsFn {
+	return func(q *mongoQuery) {
+		q.dbname = dbname
+	}
+}
+
+type mongoQuery struct {
 	client *mongo.Client
 	dbname string
 }
 
-func NewQuery(client *mongo.Client, dbname string) Query {
-	return &QueryImpl{client: client, dbname: dbname}
+func NewMongoQuery(client *mongo.Client, opts ...QueryOptsFn) Query {
+	q := &mongoQuery{client: client, dbname: "default"}
+
+	for _, opt := range opts {
+		opt(q)
+	}
+
+	return q
 }
 
-func (q *QueryImpl) FindStudy(ctx context.Context, guildID string) (*models.Study, error) {
+func (q *mongoQuery) FindStudy(ctx context.Context, guildID string) (*models.Study, error) {
 	collection := q.client.Database(q.dbname).Collection("study")
 
 	filter := bson.M{"guild_id": guildID}
@@ -43,7 +57,7 @@ func (q *QueryImpl) FindStudy(ctx context.Context, guildID string) (*models.Stud
 	return &s, nil
 }
 
-func (q *QueryImpl) FindRound(ctx context.Context, roundID string) (*models.Round, error) {
+func (q *mongoQuery) FindRound(ctx context.Context, roundID string) (*models.Round, error) {
 	collection := q.client.Database(q.dbname).Collection("round")
 
 	objID, err := primitive.ObjectIDFromHex(roundID)
@@ -66,7 +80,7 @@ func (q *QueryImpl) FindRound(ctx context.Context, roundID string) (*models.Roun
 	return &r, nil
 }
 
-func (q *QueryImpl) FindRounds(ctx context.Context, guildID string) ([]*models.Round, error) {
+func (q *mongoQuery) FindRounds(ctx context.Context, guildID string) ([]*models.Round, error) {
 	collection := q.client.Database(q.dbname).Collection("round")
 
 	filter := bson.M{"guild_id": guildID}
