@@ -43,10 +43,10 @@ func (q *QueryImpl) FindStudy(ctx context.Context, guildID string) (*models.Stud
 	return &s, nil
 }
 
-func (q *QueryImpl) FindRound(ctx context.Context, id string) (*models.Round, error) {
+func (q *QueryImpl) FindRound(ctx context.Context, roundID string) (*models.Round, error) {
 	collection := q.client.Database(q.dbname).Collection("round")
 
-	objID, err := primitive.ObjectIDFromHex(id)
+	objID, err := primitive.ObjectIDFromHex(roundID)
 	if err != nil {
 		return nil, err
 	}
