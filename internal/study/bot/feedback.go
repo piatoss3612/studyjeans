@@ -1,10 +1,13 @@
 package bot
 
 import (
+	"context"
 	"errors"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study"
+	"github.com/piatoss3612/presentation-helper-bot/internal/study/service"
 )
 
 var (
@@ -147,13 +150,17 @@ func (b *StudyBot) feedbackSubmitHandler(s *discordgo.Session, i *discordgo.Inte
 			return errors.Join(study.ErrRequiredArgs, errors.New("리뷰 대상자의 아이디 또는 피드백 정보를 찾을 수 없습니다"))
 		}
 
-		// ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		// defer cancel()
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
 
-		// err := b.svc.SetReviewer(ctx, i.GuildID, reviewer.ID, revieweeID)
-		// if err != nil {
-		// 	return err
-		// }
+		_, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
+			GuildID:    i.GuildID,
+			ReviewerID: reviewer.ID,
+			RevieweeID: revieweeID,
+		}, service.SetReviewer, service.ValidateToSetReviewer)
+		if err != nil {
+			return err
+		}
 
 		channel, err := s.UserChannelCreate(revieweeID)
 		if err != nil {

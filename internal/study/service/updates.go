@@ -45,6 +45,8 @@ func RegisterMember(s *study.Study, r *study.Round, params *UpdateParams) {
 
 func UnregisterSpeaker(s *study.Study, r *study.Round, params *UpdateParams) {
 	member, _ := r.GetMember(params.MemberID)
+	member.SetName("")
+	member.SetSubject("")
 	member.SetRegistered(false)
 
 	r.SetMember(params.MemberID, member)

@@ -1,10 +1,13 @@
 package bot
 
 import (
+	"context"
 	"errors"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study"
+	"github.com/piatoss3612/presentation-helper-bot/internal/study/service"
 )
 
 var reflectionCmd = discordgo.ApplicationCommand{
@@ -25,7 +28,7 @@ func (b *StudyBot) addReflectionCmd() {
 }
 
 func (b *StudyBot) reflectionCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	cmd := func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+	fn := func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		var user *discordgo.User
 
 		// user should be in guild
@@ -44,36 +47,40 @@ func (b *StudyBot) reflectionCmdHandler(s *discordgo.Session, i *discordgo.Inter
 			return errors.Join(study.ErrRequiredArgs, errors.New("회고 내용은 필수입니다"))
 		}
 
-		// ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		// defer cancel()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 
-		// // set sent reflection
-		// reflectionChID, err := b.svc.SetSentReflection(ctx, i.GuildID, user.ID)
-		// if err != nil {
-		// 	return err
-		// }
+		// set sent reflection
+		gs, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
+			GuildID:  i.GuildID,
+			MemberID: user.ID,
+		},
+			service.SetSentReflection, service.ValidateToSetSendReflection)
+		if err != nil {
+			return err
+		}
 
-		// embed := &discordgo.MessageEmbed{
-		// 	Author: &discordgo.MessageEmbedAuthor{
-		// 		Name:    user.Username,
-		// 		IconURL: user.AvatarURL(""),
-		// 	},
-		// 	Title: "발표회고",
-		// 	Fields: []*discordgo.MessageEmbedField{
-		// 		{
-		// 			Name:  "내용",
-		// 			Value: content,
-		// 		},
-		// 	},
-		// 	Color:     0x00ffff,
-		// 	Timestamp: time.Now().Format(time.RFC3339),
-		// }
+		embed := &discordgo.MessageEmbed{
+			Author: &discordgo.MessageEmbedAuthor{
+				Name:    user.Username,
+				IconURL: user.AvatarURL(""),
+			},
+			Title: "발표회고",
+			Fields: []*discordgo.MessageEmbedField{
+				{
+					Name:  "내용",
+					Value: content,
+				},
+			},
+			Color:     0x00ffff,
+			Timestamp: time.Now().Format(time.RFC3339),
+		}
 
-		// // send reflection
-		// _, err = s.ChannelMessageSendEmbed(reflectionChID, embed)
-		// if err != nil {
-		// 	return err
-		// }
+		// send reflection
+		_, err = s.ChannelMessageSendEmbed(gs.ReflectionChannelID, embed)
+		if err != nil {
+			return err
+		}
 
 		// send success message
 		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -85,7 +92,7 @@ func (b *StudyBot) reflectionCmdHandler(s *discordgo.Session, i *discordgo.Inter
 		})
 	}
 
-	err := cmd(s, i)
+	err := fn(s, i)
 	if err != nil {
 		b.sugar.Errorw(err.Error(), "event", "reflection")
 		_ = errorInteractionRespond(s, i, err)

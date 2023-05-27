@@ -1,10 +1,13 @@
 package bot
 
 import (
+	"context"
 	"errors"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study"
+	"github.com/piatoss3612/presentation-helper-bot/internal/study/service"
 )
 
 var (
@@ -39,7 +42,7 @@ func (b *StudyBot) addRegistrationCmd() {
 }
 
 func (b *StudyBot) registerCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	cmd := func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+	fn := func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		var user *discordgo.User
 
 		if i.Member != nil && i.Member.User != nil {
@@ -65,13 +68,19 @@ func (b *StudyBot) registerCmdHandler(s *discordgo.Session, i *discordgo.Interac
 			return errors.Join(study.ErrRequiredArgs, errors.New("이름과 발표 주제는 필수 입력 사항입니다"))
 		}
 
-		// ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		// defer cancel()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 
-		// err := b.svc.SetMemberRegistration(ctx, i.GuildID, user.ID, name, subject, true)
-		// if err != nil {
-		// 	return err
-		// }
+		_, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
+			GuildID:    i.GuildID,
+			MemberID:   user.ID,
+			MemberName: name,
+			Subject:    subject,
+		},
+			service.RegisterMember, service.ValidateToRegister)
+		if err != nil {
+			return err
+		}
 
 		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -85,7 +94,7 @@ func (b *StudyBot) registerCmdHandler(s *discordgo.Session, i *discordgo.Interac
 		})
 	}
 
-	err := cmd(s, i)
+	err := fn(s, i)
 	if err != nil {
 		b.sugar.Errorw(err.Error(), "event", "register-presentation")
 		_ = errorInteractionRespond(s, i, err)
@@ -93,7 +102,7 @@ func (b *StudyBot) registerCmdHandler(s *discordgo.Session, i *discordgo.Interac
 }
 
 func (b *StudyBot) unregisterCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	cmd := func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+	fn := func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		var user *discordgo.User
 
 		if i.Member != nil && i.Member.User != nil {
@@ -104,13 +113,17 @@ func (b *StudyBot) unregisterCmdHandler(s *discordgo.Session, i *discordgo.Inter
 			return study.ErrUserNotFound
 		}
 
-		// ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		// defer cancel()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 
-		// err := b.svc.SetMemberRegistration(ctx, i.GuildID, user.ID, "", "", false)
-		// if err != nil {
-		// 	return err
-		// }
+		_, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
+			GuildID:  i.GuildID,
+			MemberID: user.ID,
+		},
+			service.UnregisterSpeaker, service.ValidateToUnregister)
+		if err != nil {
+			return err
+		}
 
 		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -124,7 +137,7 @@ func (b *StudyBot) unregisterCmdHandler(s *discordgo.Session, i *discordgo.Inter
 		})
 	}
 
-	err := cmd(s, i)
+	err := fn(s, i)
 	if err != nil {
 		b.sugar.Errorw(err.Error(), "event", "unregister-presentation")
 		_ = errorInteractionRespond(s, i, err)
