@@ -533,7 +533,7 @@ func (b *StudyBot) stageMoveConfirmHandler(s *discordgo.Session, i *discordgo.In
 		if gs.CurrentStage == study.StageWait && gs.OngoingRoundID == "" {
 			embed = EmbedTemplate(s.State.User, "스터디 라운드 종료", "스터디 라운드가 종료되었습니다. 다음 라운드를 기대해주세요!")
 
-			// TODO: publish round info
+			go b.publishRoundInfo(r)
 		} else {
 			embed = EmbedTemplate(s.State.User, gs.CurrentStage.String(), fmt.Sprintf("**<%s>**이(가) 시작되었습니다.", gs.CurrentStage.String()))
 
@@ -590,7 +590,7 @@ func (b *StudyBot) checkAttendanceHandler(s *discordgo.Session, i *discordgo.Int
 	defer cancel()
 
 	// check attendance
-	_, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
+	_, _, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
 		GuildID:   i.GuildID,
 		ManagerID: manager.ID,
 		MemberID:  u.ID,
@@ -630,7 +630,7 @@ func (b *StudyBot) registerRecordedContentHandler(s *discordgo.Session, i *disco
 	defer cancel()
 
 	// submit round content
-	gs, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
+	gs, _, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
 		GuildID:    i.GuildID,
 		ManagerID:  manager.ID,
 		ContentURL: contentURL,
