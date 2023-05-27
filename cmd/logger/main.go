@@ -8,10 +8,10 @@ import (
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
-	app "github.com/piatoss3612/presentation-helper-bot/internal/app/recorder"
 	"github.com/piatoss3612/presentation-helper-bot/internal/config"
+	"github.com/piatoss3612/presentation-helper-bot/internal/logger/app"
+	"github.com/piatoss3612/presentation-helper-bot/internal/logger/service"
 	"github.com/piatoss3612/presentation-helper-bot/internal/msgqueue"
-	"github.com/piatoss3612/presentation-helper-bot/internal/service/recorder"
 	"github.com/piatoss3612/presentation-helper-bot/internal/tools"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2/google"
@@ -22,12 +22,12 @@ import (
 var sugar *zap.SugaredLogger
 
 func main() {
-	logger, _ := zap.NewProduction()
+	l, _ := zap.NewProduction()
 	defer func() {
-		_ = logger.Sync()
+		_ = l.Sync()
 	}()
 
-	sugar = logger.Sugar()
+	sugar = l.Sugar()
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -41,7 +41,7 @@ func main() {
 }
 
 func run() {
-	cfg := mustLoadConfig(os.Getenv("RECORDER_CONFIG_FILE"))
+	cfg := mustLoadConfig(os.Getenv("LOGGER_CONFIG_FILE"))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -52,18 +52,18 @@ func run() {
 		sugar.Info("RabbitMQ connection is closed!")
 	}()
 
-	svc := mustInitRecorderService()
+	svc := mustInitLoggerService()
 
-	sugar.Info("Recorder service is ready!")
+	sugar.Info("Logger service is ready!")
 
-	recorder := app.New(svc, sub, sugar)
-	stop := recorder.Run()
+	logger := app.New(svc, sub, sugar)
+	stop := logger.Run()
 
-	recorder.Listen(stop, cfg.RabbitMQ.Topics)
+	logger.Listen(stop, cfg.RabbitMQ.Topics)
 }
 
-func mustLoadConfig(path string) *config.RecorderConfig {
-	cfg, err := config.NewRecorderConfig(path)
+func mustLoadConfig(path string) *config.LoggerConfig {
+	cfg, err := config.NewLoggerConfig(path)
 	if err != nil {
 		sugar.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func mustInitSubscriber(ctx context.Context, addr, exchange, kind, queue string)
 	return sub, func() error { return rabbit.Close() }
 }
 
-func mustInitRecorderService() recorder.Service {
+func mustInitLoggerService() service.Service {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -96,7 +96,7 @@ func mustInitRecorderService() recorder.Service {
 		sugar.Fatal(err)
 	}
 
-	srv, err := recorder.New(ctx, mustInitSheetsService(), os.Getenv("SPREADSHEET_ID"), eventSheetID)
+	srv, err := service.New(ctx, mustInitSheetsService(), os.Getenv("SPREADSHEET_ID"), eventSheetID)
 	if err != nil {
 		sugar.Fatal(err)
 	}

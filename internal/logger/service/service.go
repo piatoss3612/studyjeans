@@ -1,4 +1,4 @@
-package recorder
+package service
 
 import (
 	"context"
@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/piatoss3612/presentation-helper-bot/internal/models/event"
-	models "github.com/piatoss3612/presentation-helper-bot/internal/models/recorder"
+	"github.com/piatoss3612/presentation-helper-bot/internal/event"
+	"github.com/piatoss3612/presentation-helper-bot/internal/logger"
 	"google.golang.org/api/sheets/v4"
 )
 
@@ -27,18 +27,18 @@ var labelFormat = &sheets.CellFormat{
 }
 
 type Service interface {
-	RecordRound(ctx context.Context, r models.Round) error
+	RecordRound(ctx context.Context, r logger.Round) error
 	RecordEvent(ctx context.Context, e event.Event) error
 }
 
-type serviceImpl struct {
+type sheetsService struct {
 	s             *sheets.Service
 	spreadsheetID string
 	eventSheetID  int64
 }
 
 func New(ctx context.Context, s *sheets.Service, spreadsheetID string, eventSheetID int64) (Service, error) {
-	svc := &serviceImpl{
+	svc := &sheetsService{
 		s:             s,
 		spreadsheetID: spreadsheetID,
 		eventSheetID:  eventSheetID,
@@ -47,7 +47,7 @@ func New(ctx context.Context, s *sheets.Service, spreadsheetID string, eventShee
 	return svc.setup(ctx)
 }
 
-func (svc *serviceImpl) setup(ctx context.Context) (Service, error) {
+func (svc *sheetsService) setup(ctx context.Context) (Service, error) {
 	// get spreadsheet
 	resp, err := svc.s.Spreadsheets.Get(svc.spreadsheetID).Context(ctx).Do()
 	if err != nil {
@@ -140,7 +140,7 @@ func (svc *serviceImpl) setup(ctx context.Context) (Service, error) {
 	return svc, nil
 }
 
-func (svc *serviceImpl) RecordRound(ctx context.Context, r models.Round) error {
+func (svc *sheetsService) RecordRound(ctx context.Context, r logger.Round) error {
 	addSheetReq := &sheets.AddSheetRequest{
 		Properties: &sheets.SheetProperties{
 			Title:     fmt.Sprintf("%d 라운드: %s", r.Number, r.Title),
@@ -182,7 +182,7 @@ func (svc *serviceImpl) RecordRound(ctx context.Context, r models.Round) error {
 	return nil
 }
 
-func (svc *serviceImpl) RecordEvent(ctx context.Context, e event.Event) error {
+func (svc *sheetsService) RecordEvent(ctx context.Context, e event.Event) error {
 	// record event
 	resp, err := svc.s.Spreadsheets.BatchUpdate(svc.spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
 		Requests: []*sheets.Request{
@@ -236,7 +236,7 @@ func (svc *serviceImpl) RecordEvent(ctx context.Context, e event.Event) error {
 	return nil
 }
 
-func (svc *serviceImpl) rowsFromRoundData(r models.Round) []*sheets.RowData {
+func (svc *sheetsService) rowsFromRoundData(r logger.Round) []*sheets.RowData {
 	rows := []*sheets.RowData{
 		{
 			Values: []*sheets.CellData{

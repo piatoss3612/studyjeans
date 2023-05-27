@@ -1,4 +1,4 @@
-package recorder
+package app
 
 import (
 	"context"
@@ -6,13 +6,13 @@ import (
 	"strings"
 	"time"
 
-	models "github.com/piatoss3612/presentation-helper-bot/internal/models/recorder"
+	"github.com/piatoss3612/presentation-helper-bot/internal/logger"
 )
 
-func (r *Recorder) Listen(stop <-chan bool, topics []string) {
-	msgs, errs, close, err := r.sub.Subscribe(topics...)
+func (l *LoggerApp) Listen(stop <-chan bool, topics []string) {
+	msgs, errs, close, err := l.sub.Subscribe(topics...)
 	if err != nil {
-		r.sugar.Fatal(err)
+		l.sugar.Fatal(err)
 	}
 	defer close()
 
@@ -21,7 +21,7 @@ func (r *Recorder) Listen(stop <-chan bool, topics []string) {
 		case msg := <-msgs:
 			fields := strings.Split(msg.EventName, ".")
 			if len(fields) != 2 {
-				r.sugar.Errorf("Invalid event name", "event", msg.EventName)
+				l.sugar.Errorf("Invalid event name", "event", msg.EventName)
 				continue
 			}
 
@@ -29,24 +29,24 @@ func (r *Recorder) Listen(stop <-chan bool, topics []string) {
 			case "study":
 				switch fields[1] {
 				case "closed":
-					round := models.NewRound()
+					round := logger.NewRound()
 					if err := json.Unmarshal(msg.Body, &round); err != nil {
-						r.sugar.Errorf("Failed to unmarshal message body", "error", err)
+						l.sugar.Errorf("Failed to unmarshal message body", "error", err)
 						continue
 					}
 
 					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 					defer cancel()
 
-					err := r.svc.RecordRound(ctx, round)
+					err := l.svc.RecordRound(ctx, round)
 					if err != nil {
-						r.sugar.Errorf("Failed to record round", "error", err)
+						l.sugar.Errorf("Failed to record round", "error", err)
 					}
 				default:
 					// TODO
 				}
 			default:
-				r.sugar.Errorf("Unknown event name", "event", msg.EventName)
+				l.sugar.Errorf("Unknown event name", "event", msg.EventName)
 			}
 		case err := <-errs:
 			if err == nil {
