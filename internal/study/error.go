@@ -12,4 +12,5 @@ var (
 	ErrMemberNotFound        = errors.New("등록된 사용자 정보를 찾을 수 없습니다")
 	ErrReviewByYourself      = errors.New("자기 자신을 리뷰할 수 없습니다")
 	ErrAlreadySentReflection = errors.New("이미 회고를 작성하셨습니다")
+	ErrNilUpdateParams       = errors.New("업데이트할 정보가 없습니다")
 )
