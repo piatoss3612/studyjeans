@@ -11,25 +11,15 @@ import (
 )
 
 type Service interface {
+	NewStudy(ctx context.Context, guildID, managerID string) (*study.Study, error)
+	NewRound(ctx context.Context, guildID, title string, memberIDs []string) (*study.Study, error)
+	Update(ctx context.Context, params UpdateParams, validations ...UpdateValidationFunc) (*study.Study, error)
 	GetStudy(ctx context.Context, guildID string) (*study.Study, error)
 	GetOngoingRound(ctx context.Context, guildID string) (*study.Round, error)
 	GetRounds(ctx context.Context, guildID string) ([]*study.Round, error)
-
-	SetNoticeChannelID(ctx context.Context, guildID, channelID string) error
-	SetReflectionChannelID(ctx context.Context, guildID, channelID string) error
-	SetMemberRegistration(ctx context.Context, guildID, memberID, name, subject string, register bool) error
-	SetMemberContent(ctx context.Context, guildID, memberID, contentURL string) error
-	SetSpeakerAttended(ctx context.Context, guildID, memberID string, attended bool) error
-	SetStudyContent(ctx context.Context, guildID, content string) error
-	SetReviewer(ctx context.Context, guildID, reviewerID, revieweeID string) error
-	SetSentReflection(ctx context.Context, guildID, memberID string) (string, error)
-
-	NewStudyRound(ctx context.Context, guildID, title string, memberIDs []string) (*study.Study, error)
-	MoveStage(ctx context.Context, guildID string) (*study.Study, error)
-	CloseStudyRound(ctx context.Context, guildID string) (*study.Study, error)
 }
 
-type ServiceParams struct {
+type UpdateParams struct {
 	GuildID    string
 	ManagerID  string
 	ChannelID  string
@@ -41,7 +31,7 @@ type ServiceParams struct {
 	RevieweeID string
 }
 
-type UpdateValidationFunc func(*study.Study, *study.Round, *ServiceParams) error
+type UpdateValidationFunc func(*study.Study, *study.Round, *UpdateParams) error
 
 type serviceImpl struct {
 	tx repository.Tx
@@ -97,7 +87,7 @@ func (svc *serviceImpl) setup(ctx context.Context, guildID, managerID, noticeChI
 }
 
 // initialize new study round
-func (svc *serviceImpl) NewStudyRound(ctx context.Context, guildID, title string, memberIDs []string) (*study.Study, error) {
+func (svc *serviceImpl) NewRound(ctx context.Context, guildID, title string, memberIDs []string) (*study.Study, error) {
 	defer svc.mtx.Unlock()
 	svc.mtx.Lock()
 
@@ -219,7 +209,7 @@ func (svc *serviceImpl) MoveStage(ctx context.Context, guildID string) (*study.S
 }
 
 // close study round
-func (svc *serviceImpl) CloseStudyRound(ctx context.Context, guildID string) (*study.Study, error) {
+func (svc *serviceImpl) CloseRound(ctx context.Context, guildID string) (*study.Study, error) {
 	defer svc.mtx.Unlock()
 	svc.mtx.Lock()
 
