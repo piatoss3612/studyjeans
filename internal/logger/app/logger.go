@@ -5,8 +5,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/piatoss3612/presentation-helper-bot/internal/event/msgqueue"
 	"github.com/piatoss3612/presentation-helper-bot/internal/logger/service"
-	"github.com/piatoss3612/presentation-helper-bot/internal/msgqueue"
 	"go.uber.org/zap"
 )
 

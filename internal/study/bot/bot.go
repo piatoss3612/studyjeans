@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/piatoss3612/presentation-helper-bot/internal/msgqueue"
+	"github.com/piatoss3612/presentation-helper-bot/internal/event/msgqueue"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/cache"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/service"
 	"go.uber.org/zap"

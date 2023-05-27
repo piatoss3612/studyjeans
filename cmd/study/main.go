@@ -10,7 +10,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/piatoss3612/presentation-helper-bot/internal/config"
-	"github.com/piatoss3612/presentation-helper-bot/internal/msgqueue"
+	"github.com/piatoss3612/presentation-helper-bot/internal/event/msgqueue"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/bot"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/cache"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/cache/redis"
