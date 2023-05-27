@@ -9,28 +9,14 @@ import (
 )
 
 type Service interface {
-	NewStudy(ctx context.Context, guildID, managerID string) (*study.Study, error)
-	NewRound(ctx context.Context, guildID, managerID, title string, memberIDs []string) (*study.Study, error)
-	UpdateStudy(ctx context.Context, params *UpdateParams, update UpdateFunc) (*study.Study, error)
-	UpdateRound(ctx context.Context, params *UpdateParams, update UpdateFunc) (*study.Study, error)
-	GetStudy(ctx context.Context, guildID string) (*study.Study, error)
-	GetOngoingRound(ctx context.Context, guildID string) (*study.Round, error)
+	GetRound(ctx context.Context, roundID string) (*study.Round, error)
 	GetRounds(ctx context.Context, guildID string) ([]*study.Round, error)
+	GetStudy(ctx context.Context, guildID string) (*study.Study, error)
+	NewRound(ctx context.Context, guildID, managerID, title string, memberIDs []string) (*study.Study, error)
+	NewStudy(ctx context.Context, guildID, managerID string) (*study.Study, error)
+	UpdateRound(ctx context.Context, params *UpdateParams, update UpdateFunc) (*study.Study, error)
+	UpdateStudy(ctx context.Context, params *UpdateParams, update UpdateFunc) (*study.Study, error)
 }
-
-type UpdateParams struct {
-	GuildID    string
-	ManagerID  string
-	ChannelID  string
-	MemberID   string
-	MemberName string
-	Subject    string
-	ContentURL string
-	ReviewerID string
-	RevieweeID string
-}
-
-type UpdateFunc func(*study.Study, *study.Round, *UpdateParams) error
 
 type studyService struct {
 	tx repository.Tx
@@ -47,41 +33,67 @@ func New(ctx context.Context, tx repository.Tx) Service {
 	return svc
 }
 
-// create new study
-func (svc *studyService) NewStudy(ctx context.Context, guildID, managerID string) (*study.Study, error) {
+// get round by id
+func (svc *studyService) GetRound(ctx context.Context, roundID string) (*study.Round, error) {
 	defer svc.mtx.Unlock()
 	svc.mtx.Lock()
 
 	txFn := func(sc context.Context) (interface{}, error) {
-		// find study of guild
-		s, err := svc.tx.FindStudy(sc, guildID)
+		// find ongoing round
+		r, err := svc.tx.FindRound(sc, roundID)
 		if err != nil {
 			return nil, err
 		}
 
-		// if study exists, return error
-		if s != nil {
-			return nil, study.ErrStudyExists
+		// if there is no ongoing round, return error
+		if r == nil {
+			return nil, study.ErrStudyNotFound
 		}
 
-		// create new study
-		ns := study.New()
-
-		ns.SetGuildID(guildID)
-		ns.SetManagerID(managerID)
-
-		// store new study
-		return svc.tx.CreateStudy(sc, ns)
+		return r, nil
 	}
 
 	// execute transaction
-	s, err := svc.tx.ExecTx(ctx, txFn)
+	res, err := svc.tx.ExecTx(ctx, txFn)
 	if err != nil {
 		return nil, err
 	}
 
-	// return created study
-	return s.(*study.Study), nil
+	return res.(*study.Round), nil
+}
+
+// get all rounds of study by guild id
+func (svc *studyService) GetRounds(ctx context.Context, guildID string) ([]*study.Round, error) {
+	defer svc.mtx.Unlock()
+	svc.mtx.Lock()
+
+	r, err := svc.tx.FindRounds(ctx, guildID)
+	if err != nil {
+		return nil, err
+	}
+
+	if r == nil {
+		return nil, study.ErrRoundNotFound
+	}
+
+	return r, nil
+}
+
+// get study by guild id
+func (svc *studyService) GetStudy(ctx context.Context, guildID string) (*study.Study, error) {
+	defer svc.mtx.Unlock()
+	svc.mtx.Lock()
+
+	s, err := svc.tx.FindStudy(ctx, guildID)
+	if err != nil {
+		return nil, err
+	}
+
+	if s == nil {
+		return nil, study.ErrStudyNotFound
+	}
+
+	return s, nil
 }
 
 // initialize new study round
@@ -149,37 +161,31 @@ func (svc *studyService) NewRound(ctx context.Context, guildID, managerID, title
 	return s.(*study.Study), nil
 }
 
-// update study
-func (svc *studyService) UpdateStudy(ctx context.Context, params *UpdateParams, update UpdateFunc) (*study.Study, error) {
+// create new study
+func (svc *studyService) NewStudy(ctx context.Context, guildID, managerID string) (*study.Study, error) {
 	defer svc.mtx.Unlock()
 	svc.mtx.Lock()
 
-	if params == nil {
-		return nil, study.ErrNilUpdateParams
-	}
-
 	txFn := func(sc context.Context) (interface{}, error) {
-		s, err := svc.tx.FindStudy(sc, params.GuildID)
+		// find study of guild
+		s, err := svc.tx.FindStudy(sc, guildID)
 		if err != nil {
 			return nil, err
 		}
 
-		if s == nil {
-			return nil, study.ErrStudyNotFound
+		// if study exists, return error
+		if s != nil {
+			return nil, study.ErrStudyExists
 		}
 
-		// update study
-		if err := update(s, nil, params); err != nil {
-			return nil, err
-		}
+		// create new study
+		ns := study.New()
 
-		// update study
-		s, err = svc.tx.UpdateStudy(sc, *s)
-		if err != nil {
-			return nil, err
-		}
+		ns.SetGuildID(guildID)
+		ns.SetManagerID(managerID)
 
-		return s, nil
+		// store new study
+		return svc.tx.CreateStudy(sc, ns)
 	}
 
 	// execute transaction
@@ -188,7 +194,7 @@ func (svc *studyService) UpdateStudy(ctx context.Context, params *UpdateParams, 
 		return nil, err
 	}
 
-	// return updated study
+	// return created study
 	return s.(*study.Study), nil
 }
 
@@ -250,81 +256,45 @@ func (svc *studyService) UpdateRound(ctx context.Context, params *UpdateParams, 
 	return s.(*study.Study), nil
 }
 
-// get study of guild
-func (svc *studyService) GetStudy(ctx context.Context, guildID string) (*study.Study, error) {
+// update study
+func (svc *studyService) UpdateStudy(ctx context.Context, params *UpdateParams, update UpdateFunc) (*study.Study, error) {
 	defer svc.mtx.Unlock()
 	svc.mtx.Lock()
 
-	s, err := svc.tx.FindStudy(ctx, guildID)
-	if err != nil {
-		return nil, err
+	if params == nil {
+		return nil, study.ErrNilUpdateParams
 	}
-
-	if s == nil {
-		return nil, study.ErrStudyNotFound
-	}
-
-	return s, nil
-}
-
-// get ongoing round of study of guild
-func (svc *studyService) GetOngoingRound(ctx context.Context, guildID string) (*study.Round, error) {
-	defer svc.mtx.Unlock()
-	svc.mtx.Lock()
 
 	txFn := func(sc context.Context) (interface{}, error) {
-		// find study
-		s, err := svc.tx.FindStudy(sc, guildID)
+		s, err := svc.tx.FindStudy(sc, params.GuildID)
 		if err != nil {
 			return nil, err
 		}
 
-		// if there is no study, return error
 		if s == nil {
 			return nil, study.ErrStudyNotFound
 		}
 
-		// if there is no ongoing round, return error
-		if s.OngoingRoundID == "" {
-			return nil, study.ErrRoundNotFound
+		// update study
+		if err := update(s, nil, params); err != nil {
+			return nil, err
 		}
 
-		// find ongoing round
-		r, err := svc.tx.FindRound(sc, s.OngoingRoundID)
+		// update study
+		s, err = svc.tx.UpdateStudy(sc, *s)
 		if err != nil {
 			return nil, err
 		}
 
-		// if there is no ongoing round, return error
-		if r == nil {
-			return nil, study.ErrStudyNotFound
-		}
-
-		return r, nil
+		return s, nil
 	}
 
 	// execute transaction
-	res, err := svc.tx.ExecTx(ctx, txFn)
+	s, err := svc.tx.ExecTx(ctx, txFn)
 	if err != nil {
 		return nil, err
 	}
 
-	return res.(*study.Round), nil
-}
-
-// get all rounds of study of guild
-func (svc *studyService) GetRounds(ctx context.Context, guildID string) ([]*study.Round, error) {
-	defer svc.mtx.Unlock()
-	svc.mtx.Lock()
-
-	r, err := svc.tx.FindRounds(ctx, guildID)
-	if err != nil {
-		return nil, err
-	}
-
-	if r == nil {
-		return nil, study.ErrRoundNotFound
-	}
-
-	return r, nil
+	// return updated study
+	return s.(*study.Study), nil
 }
