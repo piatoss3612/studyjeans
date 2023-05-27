@@ -13,7 +13,7 @@ import (
 type Service interface {
 	NewStudy(ctx context.Context, guildID, managerID string) (*study.Study, error)
 	NewRound(ctx context.Context, guildID, title string, memberIDs []string) (*study.Study, error)
-	Update(ctx context.Context, params UpdateParams, validations ...UpdateValidationFunc) (*study.Study, error)
+	Update(ctx context.Context, params *UpdateParams, validations ...UpdateValidationFunc) (*study.Study, error)
 	GetStudy(ctx context.Context, guildID string) (*study.Study, error)
 	GetOngoingRound(ctx context.Context, guildID string) (*study.Round, error)
 	GetRounds(ctx context.Context, guildID string) ([]*study.Round, error)
@@ -50,8 +50,8 @@ func New(ctx context.Context, tx repository.Tx, guildID, managerID, noticeChID, 
 
 // create new study
 func (svc *studyService) NewStudy(ctx context.Context, guildID, managerID string) (*study.Study, error) {
-	svc.mtx.Lock()
 	defer svc.mtx.Unlock()
+	svc.mtx.Lock()
 
 	txFn := func(sc context.Context) (interface{}, error) {
 		// find study of guild
@@ -134,6 +134,62 @@ func (svc *studyService) NewRound(ctx context.Context, guildID, title string, me
 
 		// update study
 		return svc.tx.UpdateStudy(sc, *s)
+	}
+
+	// execute transaction
+	s, err := svc.tx.ExecTx(ctx, txFn)
+	if err != nil {
+		return nil, err
+	}
+
+	// return updated study
+	return s.(*study.Study), nil
+}
+
+// update study or round
+func (svc *studyService) Update(ctx context.Context, params *UpdateParams, validations ...UpdateValidationFunc) (*study.Study, error) {
+	defer svc.mtx.Unlock()
+	svc.mtx.Lock()
+
+	txFn := func(sc context.Context) (interface{}, error) {
+		s, err := svc.tx.FindStudy(sc, params.GuildID)
+		if err != nil {
+			return nil, err
+		}
+
+		if s == nil {
+			return nil, study.ErrStudyNotFound
+		}
+
+		r, err := svc.tx.FindRound(sc, s.OngoingRoundID)
+		if err != nil {
+			return nil, err
+		}
+
+		if r == nil {
+			return nil, study.ErrRoundNotFound
+		}
+
+		// validate update params
+		for _, v := range validations {
+			if err := v(s, r, params); err != nil {
+				return nil, err
+			}
+		}
+
+		// update study
+		s, err = svc.tx.UpdateStudy(sc, *s)
+		if err != nil {
+			return nil, err
+		}
+
+		// update round
+		r, err = svc.tx.UpdateRound(sc, *r)
+		if err != nil {
+			return nil, err
+		}
+
+		return s, nil
 	}
 
 	// execute transaction
