@@ -33,27 +33,26 @@ type UpdateParams struct {
 
 type UpdateValidationFunc func(*study.Study, *study.Round, *UpdateParams) error
 
-type serviceImpl struct {
+type studyService struct {
 	tx repository.Tx
 
 	mtx *sync.Mutex
 }
 
 // create new service
-func New(ctx context.Context, tx repository.Tx, guildID, managerID, noticeChID, reflectionChID string) (Service, error) {
-	svc := &serviceImpl{
+func New(ctx context.Context, tx repository.Tx, guildID, managerID, noticeChID, reflectionChID string) Service {
+	svc := &studyService{
 		tx:  tx,
 		mtx: &sync.Mutex{},
 	}
-	return svc.setup(ctx, guildID, managerID, noticeChID, reflectionChID)
+	return svc
 }
 
-// setup service
-func (svc *serviceImpl) setup(ctx context.Context, guildID, managerID, noticeChID, reflectionChID string) (*serviceImpl, error) {
+// create new study
+func (svc *studyService) NewStudy(ctx context.Context, guildID, managerID string) (*study.Study, error) {
 	svc.mtx.Lock()
 	defer svc.mtx.Unlock()
 
-	// transaction for setup
 	txFn := func(sc context.Context) (interface{}, error) {
 		// find study of guild
 		s, err := svc.tx.FindStudy(sc, guildID)
@@ -61,33 +60,33 @@ func (svc *serviceImpl) setup(ctx context.Context, guildID, managerID, noticeChI
 			return nil, err
 		}
 
-		// if there is no management, create one
-		if s == nil {
-			ns := study.New()
-
-			ns.SetGuildID(guildID)
-			ns.SetManagerID(managerID)
-			ns.SetNoticeChannelID(noticeChID)
-			ns.SetReflectionChannelID(reflectionChID)
-
-			_, err := svc.tx.CreateStudy(ctx, ns)
-			return nil, err
+		// if study exists, return error
+		if s != nil {
+			return nil, study.ErrStudyExists
 		}
-		return nil, nil
+
+		// create new study
+		ns := study.New()
+
+		ns.SetGuildID(guildID)
+		ns.SetManagerID(managerID)
+
+		// store new study
+		return svc.tx.CreateStudy(sc, ns)
 	}
 
 	// execute transaction
-	_, err := svc.tx.ExecTx(ctx, txFn)
+	s, err := svc.tx.ExecTx(ctx, txFn)
 	if err != nil {
 		return nil, err
 	}
 
-	// return serviceImpl
-	return svc, nil
+	// return created study
+	return s.(*study.Study), nil
 }
 
 // initialize new study round
-func (svc *serviceImpl) NewRound(ctx context.Context, guildID, title string, memberIDs []string) (*study.Study, error) {
+func (svc *studyService) NewRound(ctx context.Context, guildID, title string, memberIDs []string) (*study.Study, error) {
 	defer svc.mtx.Unlock()
 	svc.mtx.Lock()
 
@@ -148,7 +147,7 @@ func (svc *serviceImpl) NewRound(ctx context.Context, guildID, title string, mem
 }
 
 // move study to next stage
-func (svc *serviceImpl) MoveStage(ctx context.Context, guildID string) (*study.Study, error) {
+func (svc *studyService) MoveStage(ctx context.Context, guildID string) (*study.Study, error) {
 	defer svc.mtx.Unlock()
 	svc.mtx.Lock()
 
@@ -209,7 +208,7 @@ func (svc *serviceImpl) MoveStage(ctx context.Context, guildID string) (*study.S
 }
 
 // close study round
-func (svc *serviceImpl) CloseRound(ctx context.Context, guildID string) (*study.Study, error) {
+func (svc *studyService) CloseRound(ctx context.Context, guildID string) (*study.Study, error) {
 	defer svc.mtx.Unlock()
 	svc.mtx.Lock()
 
