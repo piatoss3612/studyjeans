@@ -1,10 +1,10 @@
 study:
-	@echo "Run discord bot"
+	@echo "Run study bot"
 	go run ./cmd/study/
 
-recorder:
-	@echo "Run recorder"
-	go run ./cmd/recorder/
+logger:
+	@echo "Run study logger"
+	go run ./cmd/logger/
 
 up:
 	@echo "Run docker compose"
@@ -14,23 +14,23 @@ down:
 	@echo "Stop docker compose"
 	docker compose down
 
-build_image: build_study_image build_recorder_image
+build_image: build_study_image build_logger_image
 	
 
 build_study_image:
 	@echo "Build docker image for study bot"
 	docker build -t piatoss3612/study-bot:$(version) -f ./build/study/Dockerfile .
 
-build_recorder_image:
-	@echo "Build docker image for recorder"
-	docker build -t piatoss3612/recorder:$(version) -f ./build/recorder/Dockerfile .
+build_logger_image:
+	@echo "Build docker image for study logger"
+	docker build -t piatoss3612/study-logger:$(version) -f ./build/logger/Dockerfile .
 
-push_image: push_study_image push_recorder_image
+push_image: push_study_image push_logger_image
 
 push_study_image:
 	@echo "Push study bot docker image"
 	docker push piatoss3612/study-bot:$(version)
 
-push_recorder_image:
-	@echo "Push recorder docker image"
-	docker push piatoss3612/recorder:$(version)
+push_logger_image:
+	@echo "Push study logger docker image"
+	docker push piatoss3612/study-logger:$(version)
