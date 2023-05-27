@@ -6,7 +6,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ./recorder ./cmd/recorder
+RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ./logger ./cmd/logger
 
 FROM alpine:3.17.3
 
@@ -17,8 +17,8 @@ RUN apk --no-cache add tzdata && \
 
 RUN mkdir /app
 
-COPY --from=builder /app/recorder /app
+COPY --from=builder /app/logger /app
 
 WORKDIR /app
 
-CMD ["./recorder"]
+CMD ["./logger"]
