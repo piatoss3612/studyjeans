@@ -9,11 +9,14 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	_ "github.com/joho/godotenv/autoload"
-	app "github.com/piatoss3612/presentation-helper-bot/internal/app/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/config"
 	"github.com/piatoss3612/presentation-helper-bot/internal/msgqueue"
-	service "github.com/piatoss3612/presentation-helper-bot/internal/service/study"
-	store "github.com/piatoss3612/presentation-helper-bot/internal/store/study"
+	"github.com/piatoss3612/presentation-helper-bot/internal/study/bot"
+	"github.com/piatoss3612/presentation-helper-bot/internal/study/cache"
+	"github.com/piatoss3612/presentation-helper-bot/internal/study/cache/redis"
+	"github.com/piatoss3612/presentation-helper-bot/internal/study/repository"
+	"github.com/piatoss3612/presentation-helper-bot/internal/study/repository/mongo"
+	"github.com/piatoss3612/presentation-helper-bot/internal/study/service"
 	"github.com/piatoss3612/presentation-helper-bot/internal/tools"
 	"go.uber.org/zap"
 )
@@ -65,21 +68,19 @@ func run() {
 
 	sugar.Info("Study/Event publisher is ready!")
 
-	svc := mustInitStudyService(ctx, tx, cfg.Discord.GuildID,
-		cfg.Discord.ManagerID, cfg.Discord.NoticeChannelID, cfg.Discord.ReflectionChannelID)
-
+	svc := service.New(tx)
 	sugar.Info("Study service is ready!")
 
 	sess := mustOpenDiscordSession(cfg.Discord.BotToken)
 
-	bot := app.New(sess, svc, cache, pub, sugar).Setup()
+	b := bot.New(sess, svc, cache, pub, sugar).Setup()
 
-	stop, err := bot.Run()
+	stop, err := b.Run()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer func() {
-		_ = bot.Close()
+		_ = b.Close()
 		sugar.Info("Disconnected from Discord!")
 	}()
 
@@ -97,22 +98,22 @@ func mustLoadConfig(path string) *config.StudyConfig {
 	return cfg
 }
 
-func mustInitTx(ctx context.Context, uri, dbname string) (store.Tx, func() error) {
+func mustInitTx(ctx context.Context, uri, dbname string) (repository.Tx, func() error) {
 	mongoClient, err := tools.ConnectMongoDB(ctx, uri)
 	if err != nil {
 		sugar.Fatal(err)
 	}
 
-	return store.NewMongoTx(mongoClient, store.WithDBName(dbname)), func() error { return mongoClient.Disconnect(context.Background()) }
+	return mongo.NewMongoTx(mongoClient, mongo.WithDBName(dbname)), func() error { return mongoClient.Disconnect(context.Background()) }
 }
 
-func mustInitStudyCache(ctx context.Context, addr string, ttl time.Duration) store.Cache {
+func mustInitStudyCache(ctx context.Context, addr string, ttl time.Duration) cache.Cache {
 	cache, err := tools.ConnectRedisCache(ctx, addr, ttl)
 	if err != nil {
 		sugar.Fatal(err)
 	}
 
-	return store.NewCache(cache)
+	return redis.NewCache(cache)
 }
 
 func mustInitPublisher(ctx context.Context, addr, exchange, kind string) (msgqueue.Publisher, func() error) {
@@ -128,15 +129,6 @@ func mustInitPublisher(ctx context.Context, addr, exchange, kind string) (msgque
 	}
 
 	return pub, func() error { return rabbit.Close() }
-}
-
-func mustInitStudyService(ctx context.Context, tx store.Tx, guildID, managerID, noticeChID, reflectionChID string) service.Service {
-	svc, err := service.New(ctx, tx, guildID, managerID, noticeChID, reflectionChID)
-	if err != nil {
-		sugar.Fatal(err)
-	}
-
-	return svc
 }
 
 func mustOpenDiscordSession(token string) *discordgo.Session {

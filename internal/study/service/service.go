@@ -25,7 +25,7 @@ type studyService struct {
 }
 
 // create new service
-func New(ctx context.Context, tx repository.Tx) Service {
+func New(tx repository.Tx) Service {
 	svc := &studyService{
 		tx:  tx,
 		mtx: &sync.Mutex{},
