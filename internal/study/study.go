@@ -11,6 +11,7 @@ type Study struct {
 	ReflectionChannelID string `bson:"reflection_channel_id"`
 	ManagerID           string `bson:"manager_id"`
 	OngoingRoundID      string `bson:"ongoing_round_id"`
+	SpreadsheetURL      string `bson:"spreadsheet_url"`
 	CurrentStage        Stage  `bson:"current_stage"`
 	TotalRound          int8   `bson:"total_round"`
 
@@ -25,6 +26,7 @@ func New() Study {
 		ReflectionChannelID: "",
 		ManagerID:           "",
 		OngoingRoundID:      "",
+		SpreadsheetURL:      "",
 		CurrentStage:        StageNone,
 		CreatedAt:           time.Now(),
 		UpdatedAt:           time.Now(),
@@ -57,6 +59,10 @@ func (s *Study) IsManager(userID string) bool {
 
 func (s *Study) SetOngoingRoundID(roundID string) {
 	s.OngoingRoundID = roundID
+}
+
+func (s *Study) SetSpreadsheetURL(url string) {
+	s.SpreadsheetURL = url
 }
 
 func (s *Study) SetCurrentStage(state Stage) {

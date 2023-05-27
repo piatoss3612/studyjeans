@@ -79,6 +79,7 @@ func (si *mongoStore) UpdateStudy(ctx context.Context, s study.Study) (*study.St
 				{Key: "reflection_channel_id", Value: s.ReflectionChannelID},
 				{Key: "manager_id", Value: s.ManagerID},
 				{Key: "ongoing_round_id", Value: s.OngoingRoundID},
+				{Key: "spreadsheet_url", Value: s.SpreadsheetURL},
 				{Key: "current_stage", Value: s.CurrentStage},
 				{Key: "total_round", Value: s.TotalRound},
 				{Key: "updated_at", Value: s.UpdatedAt},
