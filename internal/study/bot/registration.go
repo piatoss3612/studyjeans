@@ -71,7 +71,7 @@ func (b *StudyBot) registerCmdHandler(s *discordgo.Session, i *discordgo.Interac
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		_, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
+		_, _, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
 			GuildID:    i.GuildID,
 			MemberID:   user.ID,
 			MemberName: name,
@@ -116,7 +116,7 @@ func (b *StudyBot) unregisterCmdHandler(s *discordgo.Session, i *discordgo.Inter
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		_, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
+		_, _, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
 			GuildID:  i.GuildID,
 			MemberID: user.ID,
 		},

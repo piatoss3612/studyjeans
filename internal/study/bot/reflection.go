@@ -51,7 +51,7 @@ func (b *StudyBot) reflectionCmdHandler(s *discordgo.Session, i *discordgo.Inter
 		defer cancel()
 
 		// set sent reflection
-		gs, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
+		gs, _, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
 			GuildID:  i.GuildID,
 			MemberID: user.ID,
 		},

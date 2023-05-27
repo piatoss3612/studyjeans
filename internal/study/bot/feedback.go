@@ -153,7 +153,7 @@ func (b *StudyBot) feedbackSubmitHandler(s *discordgo.Session, i *discordgo.Inte
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 
-		_, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
+		_, _, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
 			GuildID:    i.GuildID,
 			ReviewerID: reviewer.ID,
 			RevieweeID: revieweeID,

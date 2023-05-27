@@ -55,7 +55,7 @@ func (b *StudyBot) submitContentCmdHandler(s *discordgo.Session, i *discordgo.In
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		_, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
+		_, _, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
 			GuildID:    i.GuildID,
 			MemberID:   user.ID,
 			ContentURL: content,

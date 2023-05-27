@@ -14,7 +14,7 @@ type Service interface {
 	GetStudy(ctx context.Context, guildID string) (*study.Study, error)
 	NewRound(ctx context.Context, params *NewRoundParams) (*study.Study, error)
 	NewStudy(ctx context.Context, params *NewStudyParams) (*study.Study, error)
-	UpdateRound(ctx context.Context, params *UpdateParams, update UpdateFunc, validators ...UpdateValidator) (*study.Study, error)
+	UpdateRound(ctx context.Context, params *UpdateParams, update UpdateFunc, validators ...UpdateValidator) (*study.Study, *study.Round, error)
 	UpdateStudy(ctx context.Context, params *UpdateParams, update UpdateFunc, validators ...UpdateValidator) (*study.Study, error)
 }
 
@@ -240,16 +240,16 @@ func (svc *studyService) NewStudy(ctx context.Context, params *NewStudyParams) (
 }
 
 // update study and round
-func (svc *studyService) UpdateRound(ctx context.Context, params *UpdateParams, update UpdateFunc, validators ...UpdateValidator) (*study.Study, error) {
+func (svc *studyService) UpdateRound(ctx context.Context, params *UpdateParams, update UpdateFunc, validators ...UpdateValidator) (*study.Study, *study.Round, error) {
 	defer svc.mtx.Unlock()
 	svc.mtx.Lock()
 
 	if params == nil {
-		return nil, study.ErrNilParams
+		return nil, nil, study.ErrNilParams
 	}
 
 	if update == nil {
-		return nil, study.ErrNilFunc
+		return nil, nil, study.ErrNilFunc
 	}
 
 	txFn := func(sc context.Context) (interface{}, error) {
@@ -292,22 +292,23 @@ func (svc *studyService) UpdateRound(ctx context.Context, params *UpdateParams, 
 		}
 
 		// update round
-		_, err = svc.tx.UpdateRound(sc, *r)
+		r, err = svc.tx.UpdateRound(sc, *r)
 		if err != nil {
 			return nil, err
 		}
 
-		return s, nil
+		return []any{s, r}, nil
 	}
 
 	// execute transaction
 	s, err := svc.tx.ExecTx(ctx, txFn)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// return updated study
-	return s.(*study.Study), nil
+	// return updated study and round
+	res := s.([]any)
+	return res[0].(*study.Study), res[1].(*study.Round), nil
 }
 
 // update study

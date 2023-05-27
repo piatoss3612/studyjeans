@@ -520,7 +520,7 @@ func (b *StudyBot) stageMoveConfirmHandler(s *discordgo.Session, i *discordgo.In
 		defer cancel()
 
 		// move stage
-		gs, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
+		gs, r, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
 			GuildID:   i.GuildID,
 			ManagerID: manager.ID,
 		}, service.MoveStage, service.ValidateToCheckManager, service.ValidateToCheckOngoingRound)
@@ -531,7 +531,7 @@ func (b *StudyBot) stageMoveConfirmHandler(s *discordgo.Session, i *discordgo.In
 		var embed *discordgo.MessageEmbed
 
 		if gs.CurrentStage == study.StageWait && gs.OngoingRoundID == "" {
-			embed = EmbedTemplate(s.State.User, "스터디 라운드가 종료", "스터디 라운드가 종료되었습니다. 다음 라운드를 기다려주세요...")
+			embed = EmbedTemplate(s.State.User, "스터디 라운드 종료", "스터디 라운드가 종료되었습니다. 다음 라운드를 기대해주세요!")
 
 			// TODO: publish round info
 		} else {
