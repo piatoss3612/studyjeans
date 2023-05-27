@@ -26,7 +26,7 @@ func New(svc service.Service, sub msgqueue.Subscriber, sugar *zap.SugaredLogger)
 }
 
 func (l *LoggerApp) Run() <-chan bool {
-	l.sugar.Info("Starting recorder")
+	l.sugar.Info("Starting logger app")
 
 	stop := make(chan bool)
 	shutdown := make(chan os.Signal, 1)

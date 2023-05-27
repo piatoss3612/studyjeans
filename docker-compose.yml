@@ -15,12 +15,12 @@ services:
       - redis
       - rabbitmq
 
-  recorder:
-    container_name: recorder
-    image: piatoss3612/recorder:latest
+  study-logger:
+    container_name: study-logger
+    image: piatoss3612/study-logger:latest
     restart: always
     environment:
-      RECORDER_CONFIG_FILE: config.json
+      LOGGER_CONFIG_FILE: config.json
       SHEETS_CREDENTIALS: creds.json
       SPREADSHEET_ID: 1a4VByiDovdJjEcLRsZjCNMAWab-stdKdsN23JVKA7rk
       EVENT_SHEET_ID: 1024
