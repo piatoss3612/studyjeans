@@ -4,11 +4,9 @@ import "github.com/spf13/viper"
 
 type StudyConfig struct {
 	Discord struct {
-		BotToken            string `mapstructure:"bot_token"`
-		GuildID             string `mapstructure:"guild_id"`
-		ManagerID           string `mapstructure:"manager_id"`
-		NoticeChannelID     string `mapstructure:"notice_channel_id"`
-		ReflectionChannelID string `mapstructure:"reflection_channel_id"`
+		BotToken  string `mapstructure:"bot_token"`
+		GuildID   string `mapstructure:"guild_id"`
+		ManagerID string `mapstructure:"manager_id"`
 	} `mapstructure:"discord"`
 	MongoDB struct {
 		URI    string `mapstructure:"uri"`
