@@ -56,6 +56,10 @@ func (b *StudyBot) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.Inte
 			return study.ErrStudyNotFound
 		}
 
+		if gs.OngoingRoundID == "" {
+			return study.ErrRoundNotFound
+		}
+
 		round, err := b.svc.GetRound(ctx, gs.OngoingRoundID)
 		if err != nil {
 			return err
@@ -125,6 +129,10 @@ func (b *StudyBot) studyRoundInfoCmdHandler(s *discordgo.Session, i *discordgo.I
 
 			if gs == nil {
 				return study.ErrStudyNotFound
+			}
+
+			if gs.OngoingRoundID == "" {
+				return study.ErrRoundNotFound
 			}
 
 			// get round from database

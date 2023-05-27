@@ -167,7 +167,18 @@ func (b *StudyBot) feedbackSubmitHandler(s *discordgo.Session, i *discordgo.Inte
 			return err
 		}
 
-		_, err = s.ChannelMessageSend(channel.ID, feedback)
+		embed := &discordgo.MessageEmbed{
+			Author: &discordgo.MessageEmbedAuthor{
+				Name:    "익명",
+				IconURL: s.State.User.AvatarURL(""),
+			},
+			Title:       "피드백",
+			Description: feedback,
+			Color:       0x00ff00,
+			Timestamp:   time.Now().Format(time.RFC3339),
+		}
+
+		_, err = s.ChannelMessageSendEmbed(channel.ID, embed)
 		if err != nil {
 			return err
 		}

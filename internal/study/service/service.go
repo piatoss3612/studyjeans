@@ -147,7 +147,7 @@ func (svc *studyService) NewRound(ctx context.Context, params *NewRoundParams) (
 		}
 
 		// check if manager is the one who requested
-		if s.IsManager(params.ManagerID) {
+		if !s.IsManager(params.ManagerID) {
 			return nil, study.ErrInvalidManager
 		}
 
@@ -260,6 +260,10 @@ func (svc *studyService) UpdateRound(ctx context.Context, params *UpdateParams, 
 
 		if s == nil {
 			return nil, study.ErrStudyNotFound
+		}
+
+		if s.OngoingRoundID == "" {
+			return nil, study.ErrRoundNotFound
 		}
 
 		r, err := svc.tx.FindRound(sc, s.OngoingRoundID)

@@ -47,7 +47,7 @@ var (
 					},
 					{
 						Name:  "발표 녹화 자료 등록",
-						Value: "register-presentation-video",
+						Value: "register-recorded-content",
 					},
 					{
 						Name:  "공지 채널 설정",
@@ -152,7 +152,7 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 		err = b.moveRoundStageHandler(s, i)
 	case "confirm-attendance":
 		err = b.checkAttendanceHandler(s, i, u)
-	case "register-presentation-video":
+	case "register-recorded-content":
 		err = b.registerRecordedContentHandler(s, i, txt)
 	case "set-notice-channel":
 		err = b.setNoticeChannelHandler(s, i, ch)
@@ -201,13 +201,13 @@ func (b *StudyBot) createStudyHandler(s *discordgo.Session, i *discordgo.Interac
 	}
 
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseModal,
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			CustomID: NoticeModalCustomID,
 			Title:    "스터디 생성",
 			Flags:    discordgo.MessageFlagsEphemeral,
 			Embeds: []*discordgo.MessageEmbed{
-				EmbedTemplate(s.State.User, "스터디가 생성되었습니다.", fmt.Sprintf("스터디 ID: %d", gs.ID)),
+				EmbedTemplate(s.State.User, "스터디가 생성되었습니다.", fmt.Sprintf("스터디 ID: %s", gs.ID)),
 			},
 		},
 	})
@@ -629,8 +629,7 @@ func (b *StudyBot) registerRecordedContentHandler(s *discordgo.Session, i *disco
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// register recorded content
-	// gs, err := b.svc.SetStudyContent(ctx, i.GuildID, contentURL)
+	// submit round content
 	gs, err := b.svc.UpdateRound(ctx, &service.UpdateParams{
 		GuildID:    i.GuildID,
 		ManagerID:  manager.ID,
