@@ -15,6 +15,10 @@ var (
 		Name:        "내-정보",
 		Description: "나의 스터디 라운드 등록 정보를 확인합니다.",
 	}
+	studyInfoCmd = discordgo.ApplicationCommand{
+		Name:        "스터디-정보",
+		Description: "스터디 정보를 확인합니다.",
+	}
 	studyRoundInfoCmd = discordgo.ApplicationCommand{
 		Name:        "라운드-정보",
 		Description: "진행중인 스터디 라운드 정보를 확인합니다.",
@@ -28,6 +32,7 @@ var (
 
 func (b *StudyBot) addStudyInfoCmd() {
 	b.cmd.AddCommand(myStudyInfoCmd, b.myStudyInfoCmdHandler)
+	b.cmd.AddCommand(studyInfoCmd, b.studyInfoCmdHandler)
 	b.cmd.AddCommand(studyRoundInfoCmd, b.studyRoundInfoCmdHandler)
 	b.cpt.AddComponent(speakerInfoSelectMenu.CustomID, b.speakerInfoSelectMenuHandler)
 }
@@ -82,7 +87,7 @@ func (b *StudyBot) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.Inte
 				Content: user.Mention(),
 				Flags:   discordgo.MessageFlagsEphemeral,
 				Embeds: []*discordgo.MessageEmbed{
-					SpeakerInfoEmbed(user, member),
+					speakerInfoEmbed(user, member),
 				},
 			},
 		})
@@ -91,6 +96,36 @@ func (b *StudyBot) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.Inte
 	err := fn(s, i)
 	if err != nil {
 		b.sugar.Errorw(err.Error(), "event", "my-study-info")
+		_ = errorInteractionRespond(s, i, err)
+	}
+}
+
+func (b *StudyBot) studyInfoCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	fn := func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		gs, err := b.svc.GetStudy(ctx, i.GuildID)
+		if err != nil {
+			return err
+		}
+
+		if gs == nil {
+			return study.ErrStudyNotFound
+		}
+
+		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Flags:  discordgo.MessageFlagsEphemeral,
+				Embeds: []*discordgo.MessageEmbed{studyInfoEmbed(s.State.User, gs)},
+			},
+		})
+	}
+
+	err := fn(s, i)
+	if err != nil {
+		b.sugar.Errorw(err.Error(), "event", "study-info")
 		_ = errorInteractionRespond(s, i, err)
 	}
 }
@@ -245,7 +280,7 @@ func (b *StudyBot) speakerInfoSelectMenuHandler(s *discordgo.Session, i *discord
 				return err
 			}
 
-			embed = SpeakerInfoEmbed(selectedUser, member)
+			embed = speakerInfoEmbed(selectedUser, member)
 		}
 
 		// if round does not exist in cache, set round to cache
@@ -273,6 +308,48 @@ func (b *StudyBot) speakerInfoSelectMenuHandler(s *discordgo.Session, i *discord
 	if err != nil {
 		b.sugar.Errorw(err.Error(), "event", "study-round-info")
 		_ = errorInteractionRespond(s, i, err)
+	}
+}
+
+func studyInfoEmbed(u *discordgo.User, s *study.Study) *discordgo.MessageEmbed {
+	return &discordgo.MessageEmbed{
+		Author: &discordgo.MessageEmbedAuthor{
+			Name:    u.Username,
+			IconURL: u.AvatarURL(""),
+		},
+		Title:     "스터디 정보",
+		Thumbnail: &discordgo.MessageEmbedThumbnail{URL: u.AvatarURL("")},
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:   "관리자",
+				Value:  fmt.Sprintf("```%s```", s.ManagerID),
+				Inline: true,
+			},
+			{
+				Name:  "생성일",
+				Value: fmt.Sprintf("```%s```", s.CreatedAt.Format(time.RFC3339)),
+			},
+			{
+				Name:   "총 라운드 수",
+				Value:  fmt.Sprintf("```%d```", s.TotalRound),
+				Inline: true,
+			},
+			{
+				Name:   "진행 단계",
+				Value:  fmt.Sprintf("```%s```", s.CurrentStage),
+				Inline: true,
+			},
+			{
+				Name: "이전 라운드 조회",
+				Value: fmt.Sprintf("```%s```", func() string {
+					if s.SpreadsheetURL == "" {
+						return "미등록"
+					}
+					return s.SpreadsheetURL
+				}()),
+			},
+		},
+		Timestamp: time.Now().Format(time.RFC3339),
 	}
 }
 
@@ -315,7 +392,7 @@ func studyRoundInfoEmbed(u *discordgo.User, r *study.Round) *discordgo.MessageEm
 	}
 }
 
-func SpeakerInfoEmbed(u *discordgo.User, m study.Member) *discordgo.MessageEmbed {
+func speakerInfoEmbed(u *discordgo.User, m study.Member) *discordgo.MessageEmbed {
 	return &discordgo.MessageEmbed{
 		Title: fmt.Sprintf("%s님의 발표 정보", u.Username),
 		Thumbnail: &discordgo.MessageEmbedThumbnail{
