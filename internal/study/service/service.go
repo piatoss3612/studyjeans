@@ -29,6 +29,20 @@ type Service interface {
 	CloseStudyRound(ctx context.Context, guildID string) (*study.Study, error)
 }
 
+type ServiceParams struct {
+	GuildID    string
+	ManagerID  string
+	ChannelID  string
+	MemberID   string
+	MemberName string
+	Subject    string
+	ContentURL string
+	ReviewerID string
+	RevieweeID string
+}
+
+type UpdateValidationFunc func(*study.Study, *study.Round, *ServiceParams) error
+
 type serviceImpl struct {
 	tx repository.Tx
 
