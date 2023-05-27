@@ -14,8 +14,8 @@ type Service interface {
 	GetStudy(ctx context.Context, guildID string) (*study.Study, error)
 	NewRound(ctx context.Context, params *NewRoundParams) (*study.Study, error)
 	NewStudy(ctx context.Context, params *NewStudyParams) (*study.Study, error)
-	UpdateRound(ctx context.Context, params *UpdateParams, update UpdateFunc) (*study.Study, error)
-	UpdateStudy(ctx context.Context, params *UpdateParams, update UpdateFunc) (*study.Study, error)
+	UpdateRound(ctx context.Context, params *UpdateParams, update UpdateFunc, validators ...UpdateValidator) (*study.Study, error)
+	UpdateStudy(ctx context.Context, params *UpdateParams, update UpdateFunc, validators ...UpdateValidator) (*study.Study, error)
 }
 
 type studyService struct {
@@ -46,6 +46,21 @@ type NewStudyParams struct {
 	NoticeChannelID     string
 	ReflectionChannelID string
 }
+
+type UpdateParams struct {
+	GuildID    string
+	ManagerID  string
+	ChannelID  string
+	MemberID   string
+	MemberName string
+	Subject    string
+	ContentURL string
+	ReviewerID string
+	RevieweeID string
+}
+
+type UpdateFunc func(*study.Study, *study.Round, *UpdateParams)
+type UpdateValidator func(*study.Study, *study.Round, *UpdateParams) error
 
 // get round by id
 func (svc *studyService) GetRound(ctx context.Context, roundID string) (*study.Round, error) {
@@ -225,12 +240,16 @@ func (svc *studyService) NewStudy(ctx context.Context, params *NewStudyParams) (
 }
 
 // update study and round
-func (svc *studyService) UpdateRound(ctx context.Context, params *UpdateParams, update UpdateFunc) (*study.Study, error) {
+func (svc *studyService) UpdateRound(ctx context.Context, params *UpdateParams, update UpdateFunc, validators ...UpdateValidator) (*study.Study, error) {
 	defer svc.mtx.Unlock()
 	svc.mtx.Lock()
 
 	if params == nil {
 		return nil, study.ErrNilParams
+	}
+
+	if update == nil {
+		return nil, study.ErrNilFunc
 	}
 
 	txFn := func(sc context.Context) (interface{}, error) {
@@ -252,10 +271,15 @@ func (svc *studyService) UpdateRound(ctx context.Context, params *UpdateParams, 
 			return nil, study.ErrRoundNotFound
 		}
 
-		// update study and round
-		if err := update(s, r, params); err != nil {
-			return nil, err
+		// validate
+		for _, v := range validators {
+			if err := v(s, r, params); err != nil {
+				return nil, err
+			}
 		}
+
+		// update study and round
+		update(s, r, params)
 
 		// update study
 		s, err = svc.tx.UpdateStudy(sc, *s)
@@ -283,12 +307,16 @@ func (svc *studyService) UpdateRound(ctx context.Context, params *UpdateParams, 
 }
 
 // update study
-func (svc *studyService) UpdateStudy(ctx context.Context, params *UpdateParams, update UpdateFunc) (*study.Study, error) {
+func (svc *studyService) UpdateStudy(ctx context.Context, params *UpdateParams, update UpdateFunc, validators ...UpdateValidator) (*study.Study, error) {
 	defer svc.mtx.Unlock()
 	svc.mtx.Lock()
 
 	if params == nil {
 		return nil, study.ErrNilParams
+	}
+
+	if update == nil {
+		return nil, study.ErrNilFunc
 	}
 
 	txFn := func(sc context.Context) (interface{}, error) {
@@ -301,10 +329,15 @@ func (svc *studyService) UpdateStudy(ctx context.Context, params *UpdateParams, 
 			return nil, study.ErrStudyNotFound
 		}
 
-		// update study
-		if err := update(s, nil, params); err != nil {
-			return nil, err
+		// validate
+		for _, v := range validators {
+			if err := v(s, nil, params); err != nil {
+				return nil, err
+			}
 		}
+
+		// update study
+		update(s, nil, params)
 
 		// update study
 		s, err = svc.tx.UpdateStudy(sc, *s)
