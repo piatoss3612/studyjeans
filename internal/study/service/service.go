@@ -13,7 +13,7 @@ import (
 type Service interface {
 	NewStudy(ctx context.Context, guildID, managerID string) (*study.Study, error)
 	NewRound(ctx context.Context, guildID, title string, memberIDs []string) (*study.Study, error)
-	Update(ctx context.Context, params *UpdateParams, updates ...UpdateFunc) (*study.Study, error)
+	Update(ctx context.Context, params *UpdateParams, update UpdateFunc) (*study.Study, error)
 	GetStudy(ctx context.Context, guildID string) (*study.Study, error)
 	GetOngoingRound(ctx context.Context, guildID string) (*study.Round, error)
 	GetRounds(ctx context.Context, guildID string) ([]*study.Round, error)
@@ -146,8 +146,8 @@ func (svc *studyService) NewRound(ctx context.Context, guildID, title string, me
 	return s.(*study.Study), nil
 }
 
-// update study or round
-func (svc *studyService) Update(ctx context.Context, params *UpdateParams, updates ...UpdateFunc) (*study.Study, error) {
+// update study and round
+func (svc *studyService) Update(ctx context.Context, params *UpdateParams, update UpdateFunc) (*study.Study, error) {
 	defer svc.mtx.Unlock()
 	svc.mtx.Lock()
 
@@ -174,11 +174,9 @@ func (svc *studyService) Update(ctx context.Context, params *UpdateParams, updat
 			return nil, study.ErrRoundNotFound
 		}
 
-		// validate update params
-		for _, v := range updates {
-			if err := v(s, r, params); err != nil {
-				return nil, err
-			}
+		// update study and round
+		if err := update(s, r, params); err != nil {
+			return nil, err
 		}
 
 		// update study
@@ -188,7 +186,7 @@ func (svc *studyService) Update(ctx context.Context, params *UpdateParams, updat
 		}
 
 		// update round
-		r, err = svc.tx.UpdateRound(sc, *r)
+		_, err = svc.tx.UpdateRound(sc, *r)
 		if err != nil {
 			return nil, err
 		}

@@ -37,18 +37,30 @@ func (m *Member) SetRegistered(registered bool) {
 	m.Registered = registered
 }
 
+func (m Member) IsRegistered() bool {
+	return m.Registered
+}
+
 func (m *Member) SetAttended(Attended bool) {
 	m.Attended = Attended
+}
+
+func (m Member) IsAttended() bool {
+	return m.Attended
 }
 
 func (m *Member) SetSentReflection(sentReflection bool) {
 	m.SentReflection = sentReflection
 }
 
+func (m Member) HasSentReflection() bool {
+	return m.SentReflection
+}
+
 func (m *Member) SetReviewer(userID string) {
 	m.Reviewers[userID] = true
 }
 
-func (m *Member) IsReviewer(userID string) bool {
+func (m Member) IsReviewer(userID string) bool {
 	return m.Reviewers[userID]
 }

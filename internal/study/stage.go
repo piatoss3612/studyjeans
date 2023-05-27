@@ -48,6 +48,38 @@ func (s Stage) IsWait() bool {
 	return s == StageWait
 }
 
+func (s Stage) IsRegistrationOpened() bool {
+	return s == StageRegistrationOpened
+}
+
+func (s Stage) IsRegistrationClosed() bool {
+	return s == StageRegistrationClosed
+}
+
+func (s Stage) IsSubmissionOpened() bool {
+	return s == StageSubmissionOpened
+}
+
+func (s Stage) IsSubmissionClosed() bool {
+	return s == StageSubmissionClosed
+}
+
+func (s Stage) IsPresentationStarted() bool {
+	return s == StagePresentationStarted
+}
+
+func (s Stage) IsPresentationFinished() bool {
+	return s == StagePresentationFinished
+}
+
+func (s Stage) IsReviewOpened() bool {
+	return s == StageReviewOpened
+}
+
+func (s Stage) IsReviewClosed() bool {
+	return s == StageReviewClosed
+}
+
 func (s Stage) CanMoveTo(target Stage) bool {
 	switch s {
 	case StageWait:
