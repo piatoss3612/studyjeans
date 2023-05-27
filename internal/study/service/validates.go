@@ -7,14 +7,14 @@ import (
 	"github.com/piatoss3612/presentation-helper-bot/internal/study"
 )
 
-func ValidateToCheckManager(s *study.Study, r *study.Round, params *UpdateParams) error {
+func ValidateToCheckManager(s *study.Study, _ *study.Round, params *UpdateParams) error {
 	if !s.IsManager(params.ManagerID) {
 		return study.ErrNotManager
 	}
 	return nil
 }
 
-func ValidateToCheckOngoingRound(s *study.Study, r *study.Round, params *UpdateParams) error {
+func ValidateToCheckOngoingRound(s *study.Study, _ *study.Round, _ *UpdateParams) error {
 	if s.CurrentStage.IsNone() || s.CurrentStage.IsWait() {
 		return study.ErrRoundNotFound
 	}
@@ -101,7 +101,7 @@ func ValidateToCheckAttendance(s *study.Study, r *study.Round, params *UpdatePar
 	return nil
 }
 
-func ValidateToSubmitRoundContent(s *study.Study, r *study.Round, params *UpdateParams) error {
+func ValidateToSubmitRoundContent(s *study.Study, _ *study.Round, params *UpdateParams) error {
 	if params.ContentURL == "" {
 		return errors.Join(study.ErrInvalidUpdateParams, fmt.Errorf("발표 녹화본 URL이 없습니다"))
 	}

@@ -57,6 +57,10 @@ var (
 						Name:  "회고 채널 설정",
 						Value: "set-reflection-channel",
 					},
+					{
+						Name:  "스프레드시트 설정",
+						Value: "set-spreadsheet",
+					},
 				},
 				Required: true,
 			},
@@ -158,6 +162,8 @@ func (b *StudyBot) adminHandler(s *discordgo.Session, i *discordgo.InteractionCr
 		err = b.setNoticeChannelHandler(s, i, ch)
 	case "set-reflection-channel":
 		err = b.setReflectionChannelHandler(s, i, ch)
+	case "set-spreadsheet":
+		err = b.setSpreadsheetHandler(s, i, txt)
 	default:
 		err = study.ErrInvalidCommand
 	}
@@ -756,4 +762,38 @@ func (b *StudyBot) stageMoveCancelHandler(s *discordgo.Session, i *discordgo.Int
 		b.sugar.Errorw(err.Error(), "event", "stage-move-cancel")
 		_ = errorInteractionRespond(s, i, err)
 	}
+}
+
+func (b *StudyBot) setSpreadsheetHandler(s *discordgo.Session, i *discordgo.InteractionCreate, url string) error {
+	var manager *discordgo.User
+
+	if i.Member != nil && i.Member.User != nil {
+		manager = i.Member.User
+	}
+
+	if manager == nil {
+		return study.ErrManagerNotFound
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// set spreadsheet
+	_, err := b.svc.UpdateStudy(ctx, &service.UpdateParams{
+		GuildID:    i.GuildID,
+		ManagerID:  manager.ID,
+		ContentURL: url,
+	}, service.SetSpreadsheetURL, service.ValidateToCheckManager)
+	if err != nil {
+		return err
+	}
+
+	// send a response message
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: fmt.Sprintf("스터디 시트가 %s로 설정되었습니다.", url),
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	})
 }
