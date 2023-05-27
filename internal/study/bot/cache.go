@@ -1,10 +1,10 @@
-package study
+package bot
 
 import (
 	"context"
 	"time"
 
-	"github.com/piatoss3612/presentation-helper-bot/internal/models/study"
+	"github.com/piatoss3612/presentation-helper-bot/internal/study"
 )
 
 func (b *StudyBot) setRound(ctx context.Context, s *study.Round) error {

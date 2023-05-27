@@ -114,12 +114,49 @@ func (b *StudyBot) handleApplicationCommand(s *discordgo.Session, i *discordgo.I
 }
 
 func (b *StudyBot) addCommands() {
-	// b.addAdminCmd()
-	// b.addHelpCmd()
-	// b.addProfileCmd()
-	// b.addStudyInfoCmd()
-	// b.addRegistrationCmd()
-	// b.addSubmitContentCmd()
-	// b.addSendFeedbackCmd()
-	// b.addReflectionCmd()
+	b.addAdminCmd()
+	b.addHelpCmd()
+	b.addProfileCmd()
+	b.addStudyInfoCmd()
+	b.addRegistrationCmd()
+	b.addSubmitContentCmd()
+	b.addSendFeedbackCmd()
+	b.addReflectionCmd()
+}
+
+func errorInteractionRespond(s *discordgo.Session, i *discordgo.InteractionCreate, err error) error {
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Flags:  discordgo.MessageFlagsEphemeral,
+			Embeds: []*discordgo.MessageEmbed{ErrorEmbed(err.Error())},
+		},
+	})
+}
+
+func EmbedTemplate(u *discordgo.User, title, description string, url ...string) *discordgo.MessageEmbed {
+	embed := &discordgo.MessageEmbed{
+		Author: &discordgo.MessageEmbedAuthor{
+			Name:    u.Username,
+			IconURL: u.AvatarURL(""),
+		},
+		Title:       title,
+		Description: description,
+		Timestamp:   time.Now().Format(time.RFC3339),
+		Color:       16777215,
+	}
+
+	if len(url) > 0 {
+		embed.URL = url[0]
+	}
+
+	return embed
+}
+
+func ErrorEmbed(msg string) *discordgo.MessageEmbed {
+	return &discordgo.MessageEmbed{
+		Title:       "오류",
+		Description: msg,
+		Color:       0xff0000,
+	}
 }

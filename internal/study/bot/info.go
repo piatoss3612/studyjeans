@@ -1,13 +1,12 @@
-package study
+package bot
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/piatoss3612/presentation-helper-bot/internal/models/study"
+	"github.com/piatoss3612/presentation-helper-bot/internal/study"
 )
 
 var (
@@ -27,9 +26,9 @@ var (
 )
 
 func (b *StudyBot) addStudyInfoCmd() {
-	b.hdr.AddCommand(myStudyInfoCmd, b.myStudyInfoCmdHandler)
-	b.hdr.AddCommand(studyRoundInfoCmd, b.studyRoundInfoCmdHandler)
-	b.chdr.AddHandleFunc(speakerInfoSelectMenu.CustomID, b.speakerInfoSelectMenuHandler)
+	b.cmd.AddCommand(myStudyInfoCmd, b.myStudyInfoCmdHandler)
+	b.cmd.AddCommand(studyRoundInfoCmd, b.studyRoundInfoCmdHandler)
+	b.cpt.AddComponent(speakerInfoSelectMenu.CustomID, b.speakerInfoSelectMenuHandler)
 }
 
 func (b *StudyBot) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -41,38 +40,39 @@ func (b *StudyBot) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.Inte
 		}
 
 		if user == nil {
-			return ErrUserNotFound
+			return study.ErrUserNotFound
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
+		// ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		// defer cancel()
 
-		round, err := b.svc.GetOngoingRound(ctx, i.GuildID)
-		if err != nil {
-			return err
-		}
+		// round, err := b.svc.GetOngoingRound(ctx, i.GuildID)
+		// if err != nil {
+		// 	return err
+		// }
 
-		if round == nil {
-			return ErrRoundNotFound
-		}
+		// if round == nil {
+		// 	return ErrRoundNotFound
+		// }
 
-		member, ok := round.GetMember(user.ID)
-		if !ok {
-			return ErrMemberNotFound
-		}
+		// member, ok := round.GetMember(user.ID)
+		// if !ok {
+		// 	return ErrMemberNotFound
+		// }
 
-		go b.setRoundRetry(round, 5*time.Minute)
+		// go b.setRoundRetry(round, 5*time.Minute)
 
-		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: user.Mention(),
-				Flags:   discordgo.MessageFlagsEphemeral,
-				Embeds: []*discordgo.MessageEmbed{
-					SpeakerInfoEmbed(user, member),
-				},
-			},
-		})
+		// return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		// 	Type: discordgo.InteractionResponseChannelMessageWithSource,
+		// 	Data: &discordgo.InteractionResponseData{
+		// 		Content: user.Mention(),
+		// 		Flags:   discordgo.MessageFlagsEphemeral,
+		// 		Embeds: []*discordgo.MessageEmbed{
+		// 			SpeakerInfoEmbed(user, member),
+		// 		},
+		// 	},
+		// })
+		return nil
 	}
 
 	err := cmd(s, i)
@@ -92,57 +92,58 @@ func (b *StudyBot) studyRoundInfoCmdHandler(s *discordgo.Session, i *discordgo.I
 		}
 
 		if user == nil {
-			return ErrUserNotFound
+			return study.ErrUserNotFound
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
+		// ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		// defer cancel()
 
-		var round *study.Round
-		var err error
+		// var round *study.Round
+		// var err error
 
-		exists := b.roundExists(ctx, i.GuildID)
+		// exists := b.roundExists(ctx, i.GuildID)
 
 		// check if round exists in cache
-		if exists {
-			// get round from cache
-			round, err = b.getRound(ctx, i.GuildID)
-		} else {
-			// get round from database
-			round, err = b.svc.GetOngoingRound(ctx, i.GuildID)
-		}
-		if err != nil {
-			return err
-		}
+		// if exists {
+		// 	// get round from cache
+		// 	round, err = b.getRound(ctx, i.GuildID)
+		// } else {
+		// 	// get round from database
+		// 	round, err = b.svc.GetOngoingRound(ctx, i.GuildID)
+		// }
+		// if err != nil {
+		// 	return err
+		// }
 
-		// if round does not exist, return error
-		if round == nil {
-			return ErrRoundNotFound
-		}
+		// // if round does not exist, return error
+		// if round == nil {
+		// 	return ErrRoundNotFound
+		// }
 
-		// round info embed
-		embed := studyRoundInfoEmbed(s.State.User, round)
+		// // round info embed
+		// embed := studyRoundInfoEmbed(s.State.User, round)
 
-		// if round does not exist in cache, set round to cache
-		if !exists {
-			go b.setRoundRetry(round, 5*time.Second)
-		}
+		// // if round does not exist in cache, set round to cache
+		// if !exists {
+		// 	go b.setRoundRetry(round, 5*time.Second)
+		// }
 
-		// send response
-		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Flags:  discordgo.MessageFlagsEphemeral,
-				Embeds: []*discordgo.MessageEmbed{embed},
-				Components: []discordgo.MessageComponent{
-					discordgo.ActionsRow{
-						Components: []discordgo.MessageComponent{
-							speakerInfoSelectMenu,
-						},
-					},
-				},
-			},
-		})
+		// // send response
+		// return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		// 	Type: discordgo.InteractionResponseChannelMessageWithSource,
+		// 	Data: &discordgo.InteractionResponseData{
+		// 		Flags:  discordgo.MessageFlagsEphemeral,
+		// 		Embeds: []*discordgo.MessageEmbed{embed},
+		// 		Components: []discordgo.MessageComponent{
+		// 			discordgo.ActionsRow{
+		// 				Components: []discordgo.MessageComponent{
+		// 					speakerInfoSelectMenu,
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// })
+		return nil
 	}
 
 	err := cmd(s, i)
@@ -163,74 +164,75 @@ func (b *StudyBot) speakerInfoSelectMenuHandler(s *discordgo.Session, i *discord
 		}
 
 		if user == nil {
-			return ErrUserNotFound
+			return study.ErrUserNotFound
 		}
 
 		// get data
 		data := i.MessageComponentData().Values
 		if len(data) == 0 {
-			return errors.Join(ErrRequiredArgs, errors.New("옵션을 찾을 수 없습니다"))
+			return errors.Join(study.ErrRequiredArgs, errors.New("옵션을 찾을 수 없습니다"))
 		}
 
-		selectedUserID := data[0]
+		// selectedUserID := data[0]
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
+		// ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		// defer cancel()
 
-		var round *study.Round
-		var err error
+		// var round *study.Round
+		// var err error
 
-		exists := b.roundExists(ctx, i.GuildID)
+		// exists := b.roundExists(ctx, i.GuildID)
 
-		// check if round exists in cache
-		if exists {
-			// get round from cache
-			round, err = b.getRound(ctx, i.GuildID)
-		} else {
-			// get round from database
-			round, err = b.svc.GetOngoingRound(ctx, i.GuildID)
-		}
-		if err != nil {
-			return err
-		}
+		// // check if round exists in cache
+		// if exists {
+		// 	// get round from cache
+		// 	round, err = b.getRound(ctx, i.GuildID)
+		// } else {
+		// 	// get round from database
+		// 	round, err = b.svc.GetOngoingRound(ctx, i.GuildID)
+		// }
+		// if err != nil {
+		// 	return err
+		// }
 
-		if round == nil {
-			return ErrRoundNotFound
-		}
+		// if round == nil {
+		// 	return ErrRoundNotFound
+		// }
 
-		var embed *discordgo.MessageEmbed
+		// var embed *discordgo.MessageEmbed
 
-		member, ok := round.GetMember(selectedUserID)
-		if !ok {
-			embed = ErrorEmbed("발표자 정보를 찾을 수 없습니다")
-		} else {
-			selectedUser, err := s.User(selectedUserID)
-			if err != nil {
-				return err
-			}
+		// member, ok := round.GetMember(selectedUserID)
+		// if !ok {
+		// 	embed = ErrorEmbed("발표자 정보를 찾을 수 없습니다")
+		// } else {
+		// 	selectedUser, err := s.User(selectedUserID)
+		// 	if err != nil {
+		// 		return err
+		// 	}
 
-			embed = SpeakerInfoEmbed(selectedUser, member)
-		}
+		// 	embed = SpeakerInfoEmbed(selectedUser, member)
+		// }
 
-		// if round does not exist in cache, set round to cache
-		if !exists {
-			go b.setRoundRetry(round, 5*time.Second)
-		}
+		// // if round does not exist in cache, set round to cache
+		// if !exists {
+		// 	go b.setRoundRetry(round, 5*time.Second)
+		// }
 
-		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseUpdateMessage,
-			Data: &discordgo.InteractionResponseData{
-				Flags:  discordgo.MessageFlagsEphemeral,
-				Embeds: []*discordgo.MessageEmbed{embed},
-				Components: []discordgo.MessageComponent{
-					discordgo.ActionsRow{
-						Components: []discordgo.MessageComponent{
-							speakerInfoSelectMenu,
-						},
-					},
-				},
-			},
-		})
+		// return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		// 	Type: discordgo.InteractionResponseUpdateMessage,
+		// 	Data: &discordgo.InteractionResponseData{
+		// 		Flags:  discordgo.MessageFlagsEphemeral,
+		// 		Embeds: []*discordgo.MessageEmbed{embed},
+		// 		Components: []discordgo.MessageComponent{
+		// 			discordgo.ActionsRow{
+		// 				Components: []discordgo.MessageComponent{
+		// 					speakerInfoSelectMenu,
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// })
+		return nil
 	}
 
 	err := cmd(s, i)

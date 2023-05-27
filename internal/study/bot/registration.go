@@ -1,11 +1,10 @@
-package study
+package bot
 
 import (
-	"context"
 	"errors"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/piatoss3612/presentation-helper-bot/internal/study"
 )
 
 var (
@@ -35,8 +34,8 @@ var (
 )
 
 func (b *StudyBot) addRegistrationCmd() {
-	b.hdr.AddCommand(registerCmd, b.registerCmdHandler)
-	b.hdr.AddCommand(unregisterCmd, b.unregisterCmdHandler)
+	b.cmd.AddCommand(registerCmd, b.registerCmdHandler)
+	b.cmd.AddCommand(unregisterCmd, b.unregisterCmdHandler)
 }
 
 func (b *StudyBot) registerCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -48,7 +47,7 @@ func (b *StudyBot) registerCmdHandler(s *discordgo.Session, i *discordgo.Interac
 		}
 
 		if user == nil {
-			return ErrUserNotFound
+			return study.ErrUserNotFound
 		}
 
 		var name, subject string
@@ -63,16 +62,16 @@ func (b *StudyBot) registerCmdHandler(s *discordgo.Session, i *discordgo.Interac
 		}
 
 		if name == "" || subject == "" {
-			return errors.Join(ErrRequiredArgs, errors.New("이름과 발표 주제는 필수 입력 사항입니다"))
+			return errors.Join(study.ErrRequiredArgs, errors.New("이름과 발표 주제는 필수 입력 사항입니다"))
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
+		// ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		// defer cancel()
 
-		err := b.svc.SetMemberRegistration(ctx, i.GuildID, user.ID, name, subject, true)
-		if err != nil {
-			return err
-		}
+		// err := b.svc.SetMemberRegistration(ctx, i.GuildID, user.ID, name, subject, true)
+		// if err != nil {
+		// 	return err
+		// }
 
 		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -102,16 +101,16 @@ func (b *StudyBot) unregisterCmdHandler(s *discordgo.Session, i *discordgo.Inter
 		}
 
 		if user == nil {
-			return ErrUserNotFound
+			return study.ErrUserNotFound
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
+		// ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		// defer cancel()
 
-		err := b.svc.SetMemberRegistration(ctx, i.GuildID, user.ID, "", "", false)
-		if err != nil {
-			return err
-		}
+		// err := b.svc.SetMemberRegistration(ctx, i.GuildID, user.ID, "", "", false)
+		// if err != nil {
+		// 	return err
+		// }
 
 		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,

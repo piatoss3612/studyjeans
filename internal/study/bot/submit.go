@@ -1,11 +1,10 @@
-package study
+package bot
 
 import (
-	"context"
 	"errors"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/piatoss3612/presentation-helper-bot/internal/study"
 )
 
 var submitContentCmd = discordgo.ApplicationCommand{
@@ -22,7 +21,7 @@ var submitContentCmd = discordgo.ApplicationCommand{
 }
 
 func (b *StudyBot) addSubmitContentCmd() {
-	b.hdr.AddCommand(submitContentCmd, b.submitContentCmdHandler)
+	b.cmd.AddCommand(submitContentCmd, b.submitContentCmdHandler)
 }
 
 func (b *StudyBot) submitContentCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -34,7 +33,7 @@ func (b *StudyBot) submitContentCmdHandler(s *discordgo.Session, i *discordgo.In
 		}
 
 		if user == nil {
-			return ErrUserNotFound
+			return study.ErrUserNotFound
 		}
 
 		var content string
@@ -47,16 +46,16 @@ func (b *StudyBot) submitContentCmdHandler(s *discordgo.Session, i *discordgo.In
 		}
 
 		if content == "" {
-			return errors.Join(ErrRequiredArgs, errors.New("발표 자료 링크는 필수 입력 사항입니다"))
+			return errors.Join(study.ErrRequiredArgs, errors.New("발표 자료 링크는 필수 입력 사항입니다"))
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
+		// ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		// defer cancel()
 
-		err := b.svc.SetMemberContent(ctx, i.GuildID, user.ID, content)
-		if err != nil {
-			return err
-		}
+		// err := b.svc.SetMemberContent(ctx, i.GuildID, user.ID, content)
+		// if err != nil {
+		// 	return err
+		// }
 
 		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,

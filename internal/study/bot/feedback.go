@@ -1,11 +1,10 @@
-package study
+package bot
 
 import (
-	"context"
 	"errors"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/piatoss3612/presentation-helper-bot/internal/study"
 )
 
 var (
@@ -35,8 +34,8 @@ var (
 const FeedbackModalCustomID = "feedback-modal"
 
 func (b *StudyBot) addSendFeedbackCmd() {
-	b.hdr.AddCommand(sendFeedbackCmd, b.sendFeedbackCmdHandler)
-	b.chdr.AddHandleFunc(FeedbackModalCustomID, b.feedbackSubmitHandler)
+	b.cmd.AddCommand(sendFeedbackCmd, b.sendFeedbackCmdHandler)
+	b.cpt.AddComponent(FeedbackModalCustomID, b.feedbackSubmitHandler)
 }
 
 func (b *StudyBot) sendFeedbackCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -48,7 +47,7 @@ func (b *StudyBot) sendFeedbackCmdHandler(s *discordgo.Session, i *discordgo.Int
 		}
 
 		if user == nil {
-			return ErrUserNotFound
+			return study.ErrUserNotFound
 		}
 
 		var speaker *discordgo.User
@@ -61,7 +60,7 @@ func (b *StudyBot) sendFeedbackCmdHandler(s *discordgo.Session, i *discordgo.Int
 		}
 
 		if speaker == nil {
-			return errors.Join(ErrRequiredArgs, errors.New("리뷰 대상자는 필수 입력 사항입니다"))
+			return errors.Join(study.ErrRequiredArgs, errors.New("리뷰 대상자는 필수 입력 사항입니다"))
 		}
 
 		if speaker.Bot {
@@ -69,7 +68,7 @@ func (b *StudyBot) sendFeedbackCmdHandler(s *discordgo.Session, i *discordgo.Int
 		}
 
 		if speaker.ID == user.ID {
-			return ErrFeedbackYourself
+			return study.ErrFeedbackYourself
 		}
 
 		return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -116,7 +115,7 @@ func (b *StudyBot) feedbackSubmitHandler(s *discordgo.Session, i *discordgo.Inte
 		}
 
 		if reviewer == nil {
-			return errors.Join(ErrUserNotFound, errors.New("리뷰어 정보를 찾을 수 없습니다"))
+			return errors.Join(study.ErrUserNotFound, errors.New("리뷰어 정보를 찾을 수 없습니다"))
 		}
 
 		data := i.ModalSubmitData()
@@ -145,16 +144,16 @@ func (b *StudyBot) feedbackSubmitHandler(s *discordgo.Session, i *discordgo.Inte
 		}
 
 		if revieweeID == "" || feedback == "" {
-			return errors.Join(ErrRequiredArgs, errors.New("리뷰 대상자의 아이디 또는 피드백 정보를 찾을 수 없습니다"))
+			return errors.Join(study.ErrRequiredArgs, errors.New("리뷰 대상자의 아이디 또는 피드백 정보를 찾을 수 없습니다"))
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		defer cancel()
+		// ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		// defer cancel()
 
-		err := b.svc.SetReviewer(ctx, i.GuildID, reviewer.ID, revieweeID)
-		if err != nil {
-			return err
-		}
+		// err := b.svc.SetReviewer(ctx, i.GuildID, reviewer.ID, revieweeID)
+		// if err != nil {
+		// 	return err
+		// }
 
 		channel, err := s.UserChannelCreate(revieweeID)
 		if err != nil {

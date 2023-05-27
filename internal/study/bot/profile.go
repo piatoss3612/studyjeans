@@ -1,4 +1,4 @@
-package study
+package bot
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ var profileCmd = discordgo.ApplicationCommand{
 }
 
 func (b *StudyBot) addProfileCmd() {
-	b.hdr.AddCommand(profileCmd, b.profileCmdHandler)
+	b.cmd.AddCommand(profileCmd, b.profileCmdHandler)
 }
 
 func (b *StudyBot) profileCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {

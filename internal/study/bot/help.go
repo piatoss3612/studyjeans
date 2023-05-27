@@ -1,9 +1,10 @@
-package study
+package bot
 
 import (
 	"errors"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/piatoss3612/presentation-helper-bot/internal/study"
 )
 
 var (
@@ -44,8 +45,8 @@ var (
 )
 
 func (b *StudyBot) addHelpCmd() {
-	b.hdr.AddCommand(helpCmd, b.helpCmdHandler)
-	b.chdr.AddHandleFunc(helpSelectMenu.CustomID, b.helpSelectMenuHandler)
+	b.cmd.AddCommand(helpCmd, b.helpCmdHandler)
+	b.cpt.AddComponent(helpSelectMenu.CustomID, b.helpSelectMenuHandler)
 }
 
 func (b *StudyBot) helpCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -77,7 +78,7 @@ func (b *StudyBot) helpSelectMenuHandler(s *discordgo.Session, i *discordgo.Inte
 
 		data := i.MessageComponentData().Values
 		if len(data) == 0 {
-			return errors.Join(ErrRequiredArgs, errors.New("옵션을 찾을 수 없습니다"))
+			return errors.Join(study.ErrRequiredArgs, errors.New("옵션을 찾을 수 없습니다"))
 		}
 
 		switch data[0] {
@@ -86,7 +87,7 @@ func (b *StudyBot) helpSelectMenuHandler(s *discordgo.Session, i *discordgo.Inte
 		case "study":
 			embed = HelpStudyEmbed(s.State.User)
 		default:
-			return errors.Join(ErrRequiredArgs, errors.New("옵션을 찾을 수 없습니다"))
+			return errors.Join(study.ErrRequiredArgs, errors.New("옵션을 찾을 수 없습니다"))
 		}
 
 		response := &discordgo.InteractionResponse{
