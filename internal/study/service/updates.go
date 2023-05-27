@@ -9,18 +9,20 @@ import (
 
 func MoveStage(s *study.Study, r *study.Round, params *UpdateParams) error {
 	if s.CurrentStage.IsNone() || s.CurrentStage.IsWait() {
-		return study.ErrStudyNotFound
+		return errors.Join(study.ErrInvalidStage, fmt.Errorf("라운드가 시작되지 않아 단계를 변경할 수 없습니다"))
 	}
 
 	next := s.CurrentStage.Next()
 
-	if !s.CurrentStage.CanMoveTo(next) {
-		return errors.Join(study.ErrInvalidStage, fmt.Errorf("스터디 라운드 '%s'의 종료가 불가능한 단계입니다", s.CurrentStage.String()))
+	if next == study.StageFinished {
+		s.SetCurrentStage(study.StageWait)
+		s.SetOngoingRoundID("")
+		r.SetStage(next)
+		return nil
 	}
 
 	s.SetCurrentStage(next)
 	r.SetStage(next)
-
 	return nil
 }
 

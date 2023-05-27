@@ -13,6 +13,7 @@ const (
 	StagePresentationFinished Stage = 7
 	StageReviewOpened         Stage = 8
 	StageReviewClosed         Stage = 9
+	StageFinished             Stage = 10
 )
 
 func (s Stage) String() string {
@@ -35,6 +36,8 @@ func (s Stage) String() string {
 		return "피드백"
 	case StageReviewClosed:
 		return "피드백 마감"
+	case StageFinished:
+		return "라운드 종료"
 	default:
 		return "초기화"
 	}
@@ -80,29 +83,6 @@ func (s Stage) IsReviewClosed() bool {
 	return s == StageReviewClosed
 }
 
-func (s Stage) CanMoveTo(target Stage) bool {
-	switch s {
-	case StageWait:
-		return target == StageRegistrationOpened
-	case StageRegistrationOpened:
-		return target == StageRegistrationClosed
-	case StageRegistrationClosed:
-		return target == StageSubmissionOpened
-	case StageSubmissionOpened:
-		return target == StageSubmissionClosed
-	case StageSubmissionClosed:
-		return target == StagePresentationStarted
-	case StagePresentationStarted:
-		return target == StagePresentationFinished
-	case StagePresentationFinished:
-		return target == StageReviewOpened
-	case StageReviewOpened:
-		return target == StageReviewClosed
-	default:
-		return false
-	}
-}
-
 func (s Stage) Next() Stage {
 	switch s {
 	case StageWait:
@@ -121,6 +101,8 @@ func (s Stage) Next() Stage {
 		return StageReviewOpened
 	case StageReviewOpened:
 		return StageReviewClosed
+	case StageReviewClosed:
+		return StageFinished
 	default:
 		return StageNone
 	}

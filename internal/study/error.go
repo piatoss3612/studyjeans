@@ -4,6 +4,8 @@ import "errors"
 
 var (
 	ErrStudyExists           = errors.New("이미 진행중인 스터디가 있습니다")
+	ErrRoundExists           = errors.New("이미 진행중인 라운드가 있습니다")
+	ErrInvalidManager        = errors.New("잘못된 매니저입니다")
 	ErrStudyNotFound         = errors.New("스터디 정보를 찾을 수 없습니다")
 	ErrRoundNotFound         = errors.New("라운드 정보를 찾을 수 없습니다")
 	ErrInvalidStage          = errors.New("잘못된 스터디 단계입니다")
