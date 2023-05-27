@@ -12,8 +12,8 @@ type Service interface {
 	GetRound(ctx context.Context, roundID string) (*study.Round, error)
 	GetRounds(ctx context.Context, guildID string) ([]*study.Round, error)
 	GetStudy(ctx context.Context, guildID string) (*study.Study, error)
-	NewRound(ctx context.Context, guildID, managerID, title string, memberIDs []string) (*study.Study, error)
-	NewStudy(ctx context.Context, guildID, managerID string) (*study.Study, error)
+	NewRound(ctx context.Context, params *NewRoundParams) (*study.Study, error)
+	NewStudy(ctx context.Context, params *NewStudyParams) (*study.Study, error)
 	UpdateRound(ctx context.Context, params *UpdateParams, update UpdateFunc) (*study.Study, error)
 	UpdateStudy(ctx context.Context, params *UpdateParams, update UpdateFunc) (*study.Study, error)
 }
@@ -31,6 +31,20 @@ func New(tx repository.Tx) Service {
 		mtx: &sync.Mutex{},
 	}
 	return svc
+}
+
+type NewRoundParams struct {
+	GuildID   string
+	ManagerID string
+	Title     string
+	MemberIDs []string
+}
+
+type NewStudyParams struct {
+	GuildID             string
+	ManagerID           string
+	NoticeChannelID     string
+	ReflectionChannelID string
 }
 
 // get round by id
@@ -97,13 +111,17 @@ func (svc *studyService) GetStudy(ctx context.Context, guildID string) (*study.S
 }
 
 // initialize new study round
-func (svc *studyService) NewRound(ctx context.Context, guildID, managerID, title string, memberIDs []string) (*study.Study, error) {
+func (svc *studyService) NewRound(ctx context.Context, params *NewRoundParams) (*study.Study, error) {
 	defer svc.mtx.Unlock()
 	svc.mtx.Lock()
 
+	if params == nil {
+		return nil, study.ErrNilParams
+	}
+
 	txFn := func(sc context.Context) (interface{}, error) {
 		// find study
-		s, err := svc.tx.FindStudy(sc, guildID)
+		s, err := svc.tx.FindStudy(sc, params.GuildID)
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +132,7 @@ func (svc *studyService) NewRound(ctx context.Context, guildID, managerID, title
 		}
 
 		// check if manager is the one who requested
-		if s.ManagerID != managerID {
+		if s.IsManager(params.ManagerID) {
 			return nil, study.ErrInvalidManager
 		}
 
@@ -123,28 +141,30 @@ func (svc *studyService) NewRound(ctx context.Context, guildID, managerID, title
 			return nil, study.ErrRoundExists
 		}
 
+		// increase total round count
+		s.IncrementTotalRound()
+
 		// create new round
 		r := study.NewRound()
 		r.SetGuildID(s.GuildID)
 		r.SetNumber(s.TotalRound)
-		r.SetTitle(title)
+		r.SetTitle(params.Title)
 		r.SetStage(study.StageRegistrationOpened)
 
 		// set initial members
-		for _, id := range memberIDs {
+		for _, id := range params.MemberIDs {
 			member := study.NewMember()
 			r.SetMember(id, member)
 		}
 
 		// store new round
-		ur, err := svc.tx.CreateRound(sc, r)
+		nr, err := svc.tx.CreateRound(sc, r)
 		if err != nil {
 			return nil, err
 		}
 
 		// update study
-		s.SetOngoingRoundID(ur.ID)
-		s.IncrementTotalRound()
+		s.SetOngoingRoundID(nr.ID)
 		s.SetCurrentStage(study.StageRegistrationOpened)
 
 		// update study
@@ -162,13 +182,17 @@ func (svc *studyService) NewRound(ctx context.Context, guildID, managerID, title
 }
 
 // create new study
-func (svc *studyService) NewStudy(ctx context.Context, guildID, managerID string) (*study.Study, error) {
+func (svc *studyService) NewStudy(ctx context.Context, params *NewStudyParams) (*study.Study, error) {
 	defer svc.mtx.Unlock()
 	svc.mtx.Lock()
 
+	if params == nil {
+		return nil, study.ErrNilParams
+	}
+
 	txFn := func(sc context.Context) (interface{}, error) {
 		// find study of guild
-		s, err := svc.tx.FindStudy(sc, guildID)
+		s, err := svc.tx.FindStudy(sc, params.GuildID)
 		if err != nil {
 			return nil, err
 		}
@@ -181,8 +205,10 @@ func (svc *studyService) NewStudy(ctx context.Context, guildID, managerID string
 		// create new study
 		ns := study.New()
 
-		ns.SetGuildID(guildID)
-		ns.SetManagerID(managerID)
+		ns.SetGuildID(params.GuildID)
+		ns.SetManagerID(params.ManagerID)
+		ns.SetNoticeChannelID(params.NoticeChannelID)
+		ns.SetReflectionChannelID(params.ReflectionChannelID)
 
 		// store new study
 		return svc.tx.CreateStudy(sc, ns)
@@ -204,7 +230,7 @@ func (svc *studyService) UpdateRound(ctx context.Context, params *UpdateParams, 
 	svc.mtx.Lock()
 
 	if params == nil {
-		return nil, study.ErrNilUpdateParams
+		return nil, study.ErrNilParams
 	}
 
 	txFn := func(sc context.Context) (interface{}, error) {
@@ -262,7 +288,7 @@ func (svc *studyService) UpdateStudy(ctx context.Context, params *UpdateParams, 
 	svc.mtx.Lock()
 
 	if params == nil {
-		return nil, study.ErrNilUpdateParams
+		return nil, study.ErrNilParams
 	}
 
 	txFn := func(sc context.Context) (interface{}, error) {
