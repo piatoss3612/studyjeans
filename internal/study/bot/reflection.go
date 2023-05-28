@@ -3,9 +3,11 @@ package bot
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/piatoss3612/presentation-helper-bot/internal/event"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/service"
 )
@@ -94,7 +96,16 @@ func (b *StudyBot) reflectionCmdHandler(s *discordgo.Session, i *discordgo.Inter
 
 	err := fn(s, i)
 	if err != nil {
-		b.sugar.Errorw(err.Error(), "event", "reflection")
+		go func() {
+			evt := &event.ErrorEvent{
+				T: "study.error",
+				D: fmt.Sprintf("%s: %s", i.ApplicationCommandData().Name, err.Error()),
+				C: time.Now(),
+			}
+
+			go b.publishEvent(evt)
+		}()
+		b.sugar.Errorw(err.Error(), "event", i.ApplicationCommandData().Name)
 		_ = errorInteractionRespond(s, i, err)
 	}
 }

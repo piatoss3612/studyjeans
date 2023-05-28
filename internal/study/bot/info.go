@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/piatoss3612/presentation-helper-bot/internal/event"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study"
 )
 
@@ -95,7 +96,16 @@ func (b *StudyBot) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.Inte
 
 	err := fn(s, i)
 	if err != nil {
-		b.sugar.Errorw(err.Error(), "event", "my-study-info")
+		go func() {
+			evt := &event.ErrorEvent{
+				T: "study.error",
+				D: fmt.Sprintf("%s: %s", i.ApplicationCommandData().Name, err.Error()),
+				C: time.Now(),
+			}
+
+			go b.publishEvent(evt)
+		}()
+		b.sugar.Errorw(err.Error(), "event", i.ApplicationCommandData().Name)
 		_ = errorInteractionRespond(s, i, err)
 	}
 }
@@ -125,7 +135,16 @@ func (b *StudyBot) studyInfoCmdHandler(s *discordgo.Session, i *discordgo.Intera
 
 	err := fn(s, i)
 	if err != nil {
-		b.sugar.Errorw(err.Error(), "event", "study-info")
+		go func() {
+			evt := &event.ErrorEvent{
+				T: "study.error",
+				D: fmt.Sprintf("%s: %s", i.ApplicationCommandData().Name, err.Error()),
+				C: time.Now(),
+			}
+
+			go b.publishEvent(evt)
+		}()
+		b.sugar.Errorw(err.Error(), "event", i.ApplicationCommandData().Name)
 		_ = errorInteractionRespond(s, i, err)
 	}
 }
@@ -209,7 +228,16 @@ func (b *StudyBot) studyRoundInfoCmdHandler(s *discordgo.Session, i *discordgo.I
 
 	err := fn(s, i)
 	if err != nil {
-		b.sugar.Errorw(err.Error(), "event", "study-round-info")
+		go func() {
+			evt := &event.ErrorEvent{
+				T: "study.error",
+				D: fmt.Sprintf("%s: %s", i.ApplicationCommandData().Name, err.Error()),
+				C: time.Now(),
+			}
+
+			go b.publishEvent(evt)
+		}()
+		b.sugar.Errorw(err.Error(), "event", i.ApplicationCommandData().Name)
 		_ = errorInteractionRespond(s, i, err)
 	}
 }
@@ -306,7 +334,16 @@ func (b *StudyBot) speakerInfoSelectMenuHandler(s *discordgo.Session, i *discord
 
 	err := fn(s, i)
 	if err != nil {
-		b.sugar.Errorw(err.Error(), "event", "study-round-info")
+		go func() {
+			evt := &event.ErrorEvent{
+				T: "study.error",
+				D: fmt.Sprintf("%s: %s", i.ApplicationCommandData().Name, err.Error()),
+				C: time.Now(),
+			}
+
+			go b.publishEvent(evt)
+		}()
+		b.sugar.Errorw(err.Error(), "event", i.ApplicationCommandData().Name)
 		_ = errorInteractionRespond(s, i, err)
 	}
 }

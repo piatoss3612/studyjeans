@@ -3,9 +3,11 @@ package bot
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/piatoss3612/presentation-helper-bot/internal/event"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/service"
 )
@@ -96,7 +98,16 @@ func (b *StudyBot) registerCmdHandler(s *discordgo.Session, i *discordgo.Interac
 
 	err := fn(s, i)
 	if err != nil {
-		b.sugar.Errorw(err.Error(), "event", "register-presentation")
+		go func() {
+			evt := &event.ErrorEvent{
+				T: "study.error",
+				D: fmt.Sprintf("%s: %s", i.ApplicationCommandData().Name, err.Error()),
+				C: time.Now(),
+			}
+
+			go b.publishEvent(evt)
+		}()
+		b.sugar.Errorw(err.Error(), "event", i.ApplicationCommandData().Name)
 		_ = errorInteractionRespond(s, i, err)
 	}
 }
@@ -139,7 +150,16 @@ func (b *StudyBot) unregisterCmdHandler(s *discordgo.Session, i *discordgo.Inter
 
 	err := fn(s, i)
 	if err != nil {
-		b.sugar.Errorw(err.Error(), "event", "unregister-presentation")
+		go func() {
+			evt := &event.ErrorEvent{
+				T: "study.error",
+				D: fmt.Sprintf("%s: %s", i.ApplicationCommandData().Name, err.Error()),
+				C: time.Now(),
+			}
+
+			go b.publishEvent(evt)
+		}()
+		b.sugar.Errorw(err.Error(), "event", i.ApplicationCommandData().Name)
 		_ = errorInteractionRespond(s, i, err)
 	}
 }
