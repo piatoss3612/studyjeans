@@ -91,12 +91,20 @@ func mustInitLoggerService() service.Service {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	eventSheetID, err := strconv.ParseInt(os.Getenv("EVENT_SHEET_ID"), 10, 64)
-	if err != nil {
-		sugar.Fatal(err)
+	eventSheetID, _ := strconv.ParseInt(os.Getenv("EVENT_SHEET_ID"), 10, 64)
+	errorSheetID, _ := strconv.ParseInt(os.Getenv("ERROR_SHEET_ID"), 10, 64)
+
+	var opts []service.ServiceOptsFunc
+
+	if eventSheetID != 0 {
+		opts = append(opts, service.WithEventSheetID(eventSheetID))
 	}
 
-	srv, err := service.New(ctx, mustInitSheetsService(), os.Getenv("SPREADSHEET_ID"), eventSheetID)
+	if errorSheetID != 0 {
+		opts = append(opts, service.WithErrorSheetID(errorSheetID))
+	}
+
+	srv, err := service.New(ctx, mustInitSheetsService(), os.Getenv("SPREADSHEET_ID"), opts...)
 	if err != nil {
 		sugar.Fatal(err)
 	}

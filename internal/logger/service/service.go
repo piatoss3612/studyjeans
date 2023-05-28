@@ -11,35 +11,38 @@ import (
 	"google.golang.org/api/sheets/v4"
 )
 
-var infoLabelFormat = &sheets.CellFormat{
-	TextFormat: &sheets.TextFormat{
-		Bold: true,
-		ForegroundColor: &sheets.Color{
-			Red:   1.0,
-			Green: 1.0,
-			Blue:  1.0,
+var (
+	infoLabelFormat = &sheets.CellFormat{
+		TextFormat: &sheets.TextFormat{
+			Bold: true,
+			ForegroundColor: &sheets.Color{
+				Red:   1.0,
+				Green: 1.0,
+				Blue:  1.0,
+			},
 		},
-	},
-	BackgroundColor: &sheets.Color{
-		Blue: 0.8,
-	},
-	HorizontalAlignment: "CENTER",
-}
-
-var errorLabelFormat = &sheets.CellFormat{
-	TextFormat: &sheets.TextFormat{
-		Bold: true,
-		ForegroundColor: &sheets.Color{
-			Red:   1.0,
-			Green: 1.0,
-			Blue:  1.0,
+		BackgroundColor: &sheets.Color{
+			Blue: 0.8,
 		},
-	},
-	BackgroundColor: &sheets.Color{
-		Red: 0.8,
-	},
-	HorizontalAlignment: "CENTER",
-}
+		HorizontalAlignment: "CENTER",
+	}
+	errorLabelFormat = &sheets.CellFormat{
+		TextFormat: &sheets.TextFormat{
+			Bold: true,
+			ForegroundColor: &sheets.Color{
+				Red:   1.0,
+				Green: 1.0,
+				Blue:  1.0,
+			},
+		},
+		BackgroundColor: &sheets.Color{
+			Red: 0.8,
+		},
+		HorizontalAlignment: "CENTER",
+	}
+	DefaultEventSheetID int64 = 200
+	DefaultErrorSheetID int64 = 400
+)
 
 type Service interface {
 	RecordRound(ctx context.Context, r logger.Round) error
@@ -54,26 +57,26 @@ type sheetsService struct {
 	errorSheetID  int64
 }
 
-type SheetsServiceOptsFunc func(*sheetsService)
+type ServiceOptsFunc func(*sheetsService)
 
-func WithEventSheetID(id int64) SheetsServiceOptsFunc {
+func WithEventSheetID(id int64) ServiceOptsFunc {
 	return func(svc *sheetsService) {
 		svc.eventSheetID = id
 	}
 }
 
-func WithErrorSheetID(id int64) SheetsServiceOptsFunc {
+func WithErrorSheetID(id int64) ServiceOptsFunc {
 	return func(svc *sheetsService) {
 		svc.errorSheetID = id
 	}
 }
 
-func New(ctx context.Context, s *sheets.Service, spreadsheetID string, opts ...SheetsServiceOptsFunc) (Service, error) {
+func New(ctx context.Context, s *sheets.Service, spreadsheetID string, opts ...ServiceOptsFunc) (Service, error) {
 	svc := &sheetsService{
 		s:             s,
 		spreadsheetID: spreadsheetID,
-		eventSheetID:  200,
-		errorSheetID:  400,
+		eventSheetID:  DefaultEventSheetID,
+		errorSheetID:  DefaultErrorSheetID,
 	}
 
 	for _, opt := range opts {
@@ -459,7 +462,7 @@ func (svc *sheetsService) createEventSheet(ctx context.Context) error {
 						UserEnteredFormat: infoLabelFormat,
 						UserEnteredValue: &sheets.ExtendedValue{
 							StringValue: func() *string {
-								s := "이벤트 이름"
+								s := "이벤트"
 								return &s
 							}(),
 						},
