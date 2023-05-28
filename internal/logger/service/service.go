@@ -51,13 +51,33 @@ type sheetsService struct {
 	s             *sheets.Service
 	spreadsheetID string
 	eventSheetID  int64
+	errorSheetID  int64
 }
 
-func New(ctx context.Context, s *sheets.Service, spreadsheetID string, eventSheetID int64) (Service, error) {
+type SheetsServiceOptsFunc func(*sheetsService)
+
+func WithEventSheetID(id int64) SheetsServiceOptsFunc {
+	return func(svc *sheetsService) {
+		svc.eventSheetID = id
+	}
+}
+
+func WithErrorSheetID(id int64) SheetsServiceOptsFunc {
+	return func(svc *sheetsService) {
+		svc.errorSheetID = id
+	}
+}
+
+func New(ctx context.Context, s *sheets.Service, spreadsheetID string, opts ...SheetsServiceOptsFunc) (Service, error) {
 	svc := &sheetsService{
 		s:             s,
 		spreadsheetID: spreadsheetID,
-		eventSheetID:  eventSheetID,
+		eventSheetID:  200,
+		errorSheetID:  400,
+	}
+
+	for _, opt := range opts {
+		opt(svc)
 	}
 
 	return svc.setup(ctx)
@@ -77,10 +97,16 @@ func (svc *sheetsService) setup(ctx context.Context) (Service, error) {
 
 	// check event sheet exists
 	var eventSheetExists bool
+	var errorSheetExists bool
 
 	for _, sheet := range resp.Sheets {
 		if sheet.Properties.SheetId == svc.eventSheetID {
 			eventSheetExists = true
+		} else if sheet.Properties.SheetId == svc.errorSheetID {
+			errorSheetExists = true
+		}
+
+		if eventSheetExists && errorSheetExists {
 			break
 		}
 	}
@@ -88,6 +114,13 @@ func (svc *sheetsService) setup(ctx context.Context) (Service, error) {
 	if !eventSheetExists {
 		// create event sheet
 		if err := svc.createEventSheet(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	if !errorSheetExists {
+		// create error sheet
+		if err := svc.createErrorSheet(ctx); err != nil {
 			return nil, err
 		}
 	}
@@ -442,6 +475,75 @@ func (svc *sheetsService) createEventSheet(ctx context.Context) error {
 					},
 					{
 						UserEnteredFormat: infoLabelFormat,
+						UserEnteredValue: &sheets.ExtendedValue{
+							StringValue: func() *string {
+								s := "시간"
+								return &s
+							}(),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	resp, err := svc.s.Spreadsheets.BatchUpdate(svc.spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
+		Requests: []*sheets.Request{
+			{
+				AddSheet: addSheetReq,
+			},
+			{
+				AppendCells: appendCellsReq,
+			},
+		},
+	}).Context(ctx).Do()
+	if err != nil {
+		return err
+	}
+
+	// check status code
+	if resp.HTTPStatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code while adding sheet: %d", resp.HTTPStatusCode)
+	}
+
+	return nil
+}
+
+func (svc *sheetsService) createErrorSheet(ctx context.Context) error {
+	addSheetReq := &sheets.AddSheetRequest{
+		Properties: &sheets.SheetProperties{
+			Title:     "에러 로그",
+			SheetId:   svc.errorSheetID,
+			SheetType: "GRID",
+		},
+	}
+
+	appendCellsReq := &sheets.AppendCellsRequest{
+		SheetId: svc.errorSheetID,
+		Fields:  "*",
+		Rows: []*sheets.RowData{
+			{
+				Values: []*sheets.CellData{
+					{
+						UserEnteredFormat: errorLabelFormat,
+						UserEnteredValue: &sheets.ExtendedValue{
+							StringValue: func() *string {
+								s := "오류"
+								return &s
+							}(),
+						},
+					},
+					{
+						UserEnteredFormat: errorLabelFormat,
+						UserEnteredValue: &sheets.ExtendedValue{
+							StringValue: func() *string {
+								s := "설명"
+								return &s
+							}(),
+						},
+					},
+					{
+						UserEnteredFormat: errorLabelFormat,
 						UserEnteredValue: &sheets.ExtendedValue{
 							StringValue: func() *string {
 								s := "시간"
