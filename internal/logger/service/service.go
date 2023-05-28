@@ -11,7 +11,7 @@ import (
 	"google.golang.org/api/sheets/v4"
 )
 
-var labelFormat = &sheets.CellFormat{
+var infoLabelFormat = &sheets.CellFormat{
 	TextFormat: &sheets.TextFormat{
 		Bold: true,
 		ForegroundColor: &sheets.Color{
@@ -86,7 +86,7 @@ func (svc *sheetsService) setup(ctx context.Context) (Service, error) {
 				{
 					Values: []*sheets.CellData{
 						{
-							UserEnteredFormat: labelFormat,
+							UserEnteredFormat: infoLabelFormat,
 							UserEnteredValue: &sheets.ExtendedValue{
 								StringValue: func() *string {
 									s := "이벤트 이름"
@@ -95,7 +95,7 @@ func (svc *sheetsService) setup(ctx context.Context) (Service, error) {
 							},
 						},
 						{
-							UserEnteredFormat: labelFormat,
+							UserEnteredFormat: infoLabelFormat,
 							UserEnteredValue: &sheets.ExtendedValue{
 								StringValue: func() *string {
 									s := "설명"
@@ -104,7 +104,7 @@ func (svc *sheetsService) setup(ctx context.Context) (Service, error) {
 							},
 						},
 						{
-							UserEnteredFormat: labelFormat,
+							UserEnteredFormat: infoLabelFormat,
 							UserEnteredValue: &sheets.ExtendedValue{
 								StringValue: func() *string {
 									s := "시간"
@@ -196,7 +196,7 @@ func (svc *sheetsService) RecordEvent(ctx context.Context, e event.Event) error 
 								{
 									UserEnteredValue: &sheets.ExtendedValue{
 										StringValue: func() *string {
-											s := e.Name()
+											s := e.Topic()
 											return &s
 										}(),
 									},
@@ -241,7 +241,7 @@ func (svc *sheetsService) rowsFromRoundData(r logger.Round) []*sheets.RowData {
 		{
 			Values: []*sheets.CellData{
 				{
-					UserEnteredFormat: labelFormat,
+					UserEnteredFormat: infoLabelFormat,
 					UserEnteredValue: &sheets.ExtendedValue{
 						StringValue: func() *string {
 							s := "제목"
@@ -262,7 +262,7 @@ func (svc *sheetsService) rowsFromRoundData(r logger.Round) []*sheets.RowData {
 		{
 			Values: []*sheets.CellData{
 				{
-					UserEnteredFormat: labelFormat,
+					UserEnteredFormat: infoLabelFormat,
 					UserEnteredValue: &sheets.ExtendedValue{
 						StringValue: func() *string {
 							s := "진행 단계"
@@ -283,7 +283,7 @@ func (svc *sheetsService) rowsFromRoundData(r logger.Round) []*sheets.RowData {
 		{
 			Values: []*sheets.CellData{
 				{
-					UserEnteredFormat: labelFormat,
+					UserEnteredFormat: infoLabelFormat,
 					UserEnteredValue: &sheets.ExtendedValue{
 						StringValue: func() *string {
 							s := "녹화 영상"
@@ -304,7 +304,7 @@ func (svc *sheetsService) rowsFromRoundData(r logger.Round) []*sheets.RowData {
 		{
 			Values: []*sheets.CellData{
 				{
-					UserEnteredFormat: labelFormat,
+					UserEnteredFormat: infoLabelFormat,
 					UserEnteredValue: &sheets.ExtendedValue{
 						StringValue: func() *string {
 							s := "생성"
@@ -325,7 +325,7 @@ func (svc *sheetsService) rowsFromRoundData(r logger.Round) []*sheets.RowData {
 		{
 			Values: []*sheets.CellData{
 				{
-					UserEnteredFormat: labelFormat,
+					UserEnteredFormat: infoLabelFormat,
 					UserEnteredValue: &sheets.ExtendedValue{
 						StringValue: func() *string {
 							s := "최종 수정"
@@ -347,7 +347,16 @@ func (svc *sheetsService) rowsFromRoundData(r logger.Round) []*sheets.RowData {
 		{
 			Values: []*sheets.CellData{
 				{
-					UserEnteredFormat: labelFormat,
+					UserEnteredFormat: infoLabelFormat,
+					UserEnteredValue: &sheets.ExtendedValue{
+						StringValue: func() *string {
+							s := "ID"
+							return &s
+						}(),
+					},
+				},
+				{
+					UserEnteredFormat: infoLabelFormat,
 					UserEnteredValue: &sheets.ExtendedValue{
 						StringValue: func() *string {
 							s := "이름"
@@ -356,7 +365,7 @@ func (svc *sheetsService) rowsFromRoundData(r logger.Round) []*sheets.RowData {
 					},
 				},
 				{
-					UserEnteredFormat: labelFormat,
+					UserEnteredFormat: infoLabelFormat,
 					UserEnteredValue: &sheets.ExtendedValue{
 						StringValue: func() *string {
 							s := "발표 주제"
@@ -365,7 +374,7 @@ func (svc *sheetsService) rowsFromRoundData(r logger.Round) []*sheets.RowData {
 					},
 				},
 				{
-					UserEnteredFormat: labelFormat,
+					UserEnteredFormat: infoLabelFormat,
 					UserEnteredValue: &sheets.ExtendedValue{
 						StringValue: func() *string {
 							s := "발표 자료"
@@ -374,7 +383,7 @@ func (svc *sheetsService) rowsFromRoundData(r logger.Round) []*sheets.RowData {
 					},
 				},
 				{
-					UserEnteredFormat: labelFormat,
+					UserEnteredFormat: infoLabelFormat,
 					UserEnteredValue: &sheets.ExtendedValue{
 						StringValue: func() *string {
 							s := "발표 참여"
@@ -386,9 +395,17 @@ func (svc *sheetsService) rowsFromRoundData(r logger.Round) []*sheets.RowData {
 		},
 	}
 
-	for _, m := range r.Members {
+	for id, m := range r.Members {
 		row := &sheets.RowData{
 			Values: []*sheets.CellData{
+				{
+					UserEnteredValue: &sheets.ExtendedValue{
+						StringValue: func() *string {
+							s := id
+							return &s
+						}(),
+					},
+				},
 				{
 					UserEnteredValue: &sheets.ExtendedValue{
 						StringValue: func() *string {
