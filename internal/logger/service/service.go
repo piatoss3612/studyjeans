@@ -26,9 +26,25 @@ var infoLabelFormat = &sheets.CellFormat{
 	HorizontalAlignment: "CENTER",
 }
 
+var errorLabelFormat = &sheets.CellFormat{
+	TextFormat: &sheets.TextFormat{
+		Bold: true,
+		ForegroundColor: &sheets.Color{
+			Red:   1.0,
+			Green: 1.0,
+			Blue:  1.0,
+		},
+	},
+	BackgroundColor: &sheets.Color{
+		Red: 0.8,
+	},
+	HorizontalAlignment: "CENTER",
+}
+
 type Service interface {
 	RecordRound(ctx context.Context, r logger.Round) error
 	RecordEvent(ctx context.Context, e event.Event) error
+	RecordError(ctx context.Context, e event.Event) error
 }
 
 type sheetsService struct {
@@ -71,69 +87,8 @@ func (svc *sheetsService) setup(ctx context.Context) (Service, error) {
 
 	if !eventSheetExists {
 		// create event sheet
-		addSheetReq := &sheets.AddSheetRequest{
-			Properties: &sheets.SheetProperties{
-				Title:     "이벤트 로그",
-				SheetId:   svc.eventSheetID,
-				SheetType: "GRID",
-			},
-		}
-
-		appendCellsReq := &sheets.AppendCellsRequest{
-			SheetId: svc.eventSheetID,
-			Fields:  "*",
-			Rows: []*sheets.RowData{
-				{
-					Values: []*sheets.CellData{
-						{
-							UserEnteredFormat: infoLabelFormat,
-							UserEnteredValue: &sheets.ExtendedValue{
-								StringValue: func() *string {
-									s := "이벤트 이름"
-									return &s
-								}(),
-							},
-						},
-						{
-							UserEnteredFormat: infoLabelFormat,
-							UserEnteredValue: &sheets.ExtendedValue{
-								StringValue: func() *string {
-									s := "설명"
-									return &s
-								}(),
-							},
-						},
-						{
-							UserEnteredFormat: infoLabelFormat,
-							UserEnteredValue: &sheets.ExtendedValue{
-								StringValue: func() *string {
-									s := "시간"
-									return &s
-								}(),
-							},
-						},
-					},
-				},
-			},
-		}
-
-		resp, err := svc.s.Spreadsheets.BatchUpdate(svc.spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
-			Requests: []*sheets.Request{
-				{
-					AddSheet: addSheetReq,
-				},
-				{
-					AppendCells: appendCellsReq,
-				},
-			},
-		}).Context(ctx).Do()
-		if err != nil {
+		if err := svc.createEventSheet(ctx); err != nil {
 			return nil, err
-		}
-
-		// check status code
-		if resp.HTTPStatusCode != http.StatusOK {
-			return nil, fmt.Errorf("unexpected status code while adding sheet: %d", resp.HTTPStatusCode)
 		}
 	}
 
@@ -233,6 +188,11 @@ func (svc *sheetsService) RecordEvent(ctx context.Context, e event.Event) error 
 		return fmt.Errorf("unexpected status code: %d", resp.HTTPStatusCode)
 	}
 
+	return nil
+}
+
+func (svc *sheetsService) RecordError(ctx context.Context, e event.Event) error {
+	// TODO: implement
 	return nil
 }
 
@@ -445,4 +405,73 @@ func (svc *sheetsService) rowsFromRoundData(r logger.Round) []*sheets.RowData {
 	}
 
 	return rows
+}
+
+func (svc *sheetsService) createEventSheet(ctx context.Context) error {
+	addSheetReq := &sheets.AddSheetRequest{
+		Properties: &sheets.SheetProperties{
+			Title:     "이벤트 로그",
+			SheetId:   svc.eventSheetID,
+			SheetType: "GRID",
+		},
+	}
+
+	appendCellsReq := &sheets.AppendCellsRequest{
+		SheetId: svc.eventSheetID,
+		Fields:  "*",
+		Rows: []*sheets.RowData{
+			{
+				Values: []*sheets.CellData{
+					{
+						UserEnteredFormat: infoLabelFormat,
+						UserEnteredValue: &sheets.ExtendedValue{
+							StringValue: func() *string {
+								s := "이벤트 이름"
+								return &s
+							}(),
+						},
+					},
+					{
+						UserEnteredFormat: infoLabelFormat,
+						UserEnteredValue: &sheets.ExtendedValue{
+							StringValue: func() *string {
+								s := "설명"
+								return &s
+							}(),
+						},
+					},
+					{
+						UserEnteredFormat: infoLabelFormat,
+						UserEnteredValue: &sheets.ExtendedValue{
+							StringValue: func() *string {
+								s := "시간"
+								return &s
+							}(),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	resp, err := svc.s.Spreadsheets.BatchUpdate(svc.spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
+		Requests: []*sheets.Request{
+			{
+				AddSheet: addSheetReq,
+			},
+			{
+				AppendCells: appendCellsReq,
+			},
+		},
+	}).Context(ctx).Do()
+	if err != nil {
+		return err
+	}
+
+	// check status code
+	if resp.HTTPStatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code while adding sheet: %d", resp.HTTPStatusCode)
+	}
+
+	return nil
 }
