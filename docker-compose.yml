@@ -48,10 +48,11 @@ services:
 
   rabbitmq:
     container_name: rabbitmq
-    image: rabbitmq:3.11.15
+    image: rabbitmq:3.11.16-management
     restart: always
     ports:
       - 5672:5672
+      - 15672:15672
     
 
 configs:

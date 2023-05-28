@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/piatoss3612/presentation-helper-bot/internal/event"
 	"github.com/piatoss3612/presentation-helper-bot/internal/logger"
 )
 
@@ -28,7 +29,7 @@ func (l *LoggerApp) Listen(stop <-chan bool, topics []string) {
 			switch fields[0] {
 			case "study":
 				switch fields[1] {
-				case "closed":
+				case "round-closed":
 					round := logger.NewRound()
 					if err := json.Unmarshal(msg.Body, &round); err != nil {
 						l.sugar.Errorf("Failed to unmarshal message body", "error", err)
@@ -42,8 +43,22 @@ func (l *LoggerApp) Listen(stop <-chan bool, topics []string) {
 					if err != nil {
 						l.sugar.Errorf("Failed to record round", "error", err)
 					}
+				case "round-created", "round-progress":
+					evt := &event.StudyEvent{}
+					if err := json.Unmarshal(msg.Body, evt); err != nil {
+						l.sugar.Errorf("Failed to unmarshal message body", "error", err)
+						continue
+					}
+
+					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+					defer cancel()
+
+					err := l.svc.RecordEvent(ctx, evt)
+					if err != nil {
+						l.sugar.Errorf("Failed to record event", "error", err)
+					}
 				default:
-					// TODO
+					l.sugar.Errorf("Unknown event name", "event", msg.EventName)
 				}
 			default:
 				l.sugar.Errorf("Unknown event name", "event", msg.EventName)

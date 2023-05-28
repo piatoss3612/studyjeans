@@ -13,6 +13,7 @@ const (
 	StagePresentationFinished Stage = 7
 	StageReviewOpened         Stage = 8
 	StageReviewClosed         Stage = 9
+	StageFinished             Stage = 10
 )
 
 func (s Stage) String() string {
@@ -35,6 +36,8 @@ func (s Stage) String() string {
 		return "피드백"
 	case StageReviewClosed:
 		return "피드백 마감"
+	case StageFinished:
+		return "라운드 종료"
 	default:
 		return "초기화"
 	}
