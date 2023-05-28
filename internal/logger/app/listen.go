@@ -22,7 +22,7 @@ func (l *LoggerApp) Listen(stop <-chan bool, topics []string) {
 		case msg := <-msgs:
 			fields := strings.Split(msg.EventName, ".")
 			if len(fields) != 2 {
-				l.sugar.Errorf("Invalid event name", "event", msg.EventName)
+				l.sugar.Errorw("Invalid event name", "event", msg.EventName)
 				continue
 			}
 
@@ -32,7 +32,7 @@ func (l *LoggerApp) Listen(stop <-chan bool, topics []string) {
 				case "round-closed":
 					round := logger.NewRound()
 					if err := json.Unmarshal(msg.Body, &round); err != nil {
-						l.sugar.Errorf("Failed to unmarshal message body", "error", err)
+						l.sugar.Errorw("Failed to unmarshal message body", "error", err)
 						continue
 					}
 
@@ -41,12 +41,12 @@ func (l *LoggerApp) Listen(stop <-chan bool, topics []string) {
 
 					err := l.svc.RecordRound(ctx, round)
 					if err != nil {
-						l.sugar.Errorf("Failed to record round", "error", err)
+						l.sugar.Errorw("Failed to record round", "error", err)
 					}
 				case "round-created", "round-progress":
 					evt := &event.StudyEvent{}
 					if err := json.Unmarshal(msg.Body, evt); err != nil {
-						l.sugar.Errorf("Failed to unmarshal message body", "error", err)
+						l.sugar.Errorw("Failed to unmarshal message body", "error", err)
 						continue
 					}
 
@@ -55,13 +55,27 @@ func (l *LoggerApp) Listen(stop <-chan bool, topics []string) {
 
 					err := l.svc.RecordEvent(ctx, evt)
 					if err != nil {
-						l.sugar.Errorf("Failed to record event", "error", err)
+						l.sugar.Errorw("Failed to record event", "error", err)
+					}
+				case "error":
+					evt := &event.ErrorEvent{}
+					if err := json.Unmarshal(msg.Body, evt); err != nil {
+						l.sugar.Errorw("Failed to unmarshal message body", "error", err)
+						continue
+					}
+
+					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+					defer cancel()
+
+					err := l.svc.RecordError(ctx, evt)
+					if err != nil {
+						l.sugar.Errorw("Failed to record error", "error", err)
 					}
 				default:
-					l.sugar.Errorf("Unknown event name", "event", msg.EventName)
+					l.sugar.Errorw("Unknown event name", "event", msg.EventName)
 				}
 			default:
-				l.sugar.Errorf("Unknown event name", "event", msg.EventName)
+				l.sugar.Errorw("Unknown event name", "event", msg.EventName)
 			}
 		case err := <-errs:
 			if err == nil {
