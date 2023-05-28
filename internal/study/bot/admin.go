@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/piatoss3612/presentation-helper-bot/internal/event"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/service"
 )
@@ -437,12 +438,6 @@ func (b *StudyBot) createStudyRoundHandler(s *discordgo.Session, i *discordgo.In
 		return err
 	}
 
-	// update game status
-	err = s.UpdateGameStatus(0, gs.CurrentStage.String())
-	if err != nil {
-		return err
-	}
-
 	embed := EmbedTemplate(s.State.User, "스터디 라운드 생성", fmt.Sprintf("**<%s>**가 생성되었습니다.", title))
 
 	// send a notice message
@@ -453,6 +448,20 @@ func (b *StudyBot) createStudyRoundHandler(s *discordgo.Session, i *discordgo.In
 
 	// send a DM to all members
 	go b.sendDMsToAllMember(s, embed, i.GuildID)
+
+	evt := &event.StudyEvent{
+		T: "study.progress",
+		D: fmt.Sprintf("%s: %s", title, gs.CurrentStage.String()),
+		C: time.Now(),
+	}
+
+	go b.publishEvent(evt)
+
+	// update game status
+	err = s.UpdateGameStatus(0, gs.CurrentStage.String())
+	if err != nil {
+		return err
+	}
 
 	// send a response message
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -539,10 +548,11 @@ func (b *StudyBot) stageMoveConfirmHandler(s *discordgo.Session, i *discordgo.In
 		if gs.CurrentStage == study.StageWait && gs.OngoingRoundID == "" {
 			embed = EmbedTemplate(s.State.User, "스터디 라운드 종료", "스터디 라운드가 종료되었습니다. 다음 라운드를 기대해주세요!")
 
-			go b.publishRoundInfo(r)
+			go b.publishRound("study.closed", r)
 		} else {
 			embed = EmbedTemplate(s.State.User, gs.CurrentStage.String(), fmt.Sprintf("**<%s>**이(가) 시작되었습니다.", gs.CurrentStage.String()))
 
+			go b.publishRound("study.progress", r)
 		}
 
 		// send a DM to all members
@@ -553,6 +563,14 @@ func (b *StudyBot) stageMoveConfirmHandler(s *discordgo.Session, i *discordgo.In
 		if err != nil {
 			return err
 		}
+
+		evt := &event.StudyEvent{
+			T: "study.progress",
+			D: fmt.Sprintf("%s: %s", r.Title, gs.CurrentStage.String()),
+			C: time.Now(),
+		}
+
+		go b.publishEvent(evt)
 
 		// update game status
 		err = s.UpdateGameStatus(0, gs.CurrentStage.String())
