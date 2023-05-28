@@ -228,7 +228,55 @@ func (svc *sheetsService) RecordEvent(ctx context.Context, e event.Event) error 
 }
 
 func (svc *sheetsService) RecordError(ctx context.Context, e event.Event) error {
-	// TODO: implement
+	resp, err := svc.s.Spreadsheets.BatchUpdate(svc.spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
+		Requests: []*sheets.Request{
+			{
+				AppendCells: &sheets.AppendCellsRequest{
+					SheetId: svc.errorSheetID,
+					Fields:  "*",
+					Rows: []*sheets.RowData{
+						{
+							Values: []*sheets.CellData{
+								{
+									UserEnteredValue: &sheets.ExtendedValue{
+										StringValue: func() *string {
+											s := e.Topic()
+											return &s
+										}(),
+									},
+								},
+								{
+									UserEnteredValue: &sheets.ExtendedValue{
+										StringValue: func() *string {
+											s := e.Description()
+											return &s
+										}(),
+									},
+								},
+								{
+									UserEnteredValue: &sheets.ExtendedValue{
+										StringValue: func() *string {
+											s := time.Unix(e.Timestamp(), 0).Format(time.RFC3339)
+											return &s
+										}(),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}).Context(ctx).Do()
+	if err != nil {
+		return err
+	}
+
+	// check status code
+	if resp.HTTPStatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", resp.HTTPStatusCode)
+	}
+
 	return nil
 }
 
