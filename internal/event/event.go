@@ -1,7 +1,7 @@
 package event
 
 type Event interface {
-	Name() string
+	Topic() string
 	Description() string
 	Timestamp() int64
 }
