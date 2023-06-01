@@ -94,7 +94,7 @@ var (
 
 const noticeModalCustomID = "notice"
 
-func EmbedTemplate(u *discordgo.User, title, description string, url ...string) *discordgo.MessageEmbed {
+func adminEmbed(u *discordgo.User, title, description string, color ...int) *discordgo.MessageEmbed {
 	embed := &discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{
 			Name:    u.Username,
@@ -103,11 +103,11 @@ func EmbedTemplate(u *discordgo.User, title, description string, url ...string) 
 		Title:       title,
 		Description: description,
 		Timestamp:   time.Now().Format(time.RFC3339),
-		Color:       16777215,
+		Color:       0x00ff00,
 	}
 
-	if len(url) > 0 {
-		embed.URL = url[0]
+	if len(color) > 0 {
+		embed.Color = color[0]
 	}
 
 	return embed
