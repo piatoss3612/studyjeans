@@ -31,7 +31,7 @@ func NewReflectionCommand(svc service.Service, pub msgqueue.Publisher, sugar *za
 }
 
 func (rc *reflectionCommand) Register(reg command.Registerer) {
-	reg.RegisterCommand(cmd, nil)
+	reg.RegisterCommand(cmd, rc.reflectionCmdHandler)
 }
 
 func (rc *reflectionCommand) reflectionCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
