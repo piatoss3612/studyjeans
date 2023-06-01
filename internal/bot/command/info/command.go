@@ -34,7 +34,9 @@ func NewInfoCommand(svc service.Service, pub msgqueue.Publisher, cache cache.Cac
 }
 
 func (ic *infoCommand) Register(reg command.Registerer) {
-
+	reg.RegisterCommand(myStudyInfoCmd, ic.myStudyInfoCmdHandler)
+	reg.RegisterCommand(studyInfoCmd, ic.studyInfoCmdHandler)
+	reg.RegisterCommand(studyRoundInfoCmd, ic.studyRoundInfoCmdHandler)
 }
 
 func (ic *infoCommand) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
