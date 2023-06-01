@@ -31,11 +31,9 @@ func NewAdminCommand(svc service.Service, pub msgqueue.Publisher, sugar *zap.Sug
 }
 
 func (ac *adminCommand) Register(reg command.Registerer) {
-	// TODO: register command
 	reg.RegisterCommand(adminCmd, ac.adminHandler)
 	reg.RegisterHandler(noticeModalCustomID, ac.noticeSubmitHandler)
 	reg.RegisterHandler(stageMoveConfirmButton.CustomID, ac.stageMoveConfirmHandler)
-	reg.RegisterHandler(stageMoveCancelButton.CustomID, ac.stageMoveCancelHandler)
 }
 
 func (ac *adminCommand) adminHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
@@ -432,7 +430,6 @@ func (ac *adminCommand) moveRoundStageHandler(s *discordgo.Session, i *discordgo
 				discordgo.ActionsRow{
 					Components: []discordgo.MessageComponent{
 						stageMoveConfirmButton,
-						stageMoveCancelButton,
 					},
 				},
 			},
@@ -673,17 +670,6 @@ func (ac *adminCommand) setReflectionChannelHandler(s *discordgo.Session, i *dis
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: fmt.Sprintf("회고 채널이 %s로 설정되었습니다.", ch.Mention()),
-			Flags:   discordgo.MessageFlagsEphemeral,
-		},
-	})
-}
-
-func (ac *adminCommand) stageMoveCancelHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	// send a response message
-	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Content: "스터디 라운드 이동이 취소되었습니다.",
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})

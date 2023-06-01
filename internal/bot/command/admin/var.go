@@ -90,11 +90,6 @@ var (
 		Label:    "확인",
 		Style:    discordgo.SuccessButton,
 	}
-	stageMoveCancelButton = discordgo.Button{
-		CustomID: "cancel-move-stage",
-		Label:    "취소",
-		Style:    discordgo.DangerButton,
-	}
 )
 
 const noticeModalCustomID = "notice"
