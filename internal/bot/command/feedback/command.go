@@ -9,6 +9,7 @@ import (
 	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/service"
+	"github.com/piatoss3612/presentation-helper-bot/internal/utils"
 	"go.uber.org/zap"
 )
 
@@ -26,21 +27,19 @@ func NewFeedbackCommand(svc service.Service, sugar *zap.SugaredLogger) command.C
 }
 
 func (fc *feedbackCommand) Register(reg command.Registerer) {
-	reg.RegisterCommand(cmd, fc.sendFeedbackCmdHandler)
-	reg.RegisterHandler(feedbackModalCustomID, fc.feedbackSubmitHandler)
+	reg.RegisterCommand(cmd, fc.showSendFeedbackModal)
+	reg.RegisterHandler(feedbackModalCustomID, fc.sendFeedback)
 }
 
-func (fc *feedbackCommand) sendFeedbackCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var user *discordgo.User
-
-	if i.Member != nil && i.Member.User != nil {
-		user = i.Member.User
-	}
-
-	if user == nil {
+// show send feedback modal
+func (fc *feedbackCommand) showSendFeedbackModal(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+	// command should be used in guild
+	reviewer := utils.GetGuildUserFromInteraction(i)
+	if reviewer == nil {
 		return study.ErrUserNotFound
 	}
 
+	// check speaker
 	var speaker *discordgo.User
 
 	for _, option := range i.ApplicationCommandData().Options {
@@ -58,10 +57,12 @@ func (fc *feedbackCommand) sendFeedbackCmdHandler(s *discordgo.Session, i *disco
 		return errors.New("봇은 리뷰 대상자로 지정할 수 없습니다")
 	}
 
-	if speaker.ID == user.ID {
+	// reviewer can't feedback to yourself
+	if speaker.ID == reviewer.ID {
 		return study.ErrFeedbackYourself
 	}
 
+	// show modal
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseModal,
 		Data: &discordgo.InteractionResponseData{
@@ -91,20 +92,17 @@ func (fc *feedbackCommand) sendFeedbackCmdHandler(s *discordgo.Session, i *disco
 	})
 }
 
-func (fc *feedbackCommand) feedbackSubmitHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var reviewer *discordgo.User
-
-	if i.Member != nil && i.Member.User != nil {
-		reviewer = i.Member.User
-	}
-
+// send feedback
+func (fc *feedbackCommand) sendFeedback(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+	// command should be used in guild
+	reviewer := utils.GetGuildUserFromInteraction(i)
 	if reviewer == nil {
 		return errors.Join(study.ErrUserNotFound, errors.New("리뷰어 정보를 찾을 수 없습니다"))
 	}
 
 	data := i.ModalSubmitData()
 
-	var revieweeID, feedback string
+	var speakerID, feedback string
 
 	for _, c := range data.Components {
 		row, ok := c.(*discordgo.ActionsRow)
@@ -120,50 +118,44 @@ func (fc *feedbackCommand) feedbackSubmitHandler(s *discordgo.Session, i *discor
 
 			switch input.CustomID {
 			case "speaker-id":
-				revieweeID = input.Value
+				speakerID = input.Value
 			case "feedback":
 				feedback = input.Value
 			}
 		}
 	}
 
-	if revieweeID == "" || feedback == "" {
+	if speakerID == "" || feedback == "" {
 		return errors.Join(study.ErrRequiredArgs, errors.New("리뷰 대상자의 아이디 또는 피드백 정보를 찾을 수 없습니다"))
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
+	// set reviewer id
 	_, _, err := fc.svc.UpdateRound(ctx, &service.UpdateParams{
 		GuildID:    i.GuildID,
 		ReviewerID: reviewer.ID,
-		RevieweeID: revieweeID,
+		RevieweeID: speakerID,
 	}, service.SetReviewer, service.ValidateToSetReviewer)
 	if err != nil {
 		return err
 	}
 
-	channel, err := s.UserChannelCreate(revieweeID)
+	// create dm channel and send feedback
+	channel, err := s.UserChannelCreate(speakerID)
 	if err != nil {
 		return err
 	}
 
-	embed := &discordgo.MessageEmbed{
-		Author: &discordgo.MessageEmbedAuthor{
-			Name:    "익명",
-			IconURL: s.State.User.AvatarURL(""),
-		},
-		Title:       "피드백",
-		Description: feedback,
-		Color:       0x00ff00,
-		Timestamp:   time.Now().Format(time.RFC3339),
-	}
+	embed := feedbackEmbed(s.State.User, feedback)
 
 	_, err = s.ChannelMessageSendEmbed(channel.ID, embed)
 	if err != nil {
 		return err
 	}
 
+	// send response
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{

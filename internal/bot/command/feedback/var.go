@@ -1,6 +1,10 @@
 package feedback
 
-import "github.com/bwmarrin/discordgo"
+import (
+	"time"
+
+	"github.com/bwmarrin/discordgo"
+)
 
 var (
 	cmd = discordgo.ApplicationCommand{
@@ -27,3 +31,16 @@ var (
 
 	feedbackModalCustomID = "feedback-modal"
 )
+
+func feedbackEmbed(u *discordgo.User, content string) *discordgo.MessageEmbed {
+	return &discordgo.MessageEmbed{
+		Author: &discordgo.MessageEmbedAuthor{
+			Name:    "익명",
+			IconURL: u.AvatarURL(""),
+		},
+		Title:       "피드백",
+		Description: content,
+		Color:       0x00ff00,
+		Timestamp:   time.Now().Format(time.RFC3339),
+	}
+}
