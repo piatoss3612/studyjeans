@@ -1,6 +1,8 @@
 package bot
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -8,11 +10,14 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command"
+	"github.com/piatoss3612/presentation-helper-bot/internal/event"
+	"github.com/piatoss3612/presentation-helper-bot/internal/event/msgqueue"
 	"go.uber.org/zap"
 )
 
 type StudyBot struct {
 	sess *discordgo.Session
+	pub  msgqueue.Publisher
 
 	commands           []*discordgo.ApplicationCommand
 	registeredCommands []*discordgo.ApplicationCommand
@@ -23,9 +28,10 @@ type StudyBot struct {
 	sugar *zap.SugaredLogger
 }
 
-func New(cmdReg command.Registerer, sess *discordgo.Session, sugar *zap.SugaredLogger) *StudyBot {
+func New(pub msgqueue.Publisher, cmdReg command.Registerer, sess *discordgo.Session, sugar *zap.SugaredLogger) *StudyBot {
 	return &StudyBot{
 		sess:      sess,
+		pub:       pub,
 		commands:  cmdReg.Commands(),
 		handlers:  cmdReg.Handlers(),
 		startedAt: time.Now(),
@@ -101,7 +107,24 @@ func (b *StudyBot) handleApplicationCommand(s *discordgo.Session, i *discordgo.I
 	}
 
 	if ok {
-		h(s, i)
+		if err := h(s, i); err != nil {
+			b.sugar.Errorw("failed to handle command", "error", err)
+			b.publishError(&event.ErrorEvent{
+				T: "study.error",
+				D: fmt.Sprintf("%s: %s", i.ApplicationCommandData().Name, err.Error()),
+				C: time.Now(),
+			})
+
+			_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Flags: discordgo.MessageFlagsEphemeral,
+					Embeds: []*discordgo.MessageEmbed{
+						ErrorEmbed(err.Error()),
+					},
+				},
+			})
+		}
 	}
 }
 
@@ -128,4 +151,26 @@ func (b *StudyBot) removeRegisteredCommands() error {
 	}
 
 	return nil
+}
+
+func (b *StudyBot) publishError(evt event.Event) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	for i := 0; i < 10; i++ {
+		err := b.pub.Publish(ctx, evt.Topic(), evt)
+		if err != nil {
+			b.sugar.Errorw(err.Error(), "event", "publish event", "topic", evt.Topic(), "try", i+1)
+			continue
+		}
+		return
+	}
+}
+
+func ErrorEmbed(msg string) *discordgo.MessageEmbed {
+	return &discordgo.MessageEmbed{
+		Title:       "오류",
+		Description: msg,
+		Color:       0xff0000,
+	}
 }

@@ -27,11 +27,3 @@ var (
 
 	feedbackModalCustomID = "feedback-modal"
 )
-
-func ErrorEmbed(msg string) *discordgo.MessageEmbed {
-	return &discordgo.MessageEmbed{
-		Title:       "오류",
-		Description: msg,
-		Color:       0xff0000,
-	}
-}

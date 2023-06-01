@@ -84,7 +84,7 @@ func run() {
 
 	sess := mustOpenDiscordSession(cfg.Discord.BotToken)
 
-	b := bot.New(cmdReg, sess, sugar).Setup()
+	b := bot.New(pub, cmdReg, sess, sugar).Setup()
 
 	stop, err := b.Run()
 	if err != nil {
@@ -155,13 +155,13 @@ func registerCommands(svc service.Service, pub msgqueue.Publisher, cache cache.C
 	reg := command.NewRegisterer()
 
 	admin.NewAdminCommand(svc, pub, sugar).Register(reg)
-	help.NewHelpCommand(pub, sugar).Register(reg)
-	profile.NewProfileCommand(pub, sugar).Register(reg)
-	info.NewInfoCommand(svc, pub, cache, sugar).Register(reg)
-	registration.NewRegistrationCommand(svc, pub, sugar).Register(reg)
-	submit.NewSubmitCommand(svc, pub, sugar).Register(reg)
-	feedback.NewFeedbackCommand(svc, pub, sugar).Register(reg)
-	reflection.NewReflectionCommand(svc, pub, sugar).Register(reg)
+	help.NewHelpCommand(sugar).Register(reg)
+	profile.NewProfileCommand(sugar).Register(reg)
+	info.NewInfoCommand(svc, cache, sugar).Register(reg)
+	registration.NewRegistrationCommand(svc, sugar).Register(reg)
+	submit.NewSubmitCommand(svc, sugar).Register(reg)
+	feedback.NewFeedbackCommand(svc, sugar).Register(reg)
+	reflection.NewReflectionCommand(svc, sugar).Register(reg)
 
 	return reg
 }

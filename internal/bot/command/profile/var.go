@@ -57,11 +57,3 @@ func ProfileEmbed(u *discordgo.User, title, createdAt, rebootedAt, uptime string
 		Color:     16777215,
 	}
 }
-
-func ErrorEmbed(msg string) *discordgo.MessageEmbed {
-	return &discordgo.MessageEmbed{
-		Title:       "오류",
-		Description: msg,
-		Color:       0xff0000,
-	}
-}

@@ -13,7 +13,7 @@ type Command interface {
 	Register(reg Registerer)
 }
 
-type HandleFunc func(s *discordgo.Session, i *discordgo.InteractionCreate)
+type HandleFunc func(s *discordgo.Session, i *discordgo.InteractionCreate) error
 
 type commandRegisterer struct {
 	cmds  []*discordgo.ApplicationCommand

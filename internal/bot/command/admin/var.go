@@ -117,11 +117,3 @@ func EmbedTemplate(u *discordgo.User, title, description string, url ...string) 
 
 	return embed
 }
-
-func ErrorEmbed(msg string) *discordgo.MessageEmbed {
-	return &discordgo.MessageEmbed{
-		Title:       "오류",
-		Description: msg,
-		Color:       0xff0000,
-	}
-}
