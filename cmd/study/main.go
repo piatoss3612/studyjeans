@@ -11,7 +11,9 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/piatoss3612/presentation-helper-bot/internal/bot"
 	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command"
-	"github.com/piatoss3612/presentation-helper-bot/internal/bot/component"
+	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command/profile"
+	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command/submit"
+	"github.com/piatoss3612/presentation-helper-bot/internal/bot/help"
 	"github.com/piatoss3612/presentation-helper-bot/internal/config"
 	"github.com/piatoss3612/presentation-helper-bot/internal/event/msgqueue"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/cache"
@@ -76,9 +78,17 @@ func run() {
 	sess := mustOpenDiscordSession(cfg.Discord.BotToken)
 
 	cmdReg := command.NewRegisterer()
-	cptReg := component.NewRegisterer()
 
-	b := bot.New(cmdReg, cptReg, sess, sugar).Setup()
+	helpCmd := help.NewHelpCommand(pub, sugar)
+	helpCmd.Register(cmdReg)
+
+	profileCmd := profile.NewProfileCommand(pub, sugar)
+	profileCmd.Register(cmdReg)
+
+	submitCmd := submit.NewSubmitCommand(svc, pub, sugar)
+	submitCmd.Register(cmdReg)
+
+	b := bot.New(cmdReg, sess, sugar).Setup()
 
 	stop, err := b.Run()
 	if err != nil {
