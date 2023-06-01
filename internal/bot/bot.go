@@ -7,35 +7,32 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/piatoss3612/presentation-helper-bot/internal/event/msgqueue"
-	"github.com/piatoss3612/presentation-helper-bot/internal/study/cache"
-	"github.com/piatoss3612/presentation-helper-bot/internal/study/service"
+	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command"
+	"github.com/piatoss3612/presentation-helper-bot/internal/bot/component"
 	"go.uber.org/zap"
 )
 
 type StudyBot struct {
-	sess  *discordgo.Session
-	cmd   CommandHandler
-	cpt   ComponentHandler
-	svc   service.Service
-	cache cache.Cache
-	pub   msgqueue.Publisher
+	sess *discordgo.Session
+
+	commands           []*discordgo.ApplicationCommand
+	registeredCommands []*discordgo.ApplicationCommand
+	commandHandlers    map[string]command.HandleFunc
+	componentHandlers  map[string]component.HandleFunc
 
 	startedAt time.Time
 
 	sugar *zap.SugaredLogger
 }
 
-func New(sess *discordgo.Session, svc service.Service, cache cache.Cache, pub msgqueue.Publisher, sugar *zap.SugaredLogger) *StudyBot {
+func New(cmdReg command.Registerer, cptReg component.Registerer, sess *discordgo.Session, sugar *zap.SugaredLogger) *StudyBot {
 	return &StudyBot{
-		sess:      sess,
-		cmd:       NewCommandHandler(),
-		cpt:       NewComponentHandler(),
-		svc:       svc,
-		cache:     cache,
-		pub:       pub,
-		startedAt: time.Now(),
-		sugar:     sugar,
+		sess:              sess,
+		commands:          cmdReg.Commands(),
+		commandHandlers:   cmdReg.Handlers(),
+		componentHandlers: cptReg.Handlers(),
+		startedAt:         time.Now(),
+		sugar:             sugar,
 	}
 }
 
@@ -46,8 +43,6 @@ func (b *StudyBot) Setup() *StudyBot {
 	b.sess.AddHandler(b.ready)
 	b.sess.AddHandler(b.handleApplicationCommand)
 
-	b.addCommands()
-
 	return b
 }
 
@@ -56,7 +51,7 @@ func (b *StudyBot) Run() (<-chan bool, error) {
 		return nil, err
 	}
 
-	if err := b.cmd.RegisterApplicationCommands(b.sess); err != nil {
+	if err := b.registerCommands(); err != nil {
 		return nil, err
 	}
 
@@ -82,7 +77,7 @@ func (b *StudyBot) Run() (<-chan bool, error) {
 }
 
 func (b *StudyBot) Close() error {
-	if err := b.cmd.RemoveApplicationCommands(b.sess); err != nil {
+	if err := b.removeRegisteredCommands(); err != nil {
 		return err
 	}
 
@@ -94,16 +89,16 @@ func (b *StudyBot) ready(s *discordgo.Session, _ *discordgo.Ready) {
 }
 
 func (b *StudyBot) handleApplicationCommand(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	var h HandleFunc
+	var h func(*discordgo.Session, *discordgo.InteractionCreate)
 	var ok bool
 
 	switch i.Type {
 	case discordgo.InteractionApplicationCommand:
-		h, ok = b.cmd.GetHandleFunc(i.ApplicationCommandData().Name)
+		h, ok = b.commandHandlers[i.ApplicationCommandData().Name]
 	case discordgo.InteractionMessageComponent:
-		h, ok = b.cpt.GetHandleFunc(i.MessageComponentData().CustomID)
+		h, ok = b.componentHandlers[i.MessageComponentData().CustomID]
 	case discordgo.InteractionModalSubmit:
-		h, ok = b.cpt.GetHandleFunc(i.ModalSubmitData().CustomID)
+		h, ok = b.componentHandlers[i.ModalSubmitData().CustomID]
 	default:
 		return
 	}
@@ -113,15 +108,29 @@ func (b *StudyBot) handleApplicationCommand(s *discordgo.Session, i *discordgo.I
 	}
 }
 
-func (b *StudyBot) addCommands() {
-	b.addAdminCmd()
-	b.addHelpCmd()
-	b.addProfileCmd()
-	b.addStudyInfoCmd()
-	b.addRegistrationCmd()
-	b.addSubmitContentCmd()
-	b.addSendFeedbackCmd()
-	b.addReflectionCmd()
+func (b *StudyBot) registerCommands() error {
+	b.registeredCommands = make([]*discordgo.ApplicationCommand, len(b.commands))
+
+	for _, cmd := range b.commands {
+		registered, err := b.sess.ApplicationCommandCreate(b.sess.State.User.ID, "", cmd)
+		if err != nil {
+			return err
+		}
+
+		b.registeredCommands = append(b.registeredCommands, registered)
+	}
+
+	return nil
+}
+
+func (b *StudyBot) removeRegisteredCommands() error {
+	for _, cmd := range b.registeredCommands {
+		if err := b.sess.ApplicationCommandDelete(b.sess.State.User.ID, "", cmd.ID); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func errorInteractionRespond(s *discordgo.Session, i *discordgo.InteractionCreate, err error) error {
