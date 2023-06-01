@@ -5,6 +5,7 @@ import "github.com/bwmarrin/discordgo"
 type Registerer interface {
 	Register(cmd discordgo.ApplicationCommand, fn HandleFunc)
 	Commands() []*discordgo.ApplicationCommand
+	Handlers() map[string]HandleFunc
 }
 
 type HandleFunc func(s *discordgo.Session, i *discordgo.InteractionCreate)
@@ -28,4 +29,8 @@ func (r *commandRegisterer) Register(cmd discordgo.ApplicationCommand, fn Handle
 
 func (r *commandRegisterer) Commands() []*discordgo.ApplicationCommand {
 	return r.cmds
+}
+
+func (r *commandRegisterer) Handlers() map[string]HandleFunc {
+	return r.funcs
 }
