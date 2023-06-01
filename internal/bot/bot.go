@@ -11,7 +11,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command"
 	"github.com/piatoss3612/presentation-helper-bot/internal/event"
-	"github.com/piatoss3612/presentation-helper-bot/internal/event/msgqueue"
+	"github.com/piatoss3612/presentation-helper-bot/internal/msgqueue"
 	"go.uber.org/zap"
 )
 

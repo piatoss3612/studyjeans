@@ -9,9 +9,9 @@ import (
 
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/piatoss3612/presentation-helper-bot/internal/config"
-	"github.com/piatoss3612/presentation-helper-bot/internal/event/msgqueue"
 	"github.com/piatoss3612/presentation-helper-bot/internal/logger/app"
 	"github.com/piatoss3612/presentation-helper-bot/internal/logger/service"
+	"github.com/piatoss3612/presentation-helper-bot/internal/msgqueue"
 	"github.com/piatoss3612/presentation-helper-bot/internal/tools"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2/google"

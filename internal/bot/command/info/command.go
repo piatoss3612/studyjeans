@@ -7,8 +7,8 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command"
+	"github.com/piatoss3612/presentation-helper-bot/internal/cache"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study"
-	"github.com/piatoss3612/presentation-helper-bot/internal/study/cache"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/service"
 	"go.uber.org/zap"
 )
