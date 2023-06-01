@@ -26,7 +26,7 @@ import (
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/repository"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/repository/mongo"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/service"
-	"github.com/piatoss3612/presentation-helper-bot/internal/tools"
+	"github.com/piatoss3612/presentation-helper-bot/internal/utils"
 	"go.uber.org/zap"
 )
 
@@ -110,7 +110,7 @@ func mustLoadConfig(path string) *config.StudyConfig {
 }
 
 func mustInitTx(ctx context.Context, uri, dbname string) (repository.Tx, func() error) {
-	mongoClient, err := tools.ConnectMongoDB(ctx, uri)
+	mongoClient, err := utils.ConnectMongoDB(ctx, uri)
 	if err != nil {
 		sugar.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func mustInitTx(ctx context.Context, uri, dbname string) (repository.Tx, func() 
 }
 
 func mustInitStudyCache(ctx context.Context, addr string, ttl time.Duration) cache.Cache {
-	cache, err := tools.ConnectRedisCache(ctx, addr, ttl)
+	cache, err := utils.ConnectRedisCache(ctx, addr, ttl)
 	if err != nil {
 		sugar.Fatal(err)
 	}
@@ -128,7 +128,7 @@ func mustInitStudyCache(ctx context.Context, addr string, ttl time.Duration) cac
 }
 
 func mustInitPublisher(ctx context.Context, addr, exchange, kind string) (msgqueue.Publisher, func() error) {
-	rabbit := <-tools.RedialRabbitMQ(ctx, addr)
+	rabbit := <-utils.RedialRabbitMQ(ctx, addr)
 
 	if rabbit == nil {
 		sugar.Fatal("Failed to connect to RabbitMQ")

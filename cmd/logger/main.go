@@ -12,7 +12,7 @@ import (
 	"github.com/piatoss3612/presentation-helper-bot/internal/logger/app"
 	"github.com/piatoss3612/presentation-helper-bot/internal/logger/service"
 	"github.com/piatoss3612/presentation-helper-bot/internal/msgqueue"
-	"github.com/piatoss3612/presentation-helper-bot/internal/tools"
+	"github.com/piatoss3612/presentation-helper-bot/internal/utils"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
@@ -72,7 +72,7 @@ func mustLoadConfig(path string) *config.LoggerConfig {
 }
 
 func mustInitSubscriber(ctx context.Context, addr, exchange, kind, queue string) (msgqueue.Subscriber, func() error) {
-	rabbit := <-tools.RedialRabbitMQ(ctx, addr)
+	rabbit := <-utils.RedialRabbitMQ(ctx, addr)
 
 	if rabbit == nil {
 		sugar.Fatal("Failed to connect to RabbitMQ")

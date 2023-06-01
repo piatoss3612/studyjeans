@@ -16,26 +16,22 @@ import (
 )
 
 type StudyBot struct {
-	sess *discordgo.Session
-	pub  msgqueue.Publisher
-
+	sess               *discordgo.Session
+	pub                msgqueue.Publisher
 	commands           []*discordgo.ApplicationCommand
 	registeredCommands []*discordgo.ApplicationCommand
 	handlers           map[string]command.HandleFunc
-
-	startedAt time.Time
 
 	sugar *zap.SugaredLogger
 }
 
 func New(pub msgqueue.Publisher, cmdReg command.Registerer, sess *discordgo.Session, sugar *zap.SugaredLogger) *StudyBot {
 	return &StudyBot{
-		sess:      sess,
-		pub:       pub,
-		commands:  cmdReg.Commands(),
-		handlers:  cmdReg.Handlers(),
-		startedAt: time.Now(),
-		sugar:     sugar,
+		sess:     sess,
+		pub:      pub,
+		commands: cmdReg.Commands(),
+		handlers: cmdReg.Handlers(),
+		sugar:    sugar,
 	}
 }
 
