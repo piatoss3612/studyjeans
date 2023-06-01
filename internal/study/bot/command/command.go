@@ -3,9 +3,14 @@ package command
 import "github.com/bwmarrin/discordgo"
 
 type Registerer interface {
-	Register(cmd discordgo.ApplicationCommand, fn HandleFunc)
+	Register(command Command)
 	Commands() []*discordgo.ApplicationCommand
 	Handlers() map[string]HandleFunc
+}
+
+type Command interface {
+	C() discordgo.ApplicationCommand
+	F() HandleFunc
 }
 
 type HandleFunc func(s *discordgo.Session, i *discordgo.InteractionCreate)
@@ -22,7 +27,10 @@ func NewRegisterer() Registerer {
 	}
 }
 
-func (r *commandRegisterer) Register(cmd discordgo.ApplicationCommand, fn HandleFunc) {
+func (r *commandRegisterer) Register(command Command) {
+	cmd := command.C()
+	fn := command.F()
+
 	r.cmds = append(r.cmds, &cmd)
 	r.funcs[cmd.Name] = fn
 }

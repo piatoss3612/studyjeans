@@ -3,8 +3,13 @@ package component
 import "github.com/bwmarrin/discordgo"
 
 type Registerer interface {
-	Register(name string, fn HandleFunc)
+	Register(component Component)
 	Handlers() map[string]HandleFunc
+}
+
+type Component interface {
+	N() string
+	F() HandleFunc
 }
 
 type HandleFunc func(s *discordgo.Session, i *discordgo.InteractionCreate)
@@ -19,8 +24,8 @@ func NewRegisterer() Registerer {
 	}
 }
 
-func (r *componentRegisterer) Register(name string, fn HandleFunc) {
-	r.funcs[name] = fn
+func (r *componentRegisterer) Register(component Component) {
+	r.funcs[component.N()] = component.F()
 }
 
 func (r *componentRegisterer) Handlers() map[string]HandleFunc {
