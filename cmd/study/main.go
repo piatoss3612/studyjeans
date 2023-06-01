@@ -11,9 +11,14 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/piatoss3612/presentation-helper-bot/internal/bot"
 	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command"
+	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command/admin"
+	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command/feedback"
+	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command/help"
+	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command/info"
 	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command/profile"
+	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command/reflection"
+	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command/registration"
 	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command/submit"
-	"github.com/piatoss3612/presentation-helper-bot/internal/bot/help"
 	"github.com/piatoss3612/presentation-helper-bot/internal/config"
 	"github.com/piatoss3612/presentation-helper-bot/internal/event/msgqueue"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/cache"
@@ -75,18 +80,9 @@ func run() {
 	svc := service.New(tx)
 	sugar.Info("Study service is ready!")
 
+	cmdReg := registerCommands(svc, pub, cache)
+
 	sess := mustOpenDiscordSession(cfg.Discord.BotToken)
-
-	cmdReg := command.NewRegisterer()
-
-	helpCmd := help.NewHelpCommand(pub, sugar)
-	helpCmd.Register(cmdReg)
-
-	profileCmd := profile.NewProfileCommand(pub, sugar)
-	profileCmd.Register(cmdReg)
-
-	submitCmd := submit.NewSubmitCommand(svc, pub, sugar)
-	submitCmd.Register(cmdReg)
 
 	b := bot.New(cmdReg, sess, sugar).Setup()
 
@@ -153,6 +149,21 @@ func mustOpenDiscordSession(token string) *discordgo.Session {
 	}
 
 	return sess
+}
+
+func registerCommands(svc service.Service, pub msgqueue.Publisher, cache cache.Cache) command.Registerer {
+	reg := command.NewRegisterer()
+
+	admin.NewAdminCommand(svc, pub, sugar).Register(reg)
+	help.NewHelpCommand(pub, sugar).Register(reg)
+	profile.NewProfileCommand(pub, sugar).Register(reg)
+	info.NewInfoCommand(svc, pub, cache, sugar).Register(reg)
+	registration.NewRegistrationCommand(svc, pub, sugar).Register(reg)
+	submit.NewSubmitCommand(svc, pub, sugar).Register(reg)
+	feedback.NewFeedbackCommand(svc, pub, sugar).Register(reg)
+	reflection.NewReflectionCommand(svc, pub, sugar).Register(reg)
+
+	return reg
 }
 
 func mustSetTimezone(tz string) {
