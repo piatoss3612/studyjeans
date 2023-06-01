@@ -8,7 +8,6 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command"
-	"github.com/piatoss3612/presentation-helper-bot/internal/bot/component"
 	"go.uber.org/zap"
 )
 
@@ -17,22 +16,20 @@ type StudyBot struct {
 
 	commands           []*discordgo.ApplicationCommand
 	registeredCommands []*discordgo.ApplicationCommand
-	commandHandlers    map[string]command.HandleFunc
-	componentHandlers  map[string]component.HandleFunc
+	handlers           map[string]command.HandleFunc
 
 	startedAt time.Time
 
 	sugar *zap.SugaredLogger
 }
 
-func New(cmdReg command.Registerer, cptReg component.Registerer, sess *discordgo.Session, sugar *zap.SugaredLogger) *StudyBot {
+func New(cmdReg command.Registerer, sess *discordgo.Session, sugar *zap.SugaredLogger) *StudyBot {
 	return &StudyBot{
-		sess:              sess,
-		commands:          cmdReg.Commands(),
-		commandHandlers:   cmdReg.Handlers(),
-		componentHandlers: cptReg.Handlers(),
-		startedAt:         time.Now(),
-		sugar:             sugar,
+		sess:      sess,
+		commands:  cmdReg.Commands(),
+		handlers:  cmdReg.Handlers(),
+		startedAt: time.Now(),
+		sugar:     sugar,
 	}
 }
 
@@ -89,16 +86,16 @@ func (b *StudyBot) ready(s *discordgo.Session, _ *discordgo.Ready) {
 }
 
 func (b *StudyBot) handleApplicationCommand(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	var h func(*discordgo.Session, *discordgo.InteractionCreate)
+	var h command.HandleFunc
 	var ok bool
 
 	switch i.Type {
 	case discordgo.InteractionApplicationCommand:
-		h, ok = b.commandHandlers[i.ApplicationCommandData().Name]
+		h, ok = b.handlers[i.ApplicationCommandData().Name]
 	case discordgo.InteractionMessageComponent:
-		h, ok = b.componentHandlers[i.MessageComponentData().CustomID]
+		h, ok = b.handlers[i.MessageComponentData().CustomID]
 	case discordgo.InteractionModalSubmit:
-		h, ok = b.componentHandlers[i.ModalSubmitData().CustomID]
+		h, ok = b.handlers[i.ModalSubmitData().CustomID]
 	default:
 		return
 	}
