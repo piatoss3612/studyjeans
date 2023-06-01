@@ -1,4 +1,4 @@
-package bot
+package admin
 
 import "github.com/bwmarrin/discordgo"
 
@@ -6,7 +6,7 @@ func (ac *adminCommand) sendDMsToAllMember(s *discordgo.Session, e *discordgo.Me
 	// get all members
 	members, err := s.GuildMembers(guildID, "", 1000)
 	if err != nil {
-		b.sugar.Errorw(err.Error(), "event", "send-dms-to-all-member")
+		ac.sugar.Errorw(err.Error(), "event", "send-dms-to-all-member")
 		return
 	}
 
@@ -22,20 +22,20 @@ func (ac *adminCommand) sendDMsToAllMember(s *discordgo.Session, e *discordgo.Me
 			// create a dm channel
 			ch, err := s.UserChannelCreate(member.User.ID)
 			if err != nil {
-				b.sugar.Errorw(err.Error(), "event", "send-dms-to-all-member")
+				ac.sugar.Errorw(err.Error(), "event", "send-dms-to-all-member")
 				candidates = append(candidates, member)
 				continue
 			}
 
 			_, err = s.ChannelMessageSendEmbed(ch.ID, e)
 			if err != nil {
-				b.sugar.Errorw(err.Error(), "event", "send-dms-to-all-member")
+				ac.sugar.Errorw(err.Error(), "event", "send-dms-to-all-member")
 				candidates = append(candidates, member)
 			}
 		}
 
 		if len(candidates) == 0 {
-			b.sugar.Infow("sent dms to all members", "event", "send-dms-to-all-member", "guild_id", guildID)
+			ac.sugar.Infow("sent dms to all members", "event", "send-dms-to-all-member", "guild_id", guildID)
 			break
 		}
 
@@ -43,16 +43,16 @@ func (ac *adminCommand) sendDMsToAllMember(s *discordgo.Session, e *discordgo.Me
 	}
 }
 
-func (b *StudyBot) sendDMToMember(s *discordgo.Session, u *discordgo.User, e *discordgo.MessageEmbed) {
+func (ac *adminCommand) sendDMToMember(s *discordgo.Session, u *discordgo.User, e *discordgo.MessageEmbed) {
 	ch, err := s.UserChannelCreate(u.ID)
 	if err != nil {
-		b.sugar.Errorw(err.Error(), "event", "send-dm-to-member")
+		ac.sugar.Errorw(err.Error(), "event", "send-dm-to-member")
 		return
 	}
 
 	_, err = s.ChannelMessageSendEmbed(ch.ID, e)
 	if err != nil {
-		b.sugar.Errorw(err.Error(), "event", "send-dm-to-member")
+		ac.sugar.Errorw(err.Error(), "event", "send-dm-to-member")
 		return
 	}
 }
