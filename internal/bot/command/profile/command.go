@@ -69,6 +69,7 @@ func (p *profileCommand) profileCmdHandler(s *discordgo.Session, i *discordgo.In
 		})
 	}
 }
+
 func (p *profileCommand) publishEvent(evt event.Event) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
