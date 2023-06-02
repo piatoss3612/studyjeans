@@ -13,23 +13,25 @@ var (
 		Options: []*discordgo.ApplicationCommandOption{
 			{
 				Name:        "이름",
-				Description: "발표자의 이름을 입력해주세요.",
+				Description: "발표자의 이름을 입력해 주세요.",
 				Type:        discordgo.ApplicationCommandOptionString,
 				Required:    true,
 			},
 			{
 				Name:        "주제",
-				Description: "발표 주제를 입력해주세요.",
+				Description: "발표 주제를 입력해 주세요.",
 				Type:        discordgo.ApplicationCommandOptionString,
 				Required:    true,
 			},
 		},
 	}
 
-	unregisterCmd = discordgo.ApplicationCommand{
-		Name:        "발표자-등록-취소",
-		Description: "발표자 등록을 취소합니다.",
+	changeCmd = discordgo.ApplicationCommand{
+		Name:        "발표자-등록-정보-변경",
+		Description: "발표자 등록 정보를 변경합니다.",
 	}
+
+	changeModalCustomID = "registration-change-modal"
 )
 
 func registrationEmbed(u *discordgo.User, title, description string) *discordgo.MessageEmbed {
