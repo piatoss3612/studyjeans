@@ -9,6 +9,7 @@ import (
 	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/service"
+	"github.com/piatoss3612/presentation-helper-bot/internal/utils"
 	"go.uber.org/zap"
 )
 
@@ -26,17 +27,13 @@ func NewRegistrationCommand(svc service.Service, sugar *zap.SugaredLogger) comma
 }
 
 func (rc *registrationCmd) Register(reg command.Registerer) {
-	reg.RegisterCommand(registerCmd, rc.registerCmdHandler)
-	reg.RegisterCommand(unregisterCmd, rc.unregisterCmdHandler)
+	reg.RegisterCommand(registerCmd, rc.register)
+	reg.RegisterCommand(unregisterCmd, rc.unregister)
 }
 
-func (rc *registrationCmd) registerCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var user *discordgo.User
-
-	if i.Member != nil && i.Member.User != nil {
-		user = i.Member.User
-	}
-
+// register as speaker for presentation
+func (rc *registrationCmd) register(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+	user := utils.GetGuildUserFromInteraction(i)
 	if user == nil {
 		return study.ErrUserNotFound
 	}
@@ -59,6 +56,7 @@ func (rc *registrationCmd) registerCmdHandler(s *discordgo.Session, i *discordgo
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	// register as speaker
 	_, _, err := rc.svc.UpdateRound(ctx, &service.UpdateParams{
 		GuildID:    i.GuildID,
 		MemberID:   user.ID,
@@ -70,25 +68,21 @@ func (rc *registrationCmd) registerCmdHandler(s *discordgo.Session, i *discordgo
 		return err
 	}
 
+	// send response
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: user.Mention(),
 			Flags:   discordgo.MessageFlagsEphemeral,
 			Embeds: []*discordgo.MessageEmbed{
-				EmbedTemplate(s.State.User, "등록 완료", "발표자 등록이 완료되었습니다."),
+				registrationEmbed(s.State.User, "등록 완료", "발표자 등록이 완료되었습니다."),
 			},
 		},
 	})
 }
 
-func (rc *registrationCmd) unregisterCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var user *discordgo.User
-
-	if i.Member != nil && i.Member.User != nil {
-		user = i.Member.User
-	}
-
+func (rc *registrationCmd) unregister(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+	user := utils.GetGuildUserFromInteraction(i)
 	if user == nil {
 		return study.ErrUserNotFound
 	}
@@ -96,6 +90,7 @@ func (rc *registrationCmd) unregisterCmdHandler(s *discordgo.Session, i *discord
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	// unregister member
 	_, _, err := rc.svc.UpdateRound(ctx, &service.UpdateParams{
 		GuildID:  i.GuildID,
 		MemberID: user.ID,
@@ -105,13 +100,14 @@ func (rc *registrationCmd) unregisterCmdHandler(s *discordgo.Session, i *discord
 		return err
 	}
 
+	// send response
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: user.Mention(),
 			Flags:   discordgo.MessageFlagsEphemeral,
 			Embeds: []*discordgo.MessageEmbed{
-				EmbedTemplate(s.State.User, "등록 취소 완료", "발표자 등록이 취소되었습니다."),
+				registrationEmbed(s.State.User, "등록 취소 완료", "발표자 등록이 취소되었습니다."),
 			},
 		},
 	})
