@@ -1,6 +1,10 @@
 package reflection
 
-import "github.com/bwmarrin/discordgo"
+import (
+	"time"
+
+	"github.com/bwmarrin/discordgo"
+)
 
 var cmd = discordgo.ApplicationCommand{
 	Name:        "발표회고",
@@ -13,4 +17,22 @@ var cmd = discordgo.ApplicationCommand{
 			Required:    true,
 		},
 	},
+}
+
+func reflectionEmbed(u *discordgo.User, content string) *discordgo.MessageEmbed {
+	return &discordgo.MessageEmbed{
+		Author: &discordgo.MessageEmbedAuthor{
+			Name:    u.Username,
+			IconURL: u.AvatarURL(""),
+		},
+		Title: "발표회고",
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:  "내용",
+				Value: content,
+			},
+		},
+		Color:     0x00ffff,
+		Timestamp: time.Now().Format(time.RFC3339),
+	}
 }

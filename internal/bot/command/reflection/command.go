@@ -9,6 +9,7 @@ import (
 	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/service"
+	"github.com/piatoss3612/presentation-helper-bot/internal/utils"
 	"go.uber.org/zap"
 )
 
@@ -26,17 +27,12 @@ func NewReflectionCommand(svc service.Service, sugar *zap.SugaredLogger) command
 }
 
 func (rc *reflectionCommand) Register(reg command.Registerer) {
-	reg.RegisterCommand(cmd, rc.reflectionCmdHandler)
+	reg.RegisterCommand(cmd, rc.sendReflection)
 }
 
-func (rc *reflectionCommand) reflectionCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var user *discordgo.User
-
+func (rc *reflectionCommand) sendReflection(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	// user should be in guild
-	if i.Member != nil && i.Member.User != nil {
-		user = i.Member.User
-	}
-
+	user := utils.GetGuildUserFromInteraction(i)
 	if user == nil {
 		return study.ErrUserNotFound
 	}
@@ -61,21 +57,11 @@ func (rc *reflectionCommand) reflectionCmdHandler(s *discordgo.Session, i *disco
 		return err
 	}
 
-	embed := &discordgo.MessageEmbed{
-		Author: &discordgo.MessageEmbedAuthor{
-			Name:    user.Username,
-			IconURL: user.AvatarURL(""),
-		},
-		Title: "발표회고",
-		Fields: []*discordgo.MessageEmbedField{
-			{
-				Name:  "내용",
-				Value: content,
-			},
-		},
-		Color:     0x00ffff,
-		Timestamp: time.Now().Format(time.RFC3339),
+	if gs.ReflectionChannelID == "" {
+		return study.ErrChannelNotFound
 	}
+
+	embed := reflectionEmbed(user, content)
 
 	// send reflection
 	_, err = s.ChannelMessageSendEmbed(gs.ReflectionChannelID, embed)
@@ -83,7 +69,7 @@ func (rc *reflectionCommand) reflectionCmdHandler(s *discordgo.Session, i *disco
 		return err
 	}
 
-	// send success message
+	// send response
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{

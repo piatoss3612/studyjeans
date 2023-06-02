@@ -23,15 +23,17 @@ func NewProfileCommand(sugar *zap.SugaredLogger) command.Command {
 }
 
 func (p *profileCommand) Register(reg command.Registerer) {
-	reg.RegisterCommand(cmd, p.profileCmdHandler)
+	reg.RegisterCommand(cmd, p.showBotProfile)
 }
 
-func (p *profileCommand) profileCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+// show the profile of the bot
+func (p *profileCommand) showBotProfile(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	u := s.State.User
 	createdAt, _ := utils.FormatSnowflakeToTime(u.ID)
 	rebootedAt := utils.FormatRebootDate(p.startedAt)
 	uptime := utils.FormatUptime(p.startedAt)
 
+	// show the profile
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
