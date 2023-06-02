@@ -84,7 +84,7 @@ func run() {
 
 	sess := mustOpenDiscordSession(cfg.Discord.BotToken)
 
-	b := bot.New(pub, cmdReg, sess, sugar).Setup()
+	b := bot.New(pub, cmdReg, sess, sugar)
 
 	stop, err := b.Run()
 	if err != nil {

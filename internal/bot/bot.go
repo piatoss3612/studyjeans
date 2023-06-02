@@ -15,7 +15,12 @@ import (
 	"go.uber.org/zap"
 )
 
-type StudyBot struct {
+type Bot interface {
+	Run() (<-chan bool, error)
+	Close() error
+}
+
+type bot struct {
 	sess               *discordgo.Session
 	pub                msgqueue.Publisher
 	commands           []*discordgo.ApplicationCommand
@@ -25,17 +30,18 @@ type StudyBot struct {
 	sugar *zap.SugaredLogger
 }
 
-func New(pub msgqueue.Publisher, cmdReg command.Registerer, sess *discordgo.Session, sugar *zap.SugaredLogger) *StudyBot {
-	return &StudyBot{
+func New(pub msgqueue.Publisher, cmdReg command.Registerer, sess *discordgo.Session, sugar *zap.SugaredLogger) Bot {
+	b := &bot{
 		sess:     sess,
 		pub:      pub,
 		commands: cmdReg.Commands(),
 		handlers: cmdReg.Handlers(),
 		sugar:    sugar,
 	}
+	return b.setup()
 }
 
-func (b *StudyBot) Setup() *StudyBot {
+func (b *bot) setup() Bot {
 	b.sess.Identify.Intents = discordgo.IntentGuildMembers | discordgo.IntentGuildMessages |
 		discordgo.IntentGuilds | discordgo.IntentDirectMessages
 
@@ -45,7 +51,7 @@ func (b *StudyBot) Setup() *StudyBot {
 	return b
 }
 
-func (b *StudyBot) Run() (<-chan bool, error) {
+func (b *bot) Run() (<-chan bool, error) {
 	if err := b.sess.Open(); err != nil {
 		return nil, err
 	}
@@ -75,7 +81,7 @@ func (b *StudyBot) Run() (<-chan bool, error) {
 	return stop, nil
 }
 
-func (b *StudyBot) Close() error {
+func (b *bot) Close() error {
 	if err := b.removeRegisteredCommands(); err != nil {
 		return err
 	}
@@ -83,11 +89,36 @@ func (b *StudyBot) Close() error {
 	return b.sess.Close()
 }
 
-func (b *StudyBot) ready(s *discordgo.Session, _ *discordgo.Ready) {
+func (b *bot) registerCommands() error {
+	b.registeredCommands = make([]*discordgo.ApplicationCommand, len(b.commands))
+
+	for _, cmd := range b.commands {
+		registered, err := b.sess.ApplicationCommandCreate(b.sess.State.User.ID, "", cmd)
+		if err != nil {
+			return err
+		}
+
+		b.registeredCommands = append(b.registeredCommands, registered)
+	}
+
+	return nil
+}
+
+func (b *bot) removeRegisteredCommands() error {
+	for _, cmd := range b.registeredCommands {
+		if err := b.sess.ApplicationCommandDelete(b.sess.State.User.ID, "", cmd.ID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (b *bot) ready(s *discordgo.Session, _ *discordgo.Ready) {
 	_ = s.UpdateGameStatus(0, "초기화")
 }
 
-func (b *StudyBot) handleApplicationCommand(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (b *bot) handleApplicationCommand(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	var cmdName string
 
 	switch i.Type {
@@ -112,45 +143,24 @@ func (b *StudyBot) handleApplicationCommand(s *discordgo.Session, i *discordgo.I
 				C: time.Now(),
 			})
 
+			embed := &discordgo.MessageEmbed{
+				Title:       "오류",
+				Description: err.Error(),
+				Color:       0xff0000,
+			}
+
 			_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
-					Flags: discordgo.MessageFlagsEphemeral,
-					Embeds: []*discordgo.MessageEmbed{
-						ErrorEmbed(err.Error()),
-					},
+					Flags:  discordgo.MessageFlagsEphemeral,
+					Embeds: []*discordgo.MessageEmbed{embed},
 				},
 			})
 		}
 	}
 }
 
-func (b *StudyBot) registerCommands() error {
-	b.registeredCommands = make([]*discordgo.ApplicationCommand, len(b.commands))
-
-	for _, cmd := range b.commands {
-		registered, err := b.sess.ApplicationCommandCreate(b.sess.State.User.ID, "", cmd)
-		if err != nil {
-			return err
-		}
-
-		b.registeredCommands = append(b.registeredCommands, registered)
-	}
-
-	return nil
-}
-
-func (b *StudyBot) removeRegisteredCommands() error {
-	for _, cmd := range b.registeredCommands {
-		if err := b.sess.ApplicationCommandDelete(b.sess.State.User.ID, "", cmd.ID); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (b *StudyBot) publishError(evt event.Event) {
+func (b *bot) publishError(evt event.Event) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -161,13 +171,5 @@ func (b *StudyBot) publishError(evt event.Event) {
 			continue
 		}
 		return
-	}
-}
-
-func ErrorEmbed(msg string) *discordgo.MessageEmbed {
-	return &discordgo.MessageEmbed{
-		Title:       "오류",
-		Description: msg,
-		Color:       0xff0000,
 	}
 }
