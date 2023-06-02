@@ -10,13 +10,18 @@ up:
 	@echo "Run docker compose"
 	docker compose up -d
 
+up_build:
+	@echo "Run docker compose with build"
+	docker compose up -d --build
+
 down:
 	@echo "Stop docker compose"
 	docker compose down
 
+build_push_image: build_image push_image
+
 build_image: build_study_image build_logger_image
 	
-
 build_study_image:
 	@echo "Build docker image for study bot"
 	docker build -t piatoss3612/study-bot:$(version) -f ./build/study/Dockerfile .
