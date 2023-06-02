@@ -3,7 +3,9 @@ version: '3.9'
 services:
   study-bot:
     container_name: study-bot
-    image: piatoss3612/study-bot:latest
+    build:
+      context: .
+      dockerfile: ./build/study/Dockerfile
     restart: always
     environment:
       CONFIG_FILE: config.json
@@ -17,7 +19,9 @@ services:
 
   study-logger:
     container_name: study-logger
-    image: piatoss3612/study-logger:latest
+    build:
+      context: .
+      dockerfile: ./build/logger/Dockerfile
     restart: always
     environment:
       LOGGER_CONFIG_FILE: config.json
@@ -26,7 +30,7 @@ services:
       EVENT_SHEET_ID: 1024
       TIME_ZONE: Asia/Seoul
     configs:
-      - source: recorder-config
+      - source: logger-config
         target: /app/config.json
       - source: sheets-creds
         target: /app/creds.json
@@ -57,8 +61,8 @@ services:
 
 configs:
   bot-config:
-    file: ./configs/config-dev.json
-  recorder-config:
-    file: ./configs/config-recorder-dev.json
+    file: ./configs/config-study-dev.json
+  logger-config:
+    file: ./configs/config-logger-dev.json
   sheets-creds:
     file: ./configs/config-sheets-dev.json
