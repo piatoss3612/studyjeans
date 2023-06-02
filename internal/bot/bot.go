@@ -88,26 +88,27 @@ func (b *StudyBot) ready(s *discordgo.Session, _ *discordgo.Ready) {
 }
 
 func (b *StudyBot) handleApplicationCommand(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	var h command.HandleFunc
-	var ok bool
+	var cmdName string
 
 	switch i.Type {
 	case discordgo.InteractionApplicationCommand:
-		h, ok = b.handlers[i.ApplicationCommandData().Name]
+		cmdName = i.ApplicationCommandData().Name
 	case discordgo.InteractionMessageComponent:
-		h, ok = b.handlers[i.MessageComponentData().CustomID]
+		cmdName = i.MessageComponentData().CustomID
 	case discordgo.InteractionModalSubmit:
-		h, ok = b.handlers[i.ModalSubmitData().CustomID]
+		cmdName = i.ModalSubmitData().CustomID
 	default:
 		return
 	}
+
+	h, ok := b.handlers[cmdName]
 
 	if ok {
 		if err := h(s, i); err != nil {
 			b.sugar.Errorw("failed to handle command", "error", err)
 			b.publishError(&event.ErrorEvent{
 				T: "study.error",
-				D: fmt.Sprintf("%s: %s", i.ApplicationCommandData().Name, err.Error()),
+				D: fmt.Sprintf("%s: %s", cmdName, err.Error()),
 				C: time.Now(),
 			})
 

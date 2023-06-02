@@ -383,6 +383,10 @@ func (ac *adminCommand) moveRoundStage(s *discordgo.Session, i *discordgo.Intera
 		return study.ErrNotManager
 	}
 
+	if gs.CurrentStage.IsNone() || gs.CurrentStage.IsWait() || gs.OngoingRoundID == "" {
+		return study.ErrRoundNotFound
+	}
+
 	next := gs.CurrentStage.Next()
 	embed := adminEmbed(s.State.User, "스터디 라운드 진행 단계 변경",
 		fmt.Sprintf("스터디 라운드 진행 단계가 **<%s>**로 변경됩니다. 진행하시겠습니까?", next.String()), 16777215)
