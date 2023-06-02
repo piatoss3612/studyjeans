@@ -20,12 +20,13 @@ func NewHelpCommand(sugar *zap.SugaredLogger) command.Command {
 }
 
 func (h *helpCommand) Register(reg command.Registerer) {
-	reg.RegisterCommand(cmd, h.helpCmdHandler)
-	reg.RegisterHandler(selectMenu.CustomID, h.helpSelectMenuHandler)
+	reg.RegisterCommand(cmd, h.help)
+	reg.RegisterHandler(selectMenu.CustomID, h.selectHelpMenu)
 }
 
-func (h *helpCommand) helpCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+// show help embed
+func (h *helpCommand) help(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+	response := &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Flags:  discordgo.MessageFlagsEphemeral,
@@ -41,10 +42,12 @@ func (h *helpCommand) helpCmdHandler(s *discordgo.Session, i *discordgo.Interact
 				},
 			},
 		},
-	})
+	}
+
+	return s.InteractionRespond(i.Interaction, response)
 }
 
-func (h *helpCommand) helpSelectMenuHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+func (h *helpCommand) selectHelpMenu(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	var embed *discordgo.MessageEmbed
 
 	data := i.MessageComponentData().Values

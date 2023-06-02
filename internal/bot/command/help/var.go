@@ -91,6 +91,14 @@ func HelpStudyEmbed(u *discordgo.User) *discordgo.MessageEmbed {
 				Value: "내 스터디 등록 정보 확인",
 			},
 			{
+				Name:  "스터디-정보",
+				Value: "진행중인 스터디 정보 확인",
+			},
+			{
+				Name:  "라운드-정보",
+				Value: "진행중인 라운드 정보 확인",
+			},
+			{
 				Name:  "발표자-등록",
 				Value: "발표자로 등록",
 			},
