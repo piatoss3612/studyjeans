@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/piatoss3612/presentation-helper-bot/internal/study"
+	"github.com/piatoss3612/my-study-bot/internal/study"
 )
 
 func MoveStage(s *study.Study, r *study.Round, _ *UpdateParams) {

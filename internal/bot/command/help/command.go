@@ -4,8 +4,8 @@ import (
 	"errors"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command"
-	"github.com/piatoss3612/presentation-helper-bot/internal/study"
+	"github.com/piatoss3612/my-study-bot/internal/bot/command"
+	"github.com/piatoss3612/my-study-bot/internal/study"
 	"go.uber.org/zap"
 )
 

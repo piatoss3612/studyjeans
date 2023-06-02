@@ -5,7 +5,7 @@ import (
 	"time"
 
 	rcache "github.com/go-redis/cache/v8"
-	"github.com/piatoss3612/presentation-helper-bot/internal/cache"
+	"github.com/piatoss3612/my-study-bot/internal/cache"
 )
 
 type redisCache struct {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/piatoss3612/presentation-helper-bot/internal/study/repository"
+	"github.com/piatoss3612/my-study-bot/internal/study/repository"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )

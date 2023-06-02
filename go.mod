@@ -1,4 +1,4 @@
-module github.com/piatoss3612/presentation-helper-bot
+module github.com/piatoss3612/my-study-bot
 
 go 1.20
 

@@ -47,7 +47,7 @@ func ProfileEmbed(u *discordgo.User, title, createdAt, rebootedAt, uptime string
 			},
 			{
 				Name:  "📝 소스코드",
-				Value: fmt.Sprintf("```%s```", "https://github.com/piatoss3612/presentation-helper-bot"),
+				Value: fmt.Sprintf("```%s```", "https://github.com/piatoss3612/my-study-bot"),
 			},
 		},
 		Image: &discordgo.MessageEmbedImage{

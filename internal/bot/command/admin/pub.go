@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/piatoss3612/presentation-helper-bot/internal/event"
-	"github.com/piatoss3612/presentation-helper-bot/internal/study"
+	"github.com/piatoss3612/my-study-bot/internal/event"
+	"github.com/piatoss3612/my-study-bot/internal/study"
 )
 
 // publish round to topic

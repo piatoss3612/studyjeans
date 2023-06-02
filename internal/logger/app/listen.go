@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/piatoss3612/presentation-helper-bot/internal/event"
-	"github.com/piatoss3612/presentation-helper-bot/internal/logger"
+	"github.com/piatoss3612/my-study-bot/internal/event"
+	"github.com/piatoss3612/my-study-bot/internal/logger"
 )
 
 func (l *LoggerApp) Listen(stop <-chan bool, topics []string) {

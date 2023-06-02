@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command"
-	"github.com/piatoss3612/presentation-helper-bot/internal/study"
-	"github.com/piatoss3612/presentation-helper-bot/internal/study/service"
-	"github.com/piatoss3612/presentation-helper-bot/internal/utils"
+	"github.com/piatoss3612/my-study-bot/internal/bot/command"
+	"github.com/piatoss3612/my-study-bot/internal/study"
+	"github.com/piatoss3612/my-study-bot/internal/study/service"
+	"github.com/piatoss3612/my-study-bot/internal/utils"
 	"go.uber.org/zap"
 )
 

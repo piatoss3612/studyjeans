@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/piatoss3612/presentation-helper-bot/internal/study"
+	"github.com/piatoss3612/my-study-bot/internal/study"
 )
 
 func (ic *infoCommand) setRound(ctx context.Context, s *study.Round) error {

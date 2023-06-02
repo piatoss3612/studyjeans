@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"github.com/piatoss3612/presentation-helper-bot/internal/study"
+	"github.com/piatoss3612/my-study-bot/internal/study"
 )
 
 type Query interface {
