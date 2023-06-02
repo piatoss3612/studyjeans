@@ -40,11 +40,11 @@ func main() {
 
 	sugar = logger.Sugar()
 
-	defer func() {
-		if r := recover(); r != nil {
-			sugar.Info("Panic recovered", "error", r)
-		}
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		sugar.Info("Panic recovered", "error", r)
+	// 	}
+	// }()
 
 	mustSetTimezone(os.Getenv("TIME_ZONE"))
 
@@ -57,9 +57,9 @@ func run() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	tx, close := mustInitTx(ctx, cfg.MongoDB.URI, cfg.MongoDB.DBName)
+	tx, txClose := mustInitTx(ctx, cfg.MongoDB.URI, cfg.MongoDB.DBName)
 	defer func() {
-		_ = close()
+		_ = txClose()
 		sugar.Info("Disconnected from MongoDB!")
 	}()
 
@@ -69,9 +69,9 @@ func run() {
 
 	sugar.Info("Study cache is ready!")
 
-	pub, close := mustInitPublisher(ctx, cfg.RabbitMQ.Addr, cfg.RabbitMQ.Exchange, cfg.RabbitMQ.Kind)
+	pub, pubClose := mustInitPublisher(ctx, cfg.RabbitMQ.Addr, cfg.RabbitMQ.Exchange, cfg.RabbitMQ.Kind)
 	defer func() {
-		_ = close()
+		_ = pubClose()
 		sugar.Info("Disconnected from RabbitMQ!")
 	}()
 
@@ -84,7 +84,7 @@ func run() {
 
 	sess := mustOpenDiscordSession(cfg.Discord.BotToken)
 
-	b := bot.New(pub, cmdReg, sess, sugar)
+	b := bot.New(pub, sess, sugar)
 
 	stop, err := b.Run()
 	if err != nil {
@@ -96,6 +96,16 @@ func run() {
 	}()
 
 	sugar.Info("Connected to Discord!")
+
+	if err := b.RegisterCommands(cmdReg); err != nil {
+		sugar.Fatal(err)
+	}
+	defer func() {
+		_ = b.RemoveCommands()
+		sugar.Info("Removed commands!")
+	}()
+
+	sugar.Info("Registered commands!")
 
 	<-stop
 }

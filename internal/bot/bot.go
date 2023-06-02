@@ -17,25 +17,25 @@ import (
 
 type Bot interface {
 	Run() (<-chan bool, error)
+	RegisterCommands(reg command.Registerer) error
+	RemoveCommands() error
 	Close() error
 }
 
 type bot struct {
 	sess               *discordgo.Session
 	pub                msgqueue.Publisher
-	commands           []*discordgo.ApplicationCommand
 	registeredCommands []*discordgo.ApplicationCommand
 	handlers           map[string]command.HandleFunc
 
 	sugar *zap.SugaredLogger
 }
 
-func New(pub msgqueue.Publisher, cmdReg command.Registerer, sess *discordgo.Session, sugar *zap.SugaredLogger) Bot {
+func New(pub msgqueue.Publisher, sess *discordgo.Session, sugar *zap.SugaredLogger) Bot {
 	b := &bot{
 		sess:     sess,
 		pub:      pub,
-		commands: cmdReg.Commands(),
-		handlers: cmdReg.Handlers(),
+		handlers: map[string]command.HandleFunc{},
 		sugar:    sugar,
 	}
 	return b.setup()
@@ -53,10 +53,6 @@ func (b *bot) setup() Bot {
 
 func (b *bot) Run() (<-chan bool, error) {
 	if err := b.sess.Open(); err != nil {
-		return nil, err
-	}
-
-	if err := b.registerCommands(); err != nil {
 		return nil, err
 	}
 
@@ -81,37 +77,40 @@ func (b *bot) Run() (<-chan bool, error) {
 	return stop, nil
 }
 
-func (b *bot) Close() error {
-	if err := b.removeRegisteredCommands(); err != nil {
-		return err
-	}
+func (b *bot) RegisterCommands(reg command.Registerer) error {
+	cmds := reg.Commands()
 
-	return b.sess.Close()
-}
+	registeredCmds := make([]*discordgo.ApplicationCommand, 0, len(cmds))
 
-func (b *bot) registerCommands() error {
-	b.registeredCommands = make([]*discordgo.ApplicationCommand, len(b.commands))
-
-	for _, cmd := range b.commands {
+	for _, cmd := range cmds {
 		registered, err := b.sess.ApplicationCommandCreate(b.sess.State.User.ID, "", cmd)
 		if err != nil {
 			return err
 		}
 
-		b.registeredCommands = append(b.registeredCommands, registered)
+		registeredCmds = append(registeredCmds, registered)
 	}
+
+	b.registeredCommands = registeredCmds
+	b.handlers = reg.Handlers()
 
 	return nil
 }
 
-func (b *bot) removeRegisteredCommands() error {
+func (b *bot) RemoveCommands() error {
+	appID := b.sess.State.User.ID
+
 	for _, cmd := range b.registeredCommands {
-		if err := b.sess.ApplicationCommandDelete(b.sess.State.User.ID, "", cmd.ID); err != nil {
+		if err := b.sess.ApplicationCommandDelete(appID, "", cmd.ID); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (b *bot) Close() error {
+	return b.sess.Close()
 }
 
 func (b *bot) ready(s *discordgo.Session, _ *discordgo.Ready) {
@@ -133,7 +132,6 @@ func (b *bot) handleApplicationCommand(s *discordgo.Session, i *discordgo.Intera
 	}
 
 	h, ok := b.handlers[cmdName]
-
 	if ok {
 		if err := h(s, i); err != nil {
 			b.sugar.Errorw("failed to handle command", "error", err)
