@@ -3,12 +3,14 @@ package submit
 import (
 	"context"
 	"errors"
+	"net/url"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/piatoss3612/presentation-helper-bot/internal/bot/command"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/service"
+	"github.com/piatoss3612/presentation-helper-bot/internal/utils"
 	"go.uber.org/zap"
 )
 
@@ -26,20 +28,17 @@ func NewSubmitCommand(svc service.Service, sugar *zap.SugaredLogger) command.Com
 }
 
 func (sc *submitCommand) Register(reg command.Registerer) {
-	reg.RegisterCommand(cmd, sc.submitContentCmdHandler)
+	reg.RegisterCommand(cmd, sc.submitContent)
 }
 
-func (sc *submitCommand) submitContentCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var user *discordgo.User
-
-	if i.Member != nil && i.Member.User != nil {
-		user = i.Member.User
-	}
-
+// submit content for presentation
+func (sc *submitCommand) submitContent(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+	user := utils.GetGuildUserFromInteraction(i)
 	if user == nil {
 		return study.ErrUserNotFound
 	}
 
+	// get content
 	var content string
 
 	for _, option := range i.ApplicationCommandData().Options {
@@ -53,10 +52,16 @@ func (sc *submitCommand) submitContentCmdHandler(s *discordgo.Session, i *discor
 		return errors.Join(study.ErrRequiredArgs, errors.New("발표 자료 링크는 필수 입력 사항입니다"))
 	}
 
+	_, err := url.Parse(content)
+	if err != nil {
+		return errors.Join(study.ErrInvalidArgs, err)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, _, err := sc.svc.UpdateRound(ctx, &service.UpdateParams{
+	// set content
+	_, _, err = sc.svc.UpdateRound(ctx, &service.UpdateParams{
 		GuildID:    i.GuildID,
 		MemberID:   user.ID,
 		ContentURL: content,
@@ -66,13 +71,14 @@ func (sc *submitCommand) submitContentCmdHandler(s *discordgo.Session, i *discor
 		return err
 	}
 
+	// send response
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: user.Mention(),
 			Flags:   discordgo.MessageFlagsEphemeral,
 			Embeds: []*discordgo.MessageEmbed{
-				EmbedTemplate(s.State.User, "제출 완료", "발표 자료가 제출되었습니다."),
+				submitEmbed(s.State.User, "제출 완료", "발표 자료가 제출되었습니다.", content),
 			},
 		},
 	})

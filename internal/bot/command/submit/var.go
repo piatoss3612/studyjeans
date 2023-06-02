@@ -19,7 +19,7 @@ var cmd = discordgo.ApplicationCommand{
 	},
 }
 
-func EmbedTemplate(u *discordgo.User, title, description string, url ...string) *discordgo.MessageEmbed {
+func submitEmbed(u *discordgo.User, title, description string, url ...string) *discordgo.MessageEmbed {
 	embed := &discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{
 			Name:    u.Username,
@@ -36,12 +36,4 @@ func EmbedTemplate(u *discordgo.User, title, description string, url ...string) 
 	}
 
 	return embed
-}
-
-func ErrorEmbed(msg string) *discordgo.MessageEmbed {
-	return &discordgo.MessageEmbed{
-		Title:       "오류",
-		Description: msg,
-		Color:       0xff0000,
-	}
 }
