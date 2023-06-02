@@ -10,7 +10,7 @@ var (
 	ErrRoundNotFound         = errors.New("라운드 정보를 찾을 수 없습니다")
 	ErrInvalidStage          = errors.New("잘못된 스터디 단계입니다")
 	ErrAlreadyRegistered     = errors.New("이미 등록된 발표자입니다")
-	ErrAlreadyUnregistered   = errors.New("이미 등록 해제된 발표자입니다")
+	ErrNotRegistered         = errors.New("등록된 발표자가 아닙니다")
 	ErrMemberNotRegistered   = errors.New("등록되지 않은 발표자입니다")
 	ErrMemberNotAttended     = errors.New("참석하지 않은 발표자입니다")
 	ErrMemberNotFound        = errors.New("등록된 사용자 정보를 찾을 수 없습니다")

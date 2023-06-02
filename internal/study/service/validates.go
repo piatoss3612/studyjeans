@@ -38,13 +38,13 @@ func ValidateToRegister(s *study.Study, r *study.Round, params *UpdateParams) er
 	return nil
 }
 
-func ValidateToUnregister(s *study.Study, r *study.Round, params *UpdateParams) error {
+func ValidateToChangeRegistration(s *study.Study, r *study.Round, params *UpdateParams) error {
 	if params.MemberID == "" {
-		return errors.Join(study.ErrInvalidUpdateParams, fmt.Errorf("등록 해제할 사용자 ID가 없습니다"))
+		return errors.Join(study.ErrInvalidUpdateParams, fmt.Errorf("발표자 등록 정보를 변경할 사용자 ID가 없습니다"))
 	}
 
 	if !s.CurrentStage.IsRegistrationOpened() {
-		return errors.Join(study.ErrInvalidStage, fmt.Errorf("발표자 등록 해제가 불가능한 단계입니다"))
+		return errors.Join(study.ErrInvalidStage, fmt.Errorf("발표자 등록 정보 변경이 불가능한 단계입니다"))
 	}
 
 	member, ok := r.GetMember(params.MemberID)
@@ -53,7 +53,7 @@ func ValidateToUnregister(s *study.Study, r *study.Round, params *UpdateParams) 
 	}
 
 	if !member.IsRegistered() {
-		return study.ErrAlreadyUnregistered
+		return study.ErrNotRegistered
 	}
 
 	return nil
