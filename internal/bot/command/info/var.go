@@ -170,7 +170,7 @@ func speakerInfoEmbed(u *discordgo.User, m study.Member) *discordgo.MessageEmbed
 	}
 }
 
-func ErrorEmbed(msg string) *discordgo.MessageEmbed {
+func errorEmbed(msg string) *discordgo.MessageEmbed {
 	return &discordgo.MessageEmbed{
 		Title:       "오류",
 		Description: msg,

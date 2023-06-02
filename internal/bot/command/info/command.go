@@ -10,6 +10,7 @@ import (
 	"github.com/piatoss3612/presentation-helper-bot/internal/cache"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study"
 	"github.com/piatoss3612/presentation-helper-bot/internal/study/service"
+	"github.com/piatoss3612/presentation-helper-bot/internal/utils"
 	"go.uber.org/zap"
 )
 
@@ -29,19 +30,16 @@ func NewInfoCommand(svc service.Service, cache cache.Cache, sugar *zap.SugaredLo
 }
 
 func (ic *infoCommand) Register(reg command.Registerer) {
-	reg.RegisterCommand(myStudyInfoCmd, ic.myStudyInfoCmdHandler)
-	reg.RegisterCommand(studyInfoCmd, ic.studyInfoCmdHandler)
-	reg.RegisterCommand(studyRoundInfoCmd, ic.studyRoundInfoCmdHandler)
+	reg.RegisterCommand(myStudyInfoCmd, ic.showMyStudyInfo)
+	reg.RegisterCommand(studyInfoCmd, ic.showStudyInfo)
+	//
+	reg.RegisterCommand(studyRoundInfoCmd, ic.showRoundInfo)
 	reg.RegisterHandler(speakerInfoSelectMenu.CustomID, ic.speakerInfoSelectMenuHandler)
 }
 
-func (ic *infoCommand) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var user *discordgo.User
-
-	if i.Member != nil && i.Member.User != nil {
-		user = i.Member.User
-	}
-
+// show the user's study info
+func (ic *infoCommand) showMyStudyInfo(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+	user := utils.GetGuildUserFromInteraction(i)
 	if user == nil {
 		return study.ErrUserNotFound
 	}
@@ -49,35 +47,32 @@ func (ic *infoCommand) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	// get the study
 	gs, err := ic.svc.GetStudy(ctx, i.GuildID)
 	if err != nil {
 		return err
-	}
-
-	if gs == nil {
-		return study.ErrStudyNotFound
 	}
 
 	if gs.OngoingRoundID == "" {
 		return study.ErrRoundNotFound
 	}
 
+	// get the round
 	round, err := ic.svc.GetRound(ctx, gs.OngoingRoundID)
 	if err != nil {
 		return err
 	}
 
-	if round == nil {
-		return study.ErrRoundNotFound
-	}
-
+	// get the user's info
 	member, ok := round.GetMember(user.ID)
 	if !ok {
 		return study.ErrMemberNotFound
 	}
 
+	// set the round to cache
 	go ic.setRoundRetry(round, 5*time.Minute)
 
+	// send response
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
@@ -90,19 +85,24 @@ func (ic *infoCommand) myStudyInfoCmdHandler(s *discordgo.Session, i *discordgo.
 	})
 }
 
-func (ic *infoCommand) studyInfoCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+// show the study info
+func (ic *infoCommand) showStudyInfo(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+	// command should be invoked only in guild
+	user := utils.GetGuildUserFromInteraction(i)
+	if user == nil {
+		return study.ErrUserNotFound
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	// get the study
 	gs, err := ic.svc.GetStudy(ctx, i.GuildID)
 	if err != nil {
 		return err
 	}
 
-	if gs == nil {
-		return study.ErrStudyNotFound
-	}
-
+	// send response
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
@@ -112,14 +112,10 @@ func (ic *infoCommand) studyInfoCmdHandler(s *discordgo.Session, i *discordgo.In
 	})
 }
 
-func (ic *infoCommand) studyRoundInfoCmdHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var user *discordgo.User
-
+// show the round info
+func (ic *infoCommand) showRoundInfo(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	// command should be invoked only in guild
-	if i.Member != nil && i.Member.User != nil {
-		user = i.Member.User
-	}
-
+	user := utils.GetGuildUserFromInteraction(i)
 	if user == nil {
 		return study.ErrUserNotFound
 	}
@@ -143,10 +139,6 @@ func (ic *infoCommand) studyRoundInfoCmdHandler(s *discordgo.Session, i *discord
 			return err
 		}
 
-		if gs == nil {
-			return study.ErrStudyNotFound
-		}
-
 		if gs.OngoingRoundID == "" {
 			return study.ErrRoundNotFound
 		}
@@ -156,11 +148,6 @@ func (ic *infoCommand) studyRoundInfoCmdHandler(s *discordgo.Session, i *discord
 	}
 	if err != nil {
 		return err
-	}
-
-	// if round does not exist, return error
-	if round == nil {
-		return study.ErrRoundNotFound
 	}
 
 	// round info embed
@@ -189,18 +176,13 @@ func (ic *infoCommand) studyRoundInfoCmdHandler(s *discordgo.Session, i *discord
 }
 
 func (ic *infoCommand) speakerInfoSelectMenuHandler(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var user *discordgo.User
-
 	// command should be invoked only in guild
-	if i.Member != nil && i.Member.User != nil {
-		user = i.Member.User
-	}
-
+	user := utils.GetGuildUserFromInteraction(i)
 	if user == nil {
 		return study.ErrUserNotFound
 	}
 
-	// get data
+	// get input data
 	data := i.MessageComponentData().Values
 	if len(data) == 0 {
 		return errors.Join(study.ErrRequiredArgs, errors.New("옵션을 찾을 수 없습니다"))
@@ -227,10 +209,6 @@ func (ic *infoCommand) speakerInfoSelectMenuHandler(s *discordgo.Session, i *dis
 			return err
 		}
 
-		if gs == nil {
-			return study.ErrStudyNotFound
-		}
-
 		// get round from database
 		round, err = ic.svc.GetRound(ctx, gs.OngoingRoundID)
 	}
@@ -238,15 +216,11 @@ func (ic *infoCommand) speakerInfoSelectMenuHandler(s *discordgo.Session, i *dis
 		return err
 	}
 
-	if round == nil {
-		return study.ErrRoundNotFound
-	}
-
 	var embed *discordgo.MessageEmbed
 
 	member, ok := round.GetMember(selectedUserID)
 	if !ok {
-		embed = ErrorEmbed("발표자 정보를 찾을 수 없습니다")
+		embed = errorEmbed("발표자 정보를 찾을 수 없습니다")
 	} else {
 		selectedUser, err := s.User(selectedUserID)
 		if err != nil {
@@ -261,6 +235,7 @@ func (ic *infoCommand) speakerInfoSelectMenuHandler(s *discordgo.Session, i *dis
 		go ic.setRoundRetry(round, 5*time.Second)
 	}
 
+	// send response
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseUpdateMessage,
 		Data: &discordgo.InteractionResponseData{
