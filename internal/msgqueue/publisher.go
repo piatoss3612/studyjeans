@@ -11,13 +11,13 @@ type Publisher interface {
 	Publish(ctx context.Context, k string, v any) error
 }
 
-type publisherImpl struct {
+type publisher struct {
 	conn     *amqp.Connection
 	exchange string
 }
 
 func NewPublisher(conn *amqp.Connection, exchange, kind string) (Publisher, error) {
-	pub := &publisherImpl{
+	pub := &publisher{
 		conn:     conn,
 		exchange: exchange,
 	}
@@ -25,7 +25,7 @@ func NewPublisher(conn *amqp.Connection, exchange, kind string) (Publisher, erro
 	return pub.setup(exchange, kind)
 }
 
-func (p *publisherImpl) setup(exchange, kind string) (Publisher, error) {
+func (p *publisher) setup(exchange, kind string) (Publisher, error) {
 	ch, err := p.conn.Channel()
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func (p *publisherImpl) setup(exchange, kind string) (Publisher, error) {
 	return p, nil
 }
 
-func (p *publisherImpl) Publish(ctx context.Context, k string, v any) error {
+func (p *publisher) Publish(ctx context.Context, k string, v any) error {
 	ch, err := p.conn.Channel()
 	if err != nil {
 		return err

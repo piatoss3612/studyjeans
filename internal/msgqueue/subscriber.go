@@ -17,14 +17,14 @@ type Subscriber interface {
 	Subscribe(topics ...string) (<-chan Message, <-chan error, func(), error)
 }
 
-type subscriberImpl struct {
+type subscriber struct {
 	conn     *amqp.Connection
 	exchange string
 	queue    string
 }
 
 func NewSubscriber(conn *amqp.Connection, exchange, kind, queue string) (Subscriber, error) {
-	sub := &subscriberImpl{
+	sub := &subscriber{
 		conn:     conn,
 		exchange: exchange,
 		queue:    queue,
@@ -33,7 +33,7 @@ func NewSubscriber(conn *amqp.Connection, exchange, kind, queue string) (Subscri
 	return sub.setup(exchange, kind, queue)
 }
 
-func (s *subscriberImpl) setup(exchange, kind, queue string) (Subscriber, error) {
+func (s *subscriber) setup(exchange, kind, queue string) (Subscriber, error) {
 	ch, err := s.conn.Channel()
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (s *subscriberImpl) setup(exchange, kind, queue string) (Subscriber, error)
 	return s, nil
 }
 
-func (s *subscriberImpl) Subscribe(topics ...string) (<-chan Message, <-chan error, func(), error) {
+func (s *subscriber) Subscribe(topics ...string) (<-chan Message, <-chan error, func(), error) {
 	ch, err := s.conn.Channel()
 	if err != nil {
 		return nil, nil, nil, err
@@ -82,7 +82,7 @@ func (s *subscriberImpl) Subscribe(topics ...string) (<-chan Message, <-chan err
 	}, nil
 }
 
-func (s *subscriberImpl) handleMessage(delivery <-chan amqp.Delivery, msgs chan<- Message, errs chan<- error) {
+func (s *subscriber) handleMessage(delivery <-chan amqp.Delivery, msgs chan<- Message, errs chan<- error) {
 	for d := range delivery {
 		eventName, ok := d.Headers["x-event-name"]
 		if !ok {
