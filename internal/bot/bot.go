@@ -1,42 +1,31 @@
 package bot
 
 import (
-	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/piatoss3612/my-study-bot/internal/bot/command"
-	"github.com/piatoss3612/my-study-bot/internal/event"
-	"github.com/piatoss3612/my-study-bot/internal/msgqueue"
-	"go.uber.org/zap"
 )
 
 type Bot interface {
 	Run() (<-chan bool, error)
-	RegisterCommands(reg command.Registerer) error
+	RegisterCommands(cmds []*discordgo.ApplicationCommand) error
+	RegisterHandler(h command.Handler)
 	RemoveCommands() error
 	Close() error
 }
 
 type bot struct {
 	sess               *discordgo.Session
-	pub                msgqueue.Publisher
 	registeredCommands []*discordgo.ApplicationCommand
-	handlers           map[string]command.HandleFunc
-
-	sugar *zap.SugaredLogger
+	handler            command.Handler
 }
 
-func New(pub msgqueue.Publisher, sess *discordgo.Session, sugar *zap.SugaredLogger) Bot {
+func New(sess *discordgo.Session) Bot {
 	b := &bot{
-		sess:     sess,
-		pub:      pub,
-		handlers: map[string]command.HandleFunc{},
-		sugar:    sugar,
+		sess: sess,
 	}
 	return b.setup()
 }
@@ -77,9 +66,7 @@ func (b *bot) Run() (<-chan bool, error) {
 	return stop, nil
 }
 
-func (b *bot) RegisterCommands(reg command.Registerer) error {
-	cmds := reg.Commands()
-
+func (b *bot) RegisterCommands(cmds []*discordgo.ApplicationCommand) error {
 	registeredCmds := make([]*discordgo.ApplicationCommand, 0, len(cmds))
 
 	for _, cmd := range cmds {
@@ -92,9 +79,11 @@ func (b *bot) RegisterCommands(reg command.Registerer) error {
 	}
 
 	b.registeredCommands = registeredCmds
-	b.handlers = reg.Handlers()
-
 	return nil
+}
+
+func (b *bot) RegisterHandler(h command.Handler) {
+	b.handler = h
 }
 
 func (b *bot) RemoveCommands() error {
@@ -118,56 +107,18 @@ func (b *bot) ready(s *discordgo.Session, _ *discordgo.Ready) {
 }
 
 func (b *bot) handleApplicationCommand(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	var cmdName string
+	var name string
 
 	switch i.Type {
 	case discordgo.InteractionApplicationCommand:
-		cmdName = i.ApplicationCommandData().Name
+		name = i.ApplicationCommandData().Name
 	case discordgo.InteractionMessageComponent:
-		cmdName = i.MessageComponentData().CustomID
+		name = i.MessageComponentData().CustomID
 	case discordgo.InteractionModalSubmit:
-		cmdName = i.ModalSubmitData().CustomID
+		name = i.ModalSubmitData().CustomID
 	default:
 		return
 	}
 
-	h, ok := b.handlers[cmdName]
-	if ok {
-		if err := h(s, i); err != nil {
-			b.sugar.Errorw("failed to handle command", "error", err)
-			b.publishError(&event.ErrorEvent{
-				T: "study.error",
-				D: fmt.Sprintf("%s: %s", cmdName, err.Error()),
-				C: time.Now(),
-			})
-
-			embed := &discordgo.MessageEmbed{
-				Title:       "오류",
-				Description: err.Error(),
-				Color:       0xff0000,
-			}
-
-			_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Flags:  discordgo.MessageFlagsEphemeral,
-					Embeds: []*discordgo.MessageEmbed{embed},
-				},
-			})
-		}
-	}
-}
-
-func (b *bot) publishError(evt event.Event) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	for i := 0; i < 10; i++ {
-		err := b.pub.Publish(ctx, evt.Topic(), evt)
-		if err != nil {
-			b.sugar.Errorw(err.Error(), "event", "publish event", "topic", evt.Topic(), "try", i+1)
-			continue
-		}
-		return
-	}
+	b.handler.Handle(name, s, i)
 }

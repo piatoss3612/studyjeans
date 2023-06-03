@@ -81,10 +81,9 @@ func run() {
 	sugar.Info("Study service is ready!")
 
 	cmdReg := registerCommands(svc, pub, cache)
+	handler := command.NewHandler(cmdReg.HandleFuncs(), pub, sugar)
 
-	sess := mustOpenDiscordSession(cfg.Discord.BotToken)
-
-	b := bot.New(pub, sess, sugar)
+	b := bot.New(mustOpenDiscordSession(cfg.Discord.BotToken))
 
 	stop, err := b.Run()
 	if err != nil {
@@ -97,7 +96,9 @@ func run() {
 
 	sugar.Info("Connected to Discord!")
 
-	if err := b.RegisterCommands(cmdReg); err != nil {
+	b.RegisterHandler(handler)
+
+	if err := b.RegisterCommands(cmdReg.Commands()); err != nil {
 		sugar.Fatal(err)
 	}
 	defer func() {
