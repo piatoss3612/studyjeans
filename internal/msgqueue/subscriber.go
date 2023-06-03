@@ -8,11 +8,6 @@ import (
 
 var ErrMissingEventNameHeader = errors.New("missing x-event-name header")
 
-type Message struct {
-	EventName string
-	Body      []byte
-}
-
 type Subscriber interface {
 	Subscribe(topics ...string) (<-chan Message, <-chan error, func(), error)
 }
