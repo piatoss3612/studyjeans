@@ -332,7 +332,7 @@ func (ac *adminCommand) createRound(s *discordgo.Session, i *discordgo.Interacti
 		}
 
 		// publish an event
-		go ac.publishEvent(evt)
+		go ac.publishRoundProgress(evt)
 	}()
 
 	// send a DM to all members
@@ -434,7 +434,7 @@ func (ac *adminCommand) moveRoundStageConfirm(s *discordgo.Session, i *discordgo
 		embed = adminEmbed(s.State.User, "스터디 라운드 종료", "스터디 라운드가 종료되었습니다. 다음 라운드를 기대해주세요!")
 
 		// publish round info
-		go ac.publishRound("study.round-closed", r)
+		go ac.publishRoundOnRoundClosed(r)
 	} else {
 		embed = adminEmbed(s.State.User, gs.CurrentStage.String(), fmt.Sprintf("**<%s>**이(가) 시작되었습니다.", gs.CurrentStage.String()))
 	}
@@ -447,7 +447,7 @@ func (ac *adminCommand) moveRoundStageConfirm(s *discordgo.Session, i *discordgo
 		}
 
 		// publish an event
-		go ac.publishEvent(evt)
+		go ac.publishRoundProgress(evt)
 	}()
 
 	// send a DM to all members
