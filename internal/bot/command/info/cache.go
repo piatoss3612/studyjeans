@@ -11,26 +11,6 @@ func (ic *infoCommand) setRound(ctx context.Context, s *study.Round) error {
 	return ic.cache.Set(ctx, s.GuildID, s, 3*time.Minute)
 }
 
-func (ic *infoCommand) setRoundRetry(r *study.Round, timeout time.Duration) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	for {
-		err := ic.setRound(ctx, r)
-		if err != nil {
-			ic.sugar.Errorw(err.Error(), "event", "study-round-info")
-
-			if err == context.DeadlineExceeded {
-				return
-			}
-
-			time.Sleep(500 * time.Millisecond)
-			continue
-		}
-		break
-	}
-}
-
 func (ic *infoCommand) getRound(ctx context.Context, guildID string) (*study.Round, error) {
 	var round study.Round
 

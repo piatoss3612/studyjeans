@@ -168,7 +168,7 @@ func registerCommands(svc service.Service, pub msgqueue.Publisher, cache cache.C
 	admin.NewAdminCommand(svc, pub, sugar).Register(reg)
 	help.NewHelpCommand().Register(reg)
 	profile.NewProfileCommand(sugar).Register(reg)
-	info.NewInfoCommand(svc, cache, sugar).Register(reg)
+	info.NewInfoCommand(svc, cache).Register(reg)
 	registration.NewRegistrationCommand(svc).Register(reg)
 	submit.NewSubmitCommand(svc).Register(reg)
 	feedback.NewFeedbackCommand(svc).Register(reg)

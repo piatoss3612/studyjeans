@@ -11,28 +11,23 @@ import (
 	"github.com/piatoss3612/my-study-bot/internal/study"
 	"github.com/piatoss3612/my-study-bot/internal/study/service"
 	"github.com/piatoss3612/my-study-bot/internal/utils"
-	"go.uber.org/zap"
 )
 
 type infoCommand struct {
 	svc   service.Service
 	cache cache.Cache
-
-	sugar *zap.SugaredLogger
 }
 
-func NewInfoCommand(svc service.Service, cache cache.Cache, sugar *zap.SugaredLogger) command.Command {
+func NewInfoCommand(svc service.Service, cache cache.Cache) command.Command {
 	return &infoCommand{
 		svc:   svc,
 		cache: cache,
-		sugar: sugar,
 	}
 }
 
 func (ic *infoCommand) Register(reg command.Registerer) {
 	reg.RegisterCommand(myStudyInfoCmd, ic.showMyStudyInfo)
 	reg.RegisterCommand(studyInfoCmd, ic.showStudyInfo)
-	//
 	reg.RegisterCommand(studyRoundInfoCmd, ic.showRoundInfo)
 	reg.RegisterHandler(speakerInfoSelectMenu.CustomID, ic.speakerInfoSelectMenuHandler)
 }
@@ -70,7 +65,9 @@ func (ic *infoCommand) showMyStudyInfo(s *discordgo.Session, i *discordgo.Intera
 	}
 
 	// set the round to cache
-	go ic.setRoundRetry(round, 5*time.Minute)
+	if err := ic.setRound(ctx, round); err != nil {
+		return err
+	}
 
 	// send response
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -155,7 +152,9 @@ func (ic *infoCommand) showRoundInfo(s *discordgo.Session, i *discordgo.Interact
 
 	// if round does not exist in cache, set round to cache
 	if !exists {
-		go ic.setRoundRetry(round, 5*time.Second)
+		if err := ic.setRound(ctx, round); err != nil {
+			return err
+		}
 	}
 
 	// send response
@@ -232,7 +231,9 @@ func (ic *infoCommand) speakerInfoSelectMenuHandler(s *discordgo.Session, i *dis
 
 	// if round does not exist in cache, set round to cache
 	if !exists {
-		go ic.setRoundRetry(round, 5*time.Second)
+		if err := ic.setRound(ctx, round); err != nil {
+			return err
+		}
 	}
 
 	// send response
