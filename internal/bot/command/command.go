@@ -6,7 +6,7 @@ type Registerer interface {
 	RegisterCommand(command discordgo.ApplicationCommand, fn HandleFunc)
 	RegisterHandler(name string, fn HandleFunc)
 	Commands() []*discordgo.ApplicationCommand
-	Handlers() map[string]HandleFunc
+	HandleFuncs() map[string]HandleFunc
 }
 
 type Command interface {
@@ -40,6 +40,6 @@ func (r *commandRegisterer) Commands() []*discordgo.ApplicationCommand {
 	return r.cmds
 }
 
-func (r *commandRegisterer) Handlers() map[string]HandleFunc {
+func (r *commandRegisterer) HandleFuncs() map[string]HandleFunc {
 	return r.funcs
 }
