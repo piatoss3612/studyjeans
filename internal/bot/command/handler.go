@@ -36,10 +36,12 @@ func (h *handler) Handle(name string, s *discordgo.Session, i *discordgo.Interac
 		return
 	}
 
-	// TODO: improve error handling
+	start := time.Now()
+
 	if err := fn(s, i); err != nil {
-		h.sugar.Errorw("failed to handle command", "error", err)
-		h.publishError(&event.ErrorEvent{
+		h.sugar.Errorw("failed to handle command", "command", name, "error", err.Error(), "duration", time.Since(start).String())
+
+		go h.publishError(&event.ErrorEvent{
 			T: "study.error",
 			D: fmt.Sprintf("%s: %s", name, err.Error()),
 			C: time.Now(),
@@ -49,6 +51,7 @@ func (h *handler) Handle(name string, s *discordgo.Session, i *discordgo.Interac
 			Title:       "오류",
 			Description: err.Error(),
 			Color:       0xff0000,
+			Timestamp:   time.Now().Format(time.RFC3339),
 		}
 
 		_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -58,19 +61,33 @@ func (h *handler) Handle(name string, s *discordgo.Session, i *discordgo.Interac
 				Embeds: []*discordgo.MessageEmbed{embed},
 			},
 		})
+		return
 	}
+
+	h.sugar.Infow("command handled", "command", name, "duration", time.Since(start).String())
 }
 
 func (h *handler) publishError(evt event.Event) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	for i := 0; i < 10; i++ {
-		err := h.pub.Publish(ctx, evt.Topic(), evt)
-		if err != nil {
-			h.sugar.Errorw(err.Error(), "event", "publish event", "topic", evt.Topic(), "try", i+1)
-			continue
+	cnt := 0
+
+	for {
+		select {
+		case <-ctx.Done():
+			h.sugar.Errorw("failed to publish error event", "error", ctx.Err().Error(), "topic", evt.Topic(), "description", evt.Description(), "retry", cnt)
+			return
+		default:
+			err := h.pub.Publish(ctx, evt.Topic(), evt)
+			if err != nil {
+				h.sugar.Errorw("failed to publish error event", "error", err.Error(), "topic", evt.Topic(), "description", evt.Description(), "retry", cnt)
+				time.Sleep(500 * time.Millisecond)
+				cnt++
+				continue
+			}
+			h.sugar.Infow("error event published", "topic", evt.Topic(), "retry", cnt)
+			return
 		}
-		return
 	}
 }
