@@ -11,7 +11,8 @@ import (
 	"github.com/piatoss3612/my-study-bot/internal/config"
 	"github.com/piatoss3612/my-study-bot/internal/logger/app"
 	"github.com/piatoss3612/my-study-bot/internal/logger/service"
-	"github.com/piatoss3612/my-study-bot/internal/msgqueue"
+	"github.com/piatoss3612/my-study-bot/internal/pubsub"
+	"github.com/piatoss3612/my-study-bot/internal/pubsub/rabbitmq"
 	"github.com/piatoss3612/my-study-bot/internal/utils"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2/google"
@@ -71,14 +72,14 @@ func mustLoadConfig(path string) *config.LoggerConfig {
 	return cfg
 }
 
-func mustInitSubscriber(ctx context.Context, addr, exchange, kind, queue string) (msgqueue.Subscriber, func() error) {
+func mustInitSubscriber(ctx context.Context, addr, exchange, kind, queue string) (pubsub.Subscriber, func() error) {
 	rabbit := <-utils.RedialRabbitMQ(ctx, addr)
 
 	if rabbit == nil {
 		sugar.Fatal("Failed to connect to RabbitMQ")
 	}
 
-	sub, err := msgqueue.NewSubscriber(rabbit, exchange, kind, queue)
+	sub, err := rabbitmq.NewSubscriber(rabbit, exchange, kind, queue)
 	if err != nil {
 		log.Println(err)
 		sugar.Fatal(err)

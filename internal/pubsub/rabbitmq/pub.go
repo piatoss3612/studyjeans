@@ -1,22 +1,24 @@
-package msgqueue
+package rabbitmq
 
 import (
 	"context"
 	"encoding/json"
 
+	"github.com/piatoss3612/my-study-bot/internal/pubsub"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-type Publisher interface {
-	Publish(ctx context.Context, k string, v any) error
-}
+const (
+	XEventTopicHeader = "x-event-topic"
+	ContentTypeJson   = "application/json"
+)
 
 type publisher struct {
 	conn     *amqp.Connection
 	exchange string
 }
 
-func NewPublisher(conn *amqp.Connection, exchange, kind string) (Publisher, error) {
+func NewPublisher(conn *amqp.Connection, exchange, kind string) (pubsub.Publisher, error) {
 	pub := &publisher{
 		conn:     conn,
 		exchange: exchange,
@@ -25,7 +27,7 @@ func NewPublisher(conn *amqp.Connection, exchange, kind string) (Publisher, erro
 	return pub.setup(exchange, kind)
 }
 
-func (p *publisher) setup(exchange, kind string) (Publisher, error) {
+func (p *publisher) setup(exchange, kind string) (pubsub.Publisher, error) {
 	ch, err := p.conn.Channel()
 	if err != nil {
 		return nil, err
@@ -54,9 +56,9 @@ func (p *publisher) Publish(ctx context.Context, k string, v any) error {
 
 	msg := amqp.Publishing{
 		Headers: amqp.Table{
-			"x-event-name": k,
+			XEventTopicHeader: k,
 		},
-		ContentType: "application/json",
+		ContentType: ContentTypeJson,
 		Body:        body,
 	}
 

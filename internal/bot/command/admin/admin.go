@@ -9,7 +9,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/piatoss3612/my-study-bot/internal/bot/command"
 	"github.com/piatoss3612/my-study-bot/internal/event"
-	"github.com/piatoss3612/my-study-bot/internal/msgqueue"
+	"github.com/piatoss3612/my-study-bot/internal/pubsub"
 	"github.com/piatoss3612/my-study-bot/internal/study"
 	"github.com/piatoss3612/my-study-bot/internal/study/service"
 	"github.com/piatoss3612/my-study-bot/internal/utils"
@@ -18,12 +18,12 @@ import (
 
 type adminCommand struct {
 	svc service.Service
-	pub msgqueue.Publisher
+	pub pubsub.Publisher
 
 	sugar *zap.SugaredLogger
 }
 
-func NewAdminCommand(svc service.Service, pub msgqueue.Publisher, sugar *zap.SugaredLogger) command.Command {
+func NewAdminCommand(svc service.Service, pub pubsub.Publisher, sugar *zap.SugaredLogger) command.Command {
 	return &adminCommand{
 		svc:   svc,
 		pub:   pub,

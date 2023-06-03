@@ -1,16 +1,13 @@
-package msgqueue
+package rabbitmq
 
 import (
 	"errors"
 
+	"github.com/piatoss3612/my-study-bot/internal/pubsub"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-var ErrMissingEventNameHeader = errors.New("missing x-event-name header")
-
-type Subscriber interface {
-	Subscribe(topics ...string) (<-chan Message, <-chan error, func(), error)
-}
+var ErrMissingXEventTopicHeader = errors.New("missing x-event-topic header")
 
 type subscriber struct {
 	conn     *amqp.Connection
@@ -18,7 +15,7 @@ type subscriber struct {
 	queue    string
 }
 
-func NewSubscriber(conn *amqp.Connection, exchange, kind, queue string) (Subscriber, error) {
+func NewSubscriber(conn *amqp.Connection, exchange, kind, queue string) (pubsub.Subscriber, error) {
 	sub := &subscriber{
 		conn:     conn,
 		exchange: exchange,
@@ -28,7 +25,7 @@ func NewSubscriber(conn *amqp.Connection, exchange, kind, queue string) (Subscri
 	return sub.setup(exchange, kind, queue)
 }
 
-func (s *subscriber) setup(exchange, kind, queue string) (Subscriber, error) {
+func (s *subscriber) setup(exchange, kind, queue string) (pubsub.Subscriber, error) {
 	ch, err := s.conn.Channel()
 	if err != nil {
 		return nil, err
@@ -48,7 +45,7 @@ func (s *subscriber) setup(exchange, kind, queue string) (Subscriber, error) {
 	return s, nil
 }
 
-func (s *subscriber) Subscribe(topics ...string) (<-chan Message, <-chan error, func(), error) {
+func (s *subscriber) Subscribe(topics ...string) (<-chan pubsub.Message, <-chan error, func(), error) {
 	ch, err := s.conn.Channel()
 	if err != nil {
 		return nil, nil, nil, err
@@ -65,7 +62,7 @@ func (s *subscriber) Subscribe(topics ...string) (<-chan Message, <-chan error, 
 		return nil, nil, nil, err
 	}
 
-	msgs := make(chan Message)
+	msgs := make(chan pubsub.Message)
 	errs := make(chan error)
 
 	go s.handleMessage(delivery, msgs, errs)
@@ -77,18 +74,18 @@ func (s *subscriber) Subscribe(topics ...string) (<-chan Message, <-chan error, 
 	}, nil
 }
 
-func (s *subscriber) handleMessage(delivery <-chan amqp.Delivery, msgs chan<- Message, errs chan<- error) {
+func (s *subscriber) handleMessage(delivery <-chan amqp.Delivery, msgs chan<- pubsub.Message, errs chan<- error) {
 	for d := range delivery {
-		eventName, ok := d.Headers["x-event-name"]
+		topic, ok := d.Headers[XEventTopicHeader]
 		if !ok {
-			errs <- ErrMissingEventNameHeader
+			errs <- ErrMissingXEventTopicHeader
 			_ = d.Nack(false, false)
 			continue
 		}
 
-		msg := Message{
-			EventName: eventName.(string),
-			Body:      d.Body,
+		msg := pubsub.Message{
+			Topic: topic.(string),
+			Body:  d.Body,
 		}
 
 		msgs <- msg

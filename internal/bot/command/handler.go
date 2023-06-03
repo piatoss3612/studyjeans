@@ -7,7 +7,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/piatoss3612/my-study-bot/internal/event"
-	"github.com/piatoss3612/my-study-bot/internal/msgqueue"
+	"github.com/piatoss3612/my-study-bot/internal/pubsub"
 	"go.uber.org/zap"
 )
 
@@ -17,12 +17,12 @@ type Handler interface {
 
 type handler struct {
 	funcs map[string]HandleFunc
-	pub   msgqueue.Publisher
+	pub   pubsub.Publisher
 
 	sugar *zap.SugaredLogger
 }
 
-func NewHandler(funcs map[string]HandleFunc, pub msgqueue.Publisher, sugar *zap.SugaredLogger) Handler {
+func NewHandler(funcs map[string]HandleFunc, pub pubsub.Publisher, sugar *zap.SugaredLogger) Handler {
 	return &handler{
 		funcs: funcs,
 		pub:   pub,

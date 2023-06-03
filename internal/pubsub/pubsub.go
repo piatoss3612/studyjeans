@@ -1,8 +1,15 @@
-package msgqueue
+package pubsub
 
-type Message struct {
-	EventName string
-	Body      []byte
+import (
+	"context"
+)
+
+type Publisher interface {
+	Publish(ctx context.Context, k string, v any) error
+}
+
+type Subscriber interface {
+	Subscribe(topics ...string) (<-chan Message, <-chan error, func(), error)
 }
 
 type Mapper interface {
@@ -11,7 +18,12 @@ type Mapper interface {
 }
 
 type Handler interface {
-	Handle(msg Message) error
+	Handle(body []byte) error
+}
+
+type Message struct {
+	Topic string
+	Body  []byte
 }
 
 type mapper struct {

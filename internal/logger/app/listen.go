@@ -20,9 +20,9 @@ func (l *LoggerApp) Listen(stop <-chan bool, topics []string) {
 	for {
 		select {
 		case msg := <-msgs:
-			fields := strings.Split(msg.EventName, ".")
+			fields := strings.Split(msg.Topic, ".")
 			if len(fields) != 2 {
-				l.sugar.Errorw("Invalid event name", "event", msg.EventName)
+				l.sugar.Errorw("Invalid event name", "event", msg.Topic)
 				continue
 			}
 
@@ -72,10 +72,10 @@ func (l *LoggerApp) Listen(stop <-chan bool, topics []string) {
 						l.sugar.Errorw("Failed to record error", "error", err)
 					}
 				default:
-					l.sugar.Errorw("Unknown event name", "event", msg.EventName)
+					l.sugar.Errorw("Unknown event name", "event", msg.Topic)
 				}
 			default:
-				l.sugar.Errorw("Unknown event name", "event", msg.EventName)
+				l.sugar.Errorw("Unknown event name", "event", msg.Topic)
 			}
 		case err := <-errs:
 			if err == nil {

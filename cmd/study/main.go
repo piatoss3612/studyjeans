@@ -22,7 +22,8 @@ import (
 	"github.com/piatoss3612/my-study-bot/internal/cache"
 	"github.com/piatoss3612/my-study-bot/internal/cache/redis"
 	"github.com/piatoss3612/my-study-bot/internal/config"
-	"github.com/piatoss3612/my-study-bot/internal/msgqueue"
+	"github.com/piatoss3612/my-study-bot/internal/pubsub"
+	"github.com/piatoss3612/my-study-bot/internal/pubsub/rabbitmq"
 	"github.com/piatoss3612/my-study-bot/internal/study/repository"
 	"github.com/piatoss3612/my-study-bot/internal/study/repository/mongo"
 	"github.com/piatoss3612/my-study-bot/internal/study/service"
@@ -138,14 +139,14 @@ func mustInitStudyCache(ctx context.Context, addr string, ttl time.Duration) cac
 	return redis.NewCache(cache)
 }
 
-func mustInitPublisher(ctx context.Context, addr, exchange, kind string) (msgqueue.Publisher, func() error) {
+func mustInitPublisher(ctx context.Context, addr, exchange, kind string) (pubsub.Publisher, func() error) {
 	rabbit := <-utils.RedialRabbitMQ(ctx, addr)
 
 	if rabbit == nil {
 		sugar.Fatal("Failed to connect to RabbitMQ")
 	}
 
-	pub, err := msgqueue.NewPublisher(rabbit, exchange, kind)
+	pub, err := rabbitmq.NewPublisher(rabbit, exchange, kind)
 	if err != nil {
 		sugar.Fatal(err)
 	}
@@ -162,7 +163,7 @@ func mustOpenDiscordSession(token string) *discordgo.Session {
 	return sess
 }
 
-func registerCommands(svc service.Service, pub msgqueue.Publisher, cache cache.Cache) command.Registerer {
+func registerCommands(svc service.Service, pub pubsub.Publisher, cache cache.Cache) command.Registerer {
 	reg := command.NewRegisterer()
 
 	admin.NewAdminCommand(svc, pub, sugar).Register(reg)

@@ -6,18 +6,18 @@ import (
 	"syscall"
 
 	"github.com/piatoss3612/my-study-bot/internal/logger/service"
-	"github.com/piatoss3612/my-study-bot/internal/msgqueue"
+	"github.com/piatoss3612/my-study-bot/internal/pubsub"
 	"go.uber.org/zap"
 )
 
 type LoggerApp struct {
 	svc service.Service
-	sub msgqueue.Subscriber
+	sub pubsub.Subscriber
 
 	sugar *zap.SugaredLogger
 }
 
-func New(svc service.Service, sub msgqueue.Subscriber, sugar *zap.SugaredLogger) *LoggerApp {
+func New(svc service.Service, sub pubsub.Subscriber, sugar *zap.SugaredLogger) *LoggerApp {
 	return &LoggerApp{
 		svc:   svc,
 		sub:   sub,
