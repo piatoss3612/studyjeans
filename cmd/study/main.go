@@ -40,11 +40,11 @@ func main() {
 
 	sugar = logger.Sugar()
 
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		sugar.Info("Panic recovered", "error", r)
-	// 	}
-	// }()
+	defer func() {
+		if r := recover(); r != nil {
+			sugar.Info("Panic recovered", "error", r)
+		}
+	}()
 
 	mustSetTimezone(os.Getenv("TIME_ZONE"))
 
@@ -166,13 +166,13 @@ func registerCommands(svc service.Service, pub msgqueue.Publisher, cache cache.C
 	reg := command.NewRegisterer()
 
 	admin.NewAdminCommand(svc, pub, sugar).Register(reg)
-	help.NewHelpCommand(sugar).Register(reg)
+	help.NewHelpCommand().Register(reg)
 	profile.NewProfileCommand(sugar).Register(reg)
 	info.NewInfoCommand(svc, cache, sugar).Register(reg)
-	registration.NewRegistrationCommand(svc, sugar).Register(reg)
-	submit.NewSubmitCommand(svc, sugar).Register(reg)
-	feedback.NewFeedbackCommand(svc, sugar).Register(reg)
-	reflection.NewReflectionCommand(svc, sugar).Register(reg)
+	registration.NewRegistrationCommand(svc).Register(reg)
+	submit.NewSubmitCommand(svc).Register(reg)
+	feedback.NewFeedbackCommand(svc).Register(reg)
+	reflection.NewReflectionCommand(svc).Register(reg)
 
 	return reg
 }

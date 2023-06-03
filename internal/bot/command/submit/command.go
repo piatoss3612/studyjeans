@@ -11,19 +11,15 @@ import (
 	"github.com/piatoss3612/my-study-bot/internal/study"
 	"github.com/piatoss3612/my-study-bot/internal/study/service"
 	"github.com/piatoss3612/my-study-bot/internal/utils"
-	"go.uber.org/zap"
 )
 
 type submitCommand struct {
 	svc service.Service
-
-	sugar *zap.SugaredLogger
 }
 
-func NewSubmitCommand(svc service.Service, sugar *zap.SugaredLogger) command.Command {
+func NewSubmitCommand(svc service.Service) command.Command {
 	return &submitCommand{
-		svc:   svc,
-		sugar: sugar,
+		svc: svc,
 	}
 }
 

@@ -10,19 +10,15 @@ import (
 	"github.com/piatoss3612/my-study-bot/internal/study"
 	"github.com/piatoss3612/my-study-bot/internal/study/service"
 	"github.com/piatoss3612/my-study-bot/internal/utils"
-	"go.uber.org/zap"
 )
 
 type reflectionCommand struct {
 	svc service.Service
-
-	sugar *zap.SugaredLogger
 }
 
-func NewReflectionCommand(svc service.Service, sugar *zap.SugaredLogger) command.Command {
+func NewReflectionCommand(svc service.Service) command.Command {
 	return &reflectionCommand{
-		svc:   svc,
-		sugar: sugar,
+		svc: svc,
 	}
 }
 

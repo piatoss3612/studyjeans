@@ -11,14 +11,11 @@ import (
 
 type profileCommand struct {
 	startedAt time.Time
-
-	sugar *zap.SugaredLogger
 }
 
 func NewProfileCommand(sugar *zap.SugaredLogger) command.Command {
 	return &profileCommand{
 		startedAt: time.Now(),
-		sugar:     sugar,
 	}
 }
 

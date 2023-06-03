@@ -10,19 +10,15 @@ import (
 	"github.com/piatoss3612/my-study-bot/internal/study"
 	"github.com/piatoss3612/my-study-bot/internal/study/service"
 	"github.com/piatoss3612/my-study-bot/internal/utils"
-	"go.uber.org/zap"
 )
 
 type feedbackCommand struct {
 	svc service.Service
-
-	sugar *zap.SugaredLogger
 }
 
-func NewFeedbackCommand(svc service.Service, sugar *zap.SugaredLogger) command.Command {
+func NewFeedbackCommand(svc service.Service) command.Command {
 	return &feedbackCommand{
-		svc:   svc,
-		sugar: sugar,
+		svc: svc,
 	}
 }
 

@@ -10,19 +10,15 @@ import (
 	"github.com/piatoss3612/my-study-bot/internal/study"
 	"github.com/piatoss3612/my-study-bot/internal/study/service"
 	"github.com/piatoss3612/my-study-bot/internal/utils"
-	"go.uber.org/zap"
 )
 
 type registrationCmd struct {
 	svc service.Service
-
-	sugar *zap.SugaredLogger
 }
 
-func NewRegistrationCommand(svc service.Service, sugar *zap.SugaredLogger) command.Command {
+func NewRegistrationCommand(svc service.Service) command.Command {
 	return &registrationCmd{
-		svc:   svc,
-		sugar: sugar,
+		svc: svc,
 	}
 }
 

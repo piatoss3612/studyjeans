@@ -6,17 +6,13 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/piatoss3612/my-study-bot/internal/bot/command"
 	"github.com/piatoss3612/my-study-bot/internal/study"
-	"go.uber.org/zap"
 )
 
 type helpCommand struct {
-	sugar *zap.SugaredLogger
 }
 
-func NewHelpCommand(sugar *zap.SugaredLogger) command.Command {
-	return &helpCommand{
-		sugar: sugar,
-	}
+func NewHelpCommand() command.Command {
+	return &helpCommand{}
 }
 
 func (h *helpCommand) Register(reg command.Registerer) {
