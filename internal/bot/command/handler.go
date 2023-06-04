@@ -1,12 +1,9 @@
 package command
 
 import (
-	"context"
-	"fmt"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/piatoss3612/my-study-bot/internal/event"
 	"github.com/piatoss3612/my-study-bot/internal/pubsub"
 	"go.uber.org/zap"
 )
@@ -41,11 +38,11 @@ func (h *handler) Handle(name string, s *discordgo.Session, i *discordgo.Interac
 	if err := fn(s, i); err != nil {
 		h.sugar.Errorw("failed to handle command", "command", name, "error", err.Error(), "duration", time.Since(start).String())
 
-		go h.publishError(&event.ErrorEvent{
-			T: "study.error",
-			D: fmt.Sprintf("%s: %s", name, err.Error()),
-			C: time.Now(),
-		})
+		// go h.publishError(&event.ErrorEvent{
+		// 	T: "study.error",
+		// 	D: fmt.Sprintf("%s: %s", name, err.Error()),
+		// 	C: time.Now(),
+		// })
 
 		embed := &discordgo.MessageEmbed{
 			Title:       "오류",
@@ -67,27 +64,27 @@ func (h *handler) Handle(name string, s *discordgo.Session, i *discordgo.Interac
 	h.sugar.Infow("command handled", "command", name, "duration", time.Since(start).String())
 }
 
-func (h *handler) publishError(evt event.Event) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+// func (h *handler) publishError(evt event.Event) {
+// 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+// 	defer cancel()
 
-	cnt := 0
+// 	cnt := 0
 
-	for {
-		select {
-		case <-ctx.Done():
-			h.sugar.Errorw("failed to publish error event", "error", ctx.Err().Error(), "topic", evt.Topic(), "description", evt.Description(), "retry", cnt)
-			return
-		default:
-			err := h.pub.Publish(ctx, evt.Topic(), evt)
-			if err != nil {
-				h.sugar.Errorw("failed to publish error event", "error", err.Error(), "topic", evt.Topic(), "description", evt.Description(), "retry", cnt)
-				time.Sleep(500 * time.Millisecond)
-				cnt++
-				continue
-			}
-			h.sugar.Infow("error event published", "topic", evt.Topic(), "retry", cnt)
-			return
-		}
-	}
-}
+// 	for {
+// 		select {
+// 		case <-ctx.Done():
+// 			h.sugar.Errorw("failed to publish error event", "error", ctx.Err().Error(), "topic", evt.Topic(), "description", evt.Description(), "retry", cnt)
+// 			return
+// 		default:
+// 			err := h.pub.Publish(ctx, evt.Topic(), evt)
+// 			if err != nil {
+// 				h.sugar.Errorw("failed to publish error event", "error", err.Error(), "topic", evt.Topic(), "description", evt.Description(), "retry", cnt)
+// 				time.Sleep(500 * time.Millisecond)
+// 				cnt++
+// 				continue
+// 			}
+// 			h.sugar.Infow("error event published", "topic", evt.Topic(), "retry", cnt)
+// 			return
+// 		}
+// 	}
+// }
