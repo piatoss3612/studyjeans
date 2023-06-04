@@ -27,6 +27,7 @@ func (l *LoggerService) Listen(stop <-chan bool, topics []string) {
 			if err := h.Handle(ctx, msg.Body); err != nil {
 				l.sugar.Errorw("Failed to handle event", "event", msg.Topic, "error", err)
 				// TODO: retry?
+				continue
 			}
 			l.sugar.Infow("Successfully handled event", "event", msg.Topic)
 		case err := <-errs:

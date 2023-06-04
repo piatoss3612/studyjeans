@@ -2,13 +2,13 @@ package admin
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/piatoss3612/my-study-bot/internal/bot/command"
-	"github.com/piatoss3612/my-study-bot/internal/event"
 	"github.com/piatoss3612/my-study-bot/internal/pubsub"
 	"github.com/piatoss3612/my-study-bot/internal/study"
 	"github.com/piatoss3612/my-study-bot/internal/study/service"
@@ -323,16 +323,17 @@ func (ac *adminCommand) createRound(s *discordgo.Session, i *discordgo.Interacti
 	}
 
 	embed := adminEmbed(s.State.User, "스터디 라운드 생성", fmt.Sprintf("**<%s>**가 생성되었습니다.", title))
+	description := fmt.Sprintf("스터디 라운드가 생성되었습니다.\n제목: %s\n참여자: %d명", title, len(memberIDs))
 
 	go func() {
-		evt := &event.StudyEvent{
-			T: "study.round-created",
-			D: fmt.Sprintf("%s: %s", title, gs.CurrentStage.String()),
-			C: time.Now(),
+		evt, err := study.NewEvent(study.EventTopicStudyRoundCreated, description)
+		if err != nil {
+			ac.sugar.Errorw("failed to create an event", "error", err, "topic", study.EventTopicStudyRoundCreated, "description", description)
+			return
 		}
 
 		// publish an event
-		go ac.publishRoundProgress(evt)
+		go ac.publishEvent(evt)
 	}()
 
 	// send a DM to all members
@@ -419,7 +420,7 @@ func (ac *adminCommand) moveRoundStageConfirm(s *discordgo.Session, i *discordgo
 	defer cancel()
 
 	// move stage
-	gs, r, err := ac.svc.UpdateRound(ctx, &service.UpdateParams{
+	gs, gr, err := ac.svc.UpdateRound(ctx, &service.UpdateParams{
 		GuildID:   i.GuildID,
 		ManagerID: manager.ID,
 	}, service.MoveStage, service.ValidateToCheckManager, service.ValidateToCheckOngoingRound)
@@ -430,25 +431,39 @@ func (ac *adminCommand) moveRoundStageConfirm(s *discordgo.Session, i *discordgo
 	var embed *discordgo.MessageEmbed
 
 	// check if the round is closed
-	if gs.CurrentStage == study.StageWait && gs.OngoingRoundID == "" {
-		embed = adminEmbed(s.State.User, "스터디 라운드 종료", "스터디 라운드가 종료되었습니다. 다음 라운드를 기대해주세요!")
+	if gr.Stage.IsFinished() {
+		embed = adminEmbed(s.State.User, "라운드 종료", "라운드가 종료되었습니다. 다음 라운드를 준비하세요.")
 
-		// publish round info
-		go ac.publishRoundOnRoundClosed(r)
+		go func(topic study.EventTopic, desc string, r study.Round) {
+			b, err := json.Marshal(r)
+			if err != nil {
+				ac.sugar.Errorw("failed to marshal a round", "error", err, "round", r)
+				return
+			}
+
+			evt, err := study.NewEvent(topic, desc, b)
+			if err != nil {
+				ac.sugar.Errorw("failed to create an event", "error", err, "topic", topic, "description", desc)
+				return
+			}
+
+			// publish an event
+			go ac.publishEvent(evt)
+		}(study.EventTopicStudyRoundFinished, "", *gr)
 	} else {
-		embed = adminEmbed(s.State.User, gs.CurrentStage.String(), fmt.Sprintf("**<%s>**이(가) 시작되었습니다.", gs.CurrentStage.String()))
+		embed = adminEmbed(s.State.User, gr.Stage.String(), fmt.Sprintf("**<%s>**이(가) 시작되었습니다.", gr.Stage.String()))
 	}
 
-	go func() {
-		evt := &event.StudyEvent{
-			T: "study.round-progress",
-			D: fmt.Sprintf("%s: %s", r.Title, gs.CurrentStage.String()),
-			C: time.Now(),
+	go func(topic study.EventTopic, desc string) {
+		evt, err := study.NewEvent(topic, desc)
+		if err != nil {
+			ac.sugar.Errorw("failed to create an event", "error", err, "topic", topic, "description", desc)
+			return
 		}
 
 		// publish an event
-		go ac.publishRoundProgress(evt)
-	}()
+		go ac.publishEvent(evt)
+	}(study.EventTopicStudyRoundProgress, fmt.Sprintf("%s: %s", gr.Title, gr.Stage.String()))
 
 	// send a DM to all members
 	go ac.sendDMsToAllMember(s, embed, i.GuildID)
@@ -528,7 +543,7 @@ func (ac *adminCommand) registerRecordedContent(s *discordgo.Session, i *discord
 	defer cancel()
 
 	// submit round content
-	gs, _, err := ac.svc.UpdateRound(ctx, &service.UpdateParams{
+	gs, gr, err := ac.svc.UpdateRound(ctx, &service.UpdateParams{
 		GuildID:    i.GuildID,
 		ManagerID:  manager.ID,
 		ContentURL: contentURL,
@@ -540,6 +555,18 @@ func (ac *adminCommand) registerRecordedContent(s *discordgo.Session, i *discord
 
 	embed := adminEmbed(s.State.User, "발표 영상 등록", "발표 영상이 등록되었습니다.")
 	embed.URL = contentURL
+
+	go func() {
+		description := fmt.Sprintf("%s: 발표 영상 등록", gr.Title)
+		evt, err := study.NewEvent(study.EventTopicStudyRoundProgress, description)
+		if err != nil {
+			ac.sugar.Errorw("failed to create an event", "error", err, "topic", study.EventTopicStudyRoundProgress, "description", description)
+			return
+		}
+
+		// publish an event
+		go ac.publishEvent(evt)
+	}()
 
 	// send a DM to all members
 	go ac.sendDMsToAllMember(s, embed, i.GuildID)

@@ -70,7 +70,7 @@ func run() {
 	mappings := []mapping{
 		{topic: study.EventTopicStudyRoundCreated.String(), h: sh},
 		{topic: study.EventTopicStudyRoundFinished.String(), h: sh},
-		{topic: study.EventTopicStudyRoundMoved.String(), h: sh},
+		{topic: study.EventTopicStudyRoundProgress.String(), h: sh},
 	}
 
 	topics := make([]string, 0, len(mappings))

@@ -35,7 +35,6 @@ func (ac *adminCommand) sendDMsToAllMember(s *discordgo.Session, e *discordgo.Me
 		}
 
 		if len(candidates) == 0 {
-			ac.sugar.Infow("sent dms to all members", "event", "send-dms-to-all-member", "guild_id", guildID)
 			break
 		}
 
