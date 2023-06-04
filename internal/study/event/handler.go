@@ -106,9 +106,7 @@ func (h *handler) Handle(ctx context.Context, body []byte) error {
 
 	switch evt.Topic {
 	case study.EventTopicStudyRoundCreated, study.EventTopicStudyRoundProgress:
-		if err := h.recordProgress(ctx, evt); err != nil {
-			return err
-		}
+		return h.recordProgress(ctx, evt)
 	case study.EventTopicStudyRoundFinished:
 		var r study.Round
 
@@ -116,16 +114,13 @@ func (h *handler) Handle(ctx context.Context, body []byte) error {
 			return err
 		}
 
-		if err := h.recordRound(ctx, r); err != nil {
-			return err
-		}
+		return h.recordRound(ctx, r)
 	default:
 		return errors.Join(study.ErrUnknownEventTopic, fmt.Errorf("unknown event topic: %s", evt.Topic))
 	}
-
-	return nil
 }
 
+// record round data to spreadsheet
 func (h *handler) recordRound(ctx context.Context, r study.Round) error {
 	addSheetReq := &sheets.AddSheetRequest{
 		Properties: &sheets.SheetProperties{
