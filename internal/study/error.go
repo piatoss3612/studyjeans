@@ -29,4 +29,6 @@ var (
 	ErrRoundAlreadySet       = errors.New("이미 진행중인 스터디 라운드가 있습니다")
 	ErrFeedbackYourself      = errors.New("자기 자신에게 피드백을 보낼 수 없습니다")
 	ErrNilFunc               = errors.New("함수가 nil입니다")
+	ErrUnknownEventTopic     = errors.New("알 수 없는 이벤트 토픽입니다")
+	ErrInvalidEventData      = errors.New("잘못된 이벤트 데이터입니다")
 )
