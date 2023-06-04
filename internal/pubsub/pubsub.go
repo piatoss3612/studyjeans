@@ -13,12 +13,12 @@ type Subscriber interface {
 }
 
 type Mapper interface {
-	RegisterHandler(topic string, handler Handler)
+	RegisterHandler(topics []string, handler Handler)
 	Map(topic string) (Handler, bool)
 }
 
 type Handler interface {
-	Handle(body []byte) error
+	Handle(ctx context.Context, body []byte) error
 }
 
 type Message struct {
@@ -36,8 +36,10 @@ func NewMapper() Mapper {
 	}
 }
 
-func (m *mapper) RegisterHandler(topic string, handler Handler) {
-	m.handlers[topic] = handler
+func (m *mapper) RegisterHandler(topics []string, handler Handler) {
+	for _, topic := range topics {
+		m.handlers[topic] = handler
+	}
 }
 
 func (m *mapper) Map(topic string) (Handler, bool) {
