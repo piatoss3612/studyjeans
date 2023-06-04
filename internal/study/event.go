@@ -6,13 +6,13 @@ type EventTopic string
 
 var (
 	EventTopicStudyRoundCreated  EventTopic = "study.round.created"
-	EventTopicStudyRoundMoved    EventTopic = "study.round.moved"
+	EventTopicStudyRoundProgress EventTopic = "study.round.progress"
 	EventTopicStudyRoundFinished EventTopic = "study.round.finished"
 )
 
 func (t EventTopic) Validate() error {
 	switch t {
-	case EventTopicStudyRoundCreated, EventTopicStudyRoundMoved, EventTopicStudyRoundFinished:
+	case EventTopicStudyRoundCreated, EventTopicStudyRoundProgress, EventTopicStudyRoundFinished:
 	default:
 		return ErrUnknownEventTopic
 	}
@@ -28,10 +28,10 @@ type Event struct {
 	Topic       EventTopic `json:"topic"`
 	Description string     `json:"description"`
 	Timestamp   int64      `json:"timestamp"`
-	Data        any        `json:"data"`
+	Data        []byte     `json:"data"`
 }
 
-func NewEvent(topic EventTopic, description string, data ...any) (Event, error) {
+func NewEvent(topic EventTopic, description string, data ...[]byte) (Event, error) {
 	if err := topic.Validate(); err != nil {
 		return Event{}, err
 	}

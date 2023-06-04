@@ -83,6 +83,10 @@ func (s Stage) IsReviewClosed() bool {
 	return s == StageReviewClosed
 }
 
+func (s Stage) IsFinished() bool {
+	return s == StageFinished
+}
+
 func (s Stage) Next() Stage {
 	switch s {
 	case StageWait:

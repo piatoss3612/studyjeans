@@ -105,14 +105,15 @@ func (h *handler) Handle(ctx context.Context, body []byte) error {
 	}
 
 	switch evt.Topic {
-	case study.EventTopicStudyRoundCreated, study.EventTopicStudyRoundMoved:
+	case study.EventTopicStudyRoundCreated, study.EventTopicStudyRoundProgress:
 		if err := h.recordProgress(ctx, evt); err != nil {
 			return err
 		}
 	case study.EventTopicStudyRoundFinished:
-		r, ok := evt.Data.(study.Round)
-		if !ok {
-			return errors.Join(study.ErrInvalidEventData, fmt.Errorf("invalid event data type: %T", evt.Data))
+		var r study.Round
+
+		if err := json.Unmarshal(evt.Data, &r); err != nil {
+			return err
 		}
 
 		if err := h.recordRound(ctx, r); err != nil {
