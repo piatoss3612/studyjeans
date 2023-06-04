@@ -1,31 +1,30 @@
-package app
+package service
 
 import (
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/piatoss3612/my-study-bot/internal/logger/service"
 	"github.com/piatoss3612/my-study-bot/internal/pubsub"
 	"go.uber.org/zap"
 )
 
-type LoggerApp struct {
-	svc service.Service
-	sub pubsub.Subscriber
+type LoggerService struct {
+	sub    pubsub.Subscriber
+	mapper pubsub.Mapper
 
 	sugar *zap.SugaredLogger
 }
 
-func New(svc service.Service, sub pubsub.Subscriber, sugar *zap.SugaredLogger) *LoggerApp {
-	return &LoggerApp{
-		svc:   svc,
-		sub:   sub,
-		sugar: sugar,
+func New(sub pubsub.Subscriber, mapper pubsub.Mapper, sugar *zap.SugaredLogger) *LoggerService {
+	return &LoggerService{
+		sub:    sub,
+		mapper: mapper,
+		sugar:  sugar,
 	}
 }
 
-func (l *LoggerApp) Run() <-chan bool {
+func (l *LoggerService) Run() <-chan bool {
 	l.sugar.Info("Starting logger app")
 
 	stop := make(chan bool)

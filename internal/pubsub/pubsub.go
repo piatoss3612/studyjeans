@@ -13,7 +13,7 @@ type Subscriber interface {
 }
 
 type Mapper interface {
-	RegisterHandler(topics []string, handler Handler)
+	Register(topic string, handler Handler)
 	Map(topic string) (Handler, bool)
 }
 
@@ -36,10 +36,8 @@ func NewMapper() Mapper {
 	}
 }
 
-func (m *mapper) RegisterHandler(topics []string, handler Handler) {
-	for _, topic := range topics {
-		m.handlers[topic] = handler
-	}
+func (m *mapper) Register(topic string, handler Handler) {
+	m.handlers[topic] = handler
 }
 
 func (m *mapper) Map(topic string) (Handler, bool) {
