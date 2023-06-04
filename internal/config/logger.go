@@ -4,11 +4,10 @@ import "github.com/spf13/viper"
 
 type LoggerConfig struct {
 	RabbitMQ struct {
-		Addr     string   `mapstructure:"addr"`
-		Exchange string   `mapstructure:"exchange"`
-		Kind     string   `mapstructure:"kind"`
-		Queue    string   `mapstructure:"queue"`
-		Topics   []string `mapstructure:"topics"`
+		Addr     string `mapstructure:"addr"`
+		Exchange string `mapstructure:"exchange"`
+		Kind     string `mapstructure:"kind"`
+		Queue    string `mapstructure:"queue"`
 	} `mapstructure:"rabbitmq"`
 }
 

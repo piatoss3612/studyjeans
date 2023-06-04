@@ -25,8 +25,6 @@ func New(sub pubsub.Subscriber, mapper pubsub.Mapper, sugar *zap.SugaredLogger) 
 }
 
 func (l *LoggerService) Run() <-chan bool {
-	l.sugar.Info("Starting logger app")
-
 	stop := make(chan bool)
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown,
@@ -42,8 +40,6 @@ func (l *LoggerService) Run() <-chan bool {
 			close(stop)
 		}()
 		<-shutdown
-
-		l.sugar.Info("Shutting down recorder server")
 	}()
 
 	return stop

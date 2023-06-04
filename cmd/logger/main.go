@@ -9,10 +9,11 @@ import (
 
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/piatoss3612/my-study-bot/internal/config"
-	"github.com/piatoss3612/my-study-bot/internal/logger/app"
 	"github.com/piatoss3612/my-study-bot/internal/logger/service"
 	"github.com/piatoss3612/my-study-bot/internal/pubsub"
 	"github.com/piatoss3612/my-study-bot/internal/pubsub/rabbitmq"
+	"github.com/piatoss3612/my-study-bot/internal/study"
+	"github.com/piatoss3612/my-study-bot/internal/study/event"
 	"github.com/piatoss3612/my-study-bot/internal/utils"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2/google"
@@ -53,14 +54,41 @@ func run() {
 		sugar.Info("RabbitMQ connection is closed!")
 	}()
 
-	svc := mustInitLoggerService()
+	sheetsSvc := mustInitSheetsService(ctx)
 
-	sugar.Info("Logger service is ready!")
+	sugar.Info("Sheets service is ready!")
 
-	logger := app.New(svc, sub, sugar)
-	stop := logger.Run()
+	sh := mustInitStudyEventHandler(ctx, sheetsSvc)
 
-	logger.Listen(stop, cfg.RabbitMQ.Topics)
+	mapper := pubsub.NewMapper()
+
+	type mapping struct {
+		topic string
+		h     pubsub.Handler
+	}
+
+	mappings := []mapping{
+		{topic: study.EventTopicStudyRoundCreated.String(), h: sh},
+		{topic: study.EventTopicStudyRoundFinished.String(), h: sh},
+		{topic: study.EventTopicStudyRoundMoved.String(), h: sh},
+	}
+
+	topics := make([]string, 0, len(mappings))
+
+	for _, m := range mappings {
+		mapper.Register(m.topic, m.h)
+		topics = append(topics, m.topic)
+	}
+
+	sugar.Info("Event handlers are ready!")
+
+	svc := service.New(sub, mapper, sugar)
+
+	stop := svc.Run()
+
+	sugar.Info("Logger service is running!")
+
+	svc.Listen(stop, topics)
 }
 
 func mustLoadConfig(path string) *config.LoggerConfig {
@@ -88,35 +116,7 @@ func mustInitSubscriber(ctx context.Context, addr, exchange, kind, queue string)
 	return sub, func() error { return rabbit.Close() }
 }
 
-func mustInitLoggerService() service.Service {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	eventSheetID, _ := strconv.ParseInt(os.Getenv("EVENT_SHEET_ID"), 10, 64)
-	errorSheetID, _ := strconv.ParseInt(os.Getenv("ERROR_SHEET_ID"), 10, 64)
-
-	var opts []service.ServiceOptsFunc
-
-	if eventSheetID != 0 {
-		opts = append(opts, service.WithEventSheetID(eventSheetID))
-	}
-
-	if errorSheetID != 0 {
-		opts = append(opts, service.WithErrorSheetID(errorSheetID))
-	}
-
-	srv, err := service.New(ctx, mustInitSheetsService(), os.Getenv("SPREADSHEET_ID"), opts...)
-	if err != nil {
-		sugar.Fatal(err)
-	}
-
-	return srv
-}
-
-func mustInitSheetsService() *sheets.Service {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func mustInitSheetsService(ctx context.Context) *sheets.Service {
 	b, err := os.ReadFile(os.Getenv("SHEETS_CREDENTIALS"))
 	if err != nil {
 		sugar.Fatalf("Unable to read client secret file: %v", err)
@@ -135,6 +135,23 @@ func mustInitSheetsService() *sheets.Service {
 	}
 
 	return srv
+}
+
+func mustInitStudyEventHandler(ctx context.Context, s *sheets.Service) pubsub.Handler {
+	progressSheetID, _ := strconv.ParseInt(os.Getenv("PROGRESS_SHEET_ID"), 10, 64)
+
+	var opts []event.HandlerOptsFunc
+
+	if progressSheetID != 0 {
+		opts = append(opts, event.WithProgressSheetID(progressSheetID))
+	}
+
+	h, err := event.New(ctx, s, os.Getenv("SPREADSHEET_ID"), opts...)
+	if err != nil {
+		sugar.Fatal(err)
+	}
+
+	return h
 }
 
 func mustSetTimezone(tz string) {
