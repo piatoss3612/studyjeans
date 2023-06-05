@@ -48,7 +48,7 @@ services:
     ports:
       - 6379:6379
     volumes:
-      - ./configs/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./configs/reids/redis.conf:/usr/local/etc/redis/redis.conf
 
   rabbitmq:
     container_name: rabbitmq
@@ -57,7 +57,28 @@ services:
     ports:
       - 5672:5672
       - 15672:15672
+      - 9419:9419
+
+  rabbitmq-exporter:
+    container_name: rabbitmq-exporter
+    image: kbudde/rabbitmq-exporter:latest
+    restart: always
+    network_mode: service:rabbitmq
+
+
+  prometheus:
+    container_name: prometheus
+    image: 'prom/prometheus:v2.44.0'
+    restart: always
+    ports:
+      - 9090:9090
+    volumes:
+      - prometheus-data:/prometheus
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     
+volumes:
+  prometheus-data:
+    driver: local
 
 configs:
   bot-config:
