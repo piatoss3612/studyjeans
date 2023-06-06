@@ -47,7 +47,7 @@ services:
     ports:
       - 6379:6379
     volumes:
-      - ./configs/reids/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./configs/redis/redis.conf:/usr/local/etc/redis/redis.conf
 
   rabbitmq:
     container_name: rabbitmq
@@ -64,7 +64,6 @@ services:
     restart: always
     network_mode: service:rabbitmq
 
-
   prometheus:
     container_name: prometheus
     image: 'prom/prometheus:v2.44.0'
@@ -74,6 +73,25 @@ services:
     volumes:
       - prometheus-data:/prometheus
       - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  loki:
+    container_name: loki
+    image: grafana/loki:main
+    command: -config.file=/etc/loki/loki-config.yml
+    restart: always
+    ports:
+      - 3100:3100
+    volumes:
+      - ./configs/loki/loki-config.yml:/etc/loki/loki-config.yml
+
+  promtail:
+    container_name: promtail
+    image: grafana/promtail:main
+    command: -config.file=/etc/promtail/promtail-config.yml
+    restart: always
+    volumes:
+      - ./configs/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml
+      - /var/lib/docker/containers:/var/lib/docker/containers
 
   grafana:
     container_name: grafana
