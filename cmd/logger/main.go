@@ -26,7 +26,7 @@ import (
 var sugar *zap.SugaredLogger
 
 func main() {
-	l, _ := zap.NewProduction()
+	l, _ := zap.NewProduction(zap.Fields(zap.String("service", "study-logger")))
 	defer func() {
 		_ = l.Sync()
 	}()
