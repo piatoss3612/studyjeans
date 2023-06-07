@@ -12,3 +12,7 @@ scrape_configs:
     metrics_path: "/metrics"
     static_configs:
       - targets: ["rabbitmq:9419"]
+  - job_name: study-bot
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["study-bot:8080"]
