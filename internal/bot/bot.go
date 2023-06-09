@@ -1,6 +1,9 @@
 package bot
 
 import (
+	"context"
+	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -8,8 +11,37 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/piatoss3612/my-study-bot/internal/bot/command"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 )
+
+var totalRequests = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "command_requests_total",
+		Help: "Total number of requests.",
+	},
+	[]string{"command"},
+)
+
+var totalErrors = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "command_errors_total",
+		Help: "Total number of errors.",
+	},
+	[]string{"command"},
+)
+
+var duration = prometheus.NewHistogramVec(
+	prometheus.HistogramOpts{
+		Name: "command_response_time_seconds",
+		Help: "Duration of command response in seconds.",
+	},
+	[]string{"command"},
+)
+
+var metricServerPort = "8080"
 
 type Bot interface {
 	Run() (<-chan bool, error)
@@ -23,6 +55,8 @@ type bot struct {
 	sess               *discordgo.Session
 	registeredCommands []*discordgo.ApplicationCommand
 	handler            command.Handler
+
+	srv *http.Server
 
 	sugar *zap.SugaredLogger
 }
@@ -42,6 +76,23 @@ func (b *bot) setup() Bot {
 	b.sess.AddHandler(b.ready)
 	b.sess.AddHandler(b.handleApplicationCommand)
 
+	metrics := prometheus.NewRegistry()
+	metrics.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	metrics.MustRegister(totalRequests)
+	metrics.MustRegister(totalErrors)
+	metrics.MustRegister(duration)
+
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.HandlerFor(metrics, promhttp.HandlerOpts{}))
+	mux.HandleFunc("/healthcheck", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	b.srv = &http.Server{
+		Addr:    fmt.Sprintf(":%s", metricServerPort),
+		Handler: mux,
+	}
+
 	return b
 }
 
@@ -49,6 +100,12 @@ func (b *bot) Run() (<-chan bool, error) {
 	if err := b.sess.Open(); err != nil {
 		return nil, err
 	}
+
+	go func() {
+		if err := b.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			b.sugar.Fatal("Failed to start metric server", "error", err)
+		}
+	}()
 
 	stop := make(chan bool)
 	shutdown := make(chan os.Signal, 1)
@@ -104,7 +161,20 @@ func (b *bot) RemoveCommands() error {
 }
 
 func (b *bot) Close() error {
-	return b.sess.Close()
+	err := b.sess.Close()
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err = b.srv.Shutdown(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (b *bot) ready(s *discordgo.Session, _ *discordgo.Ready) {
@@ -125,16 +195,19 @@ func (b *bot) handleApplicationCommand(s *discordgo.Session, i *discordgo.Intera
 		return
 	}
 
-	start := time.Now()
+	timer := prometheus.NewTimer(duration.WithLabelValues(name))
 
 	err := b.handler.Handle(name, s, i)
+
+	totalRequests.WithLabelValues(name).Inc()
+
 	if err != nil {
+		totalErrors.WithLabelValues(name).Inc()
 		b.errorResponse(s, i, err)
-		b.sugar.Errorw("command error", "command", name, "error", err.Error(), "duration", time.Since(start).String())
+		b.sugar.Errorw("command error", "command", name, "error", err.Error(), "duration", timer.ObserveDuration().String())
 		return
 	}
-
-	b.sugar.Infow("command handled", "command", name, "duration", time.Since(start).String())
+	b.sugar.Infow("command handled", "command", name, "duration", timer.ObserveDuration().String())
 }
 
 func (b *bot) errorResponse(s *discordgo.Session, i *discordgo.InteractionCreate, err error) {
