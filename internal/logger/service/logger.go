@@ -16,6 +16,30 @@ import (
 	"go.uber.org/zap"
 )
 
+var totalEvents = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "listener_events_total",
+		Help: "Total number of events.",
+	},
+	[]string{"event"},
+)
+
+var totalErrors = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "listener_errors_total",
+		Help: "Total number of errors.",
+	},
+	[]string{"event"},
+)
+
+var duration = prometheus.NewHistogramVec(
+	prometheus.HistogramOpts{
+		Name: "listener_response_time_seconds",
+		Help: "Response time of listener.",
+	},
+	[]string{"event"},
+)
+
 var metricServerPort = "8080"
 
 type LoggerService struct {
@@ -39,6 +63,9 @@ func New(sub pubsub.Subscriber, mapper pubsub.Mapper, sugar *zap.SugaredLogger) 
 func (l *LoggerService) setup() *LoggerService {
 	metrics := prometheus.NewRegistry()
 	metrics.MustRegister(collectors.NewGoCollector())
+	metrics.MustRegister(totalEvents)
+	metrics.MustRegister(totalErrors)
+	metrics.MustRegister(duration)
 
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.HandlerFor(metrics, promhttp.HandlerOpts{}))
@@ -104,15 +131,20 @@ func (l *LoggerService) Listen(stop <-chan bool, topics []string) {
 				continue
 			}
 
+			totalEvents.WithLabelValues(msg.Topic).Inc()
+
+			timer := prometheus.NewTimer(duration.WithLabelValues(msg.Topic))
+
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
 			if err := h.Handle(ctx, msg.Body); err != nil {
-				l.sugar.Errorw("Failed to handle event", "event", msg.Topic, "error", err)
-				// TODO: retry?
+				totalErrors.WithLabelValues(msg.Topic).Inc()
+				l.sugar.Errorw("Failed to handle event", "event", msg.Topic, "error", err, "duration", timer.ObserveDuration().String())
 				continue
 			}
-			l.sugar.Infow("Successfully handled event", "event", msg.Topic)
+
+			l.sugar.Infow("Successfully handled event", "event", msg.Topic, "duration", timer.ObserveDuration().String())
 		case err := <-errs:
 			if err == nil {
 				continue
