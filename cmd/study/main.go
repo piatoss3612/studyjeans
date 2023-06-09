@@ -86,7 +86,7 @@ func run() {
 	sugar.Info("Study service is ready!")
 
 	cmdReg := registerCommands(svc, pub, cache)
-	handler := command.NewHandler(cmdReg.HandleFuncs(), pub, sugar)
+	handler := command.NewHandler(cmdReg.HandleFuncs())
 
 	metricsReg := prometheus.NewRegistry()
 	metricsReg.MustRegister(collectors.NewGoCollector())
