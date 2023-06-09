@@ -77,7 +77,7 @@ func (b *bot) setup() Bot {
 	b.sess.AddHandler(b.handleApplicationCommand)
 
 	metrics := prometheus.NewRegistry()
-	metrics.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	metrics.MustRegister(collectors.NewGoCollector())
 	metrics.MustRegister(totalRequests)
 	metrics.MustRegister(totalErrors)
 	metrics.MustRegister(duration)

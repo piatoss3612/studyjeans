@@ -36,7 +36,7 @@ func (l *LoggerService) Listen(stop <-chan bool, topics []string) {
 			}
 			l.sugar.Errorw("Received error from subscriber", "error", err)
 		case <-stop:
-			l.sugar.Info("Logger service is stopped")
+			l.sugar.Info("Stop listening to events")
 			return
 		default:
 			time.Sleep(500 * time.Millisecond)

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -16,9 +15,6 @@ import (
 	"github.com/piatoss3612/my-study-bot/internal/study"
 	"github.com/piatoss3612/my-study-bot/internal/study/event"
 	"github.com/piatoss3612/my-study-bot/internal/utils"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
@@ -87,32 +83,12 @@ func run() {
 	sugar.Info("Event handlers are ready!")
 
 	svc := service.New(sub, mapper, sugar)
-
-	metricsReg := prometheus.NewRegistry()
-	metricsReg.MustRegister(collectors.NewGoCollector())
-
-	metricsSrvMux := http.NewServeMux()
-	metricsSrvMux.Handle("/metrics", promhttp.HandlerFor(metricsReg, promhttp.HandlerOpts{}))
-	metricsSrv := &http.Server{
-		Addr:    ":8080",
-		Handler: metricsSrvMux,
-	}
-
-	go func() {
-		sugar.Info("Metrics server is up on port 8080!")
-		if err := metricsSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			sugar.Fatal(err)
-		}
-	}()
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		if err := metricsSrv.Shutdown(ctx); err != nil {
-			sugar.Fatal(err)
-		}
-
-		sugar.Info("Metrics server is down!")
+		_ = svc.Close(ctx)
+		sugar.Info("Logger service is closed!")
 	}()
 
 	stop := svc.Run()
