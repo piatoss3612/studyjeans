@@ -10,13 +10,11 @@ import (
 
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/piatoss3612/my-study-bot/internal/config"
-	cerrors "github.com/piatoss3612/my-study-bot/internal/errors"
-	eevent "github.com/piatoss3612/my-study-bot/internal/errors/event"
 	"github.com/piatoss3612/my-study-bot/internal/logger/service"
 	"github.com/piatoss3612/my-study-bot/internal/pubsub"
 	"github.com/piatoss3612/my-study-bot/internal/pubsub/rabbitmq"
 	"github.com/piatoss3612/my-study-bot/internal/study"
-	sevent "github.com/piatoss3612/my-study-bot/internal/study/event"
+	"github.com/piatoss3612/my-study-bot/internal/study/event"
 	"github.com/piatoss3612/my-study-bot/internal/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
@@ -65,7 +63,6 @@ func run() {
 	sugar.Info("Sheets service is ready!")
 
 	sh := mustInitStudyEventHandler(ctx, sheetsSvc)
-	eh := mustInitErrorEventHandler(ctx, sheetsSvc)
 
 	mapper := pubsub.NewMapper()
 
@@ -78,7 +75,6 @@ func run() {
 		{topic: study.EventTopicStudyRoundCreated.String(), h: sh},
 		{topic: study.EventTopicStudyRoundFinished.String(), h: sh},
 		{topic: study.EventTopicStudyRoundProgress.String(), h: sh},
-		{topic: cerrors.EventTopicError.String(), h: eh},
 	}
 
 	topics := make([]string, 0, len(mappings))
@@ -175,30 +171,13 @@ func mustInitSheetsService(ctx context.Context) *sheets.Service {
 func mustInitStudyEventHandler(ctx context.Context, s *sheets.Service) pubsub.Handler {
 	progressSheetID, _ := strconv.ParseInt(os.Getenv("PROGRESS_SHEET_ID"), 10, 64)
 
-	var opts []sevent.HandlerOptsFunc
+	var opts []event.HandlerOptsFunc
 
 	if progressSheetID != 0 {
-		opts = append(opts, sevent.WithProgressSheetID(progressSheetID))
+		opts = append(opts, event.WithProgressSheetID(progressSheetID))
 	}
 
-	h, err := sevent.New(ctx, s, os.Getenv("SPREADSHEET_ID"), opts...)
-	if err != nil {
-		sugar.Fatal(err)
-	}
-
-	return h
-}
-
-func mustInitErrorEventHandler(ctx context.Context, s *sheets.Service) pubsub.Handler {
-	errorSheetID, _ := strconv.ParseInt(os.Getenv("ERROR_SHEET_ID"), 10, 64)
-
-	var opts []eevent.HandlerOptsFunc
-
-	if errorSheetID != 0 {
-		opts = append(opts, eevent.WithErrorSheetID(errorSheetID))
-	}
-
-	h, err := eevent.NewHandler(ctx, s, os.Getenv("SPREADSHEET_ID"), opts...)
+	h, err := event.New(ctx, s, os.Getenv("SPREADSHEET_ID"), opts...)
 	if err != nil {
 		sugar.Fatal(err)
 	}
