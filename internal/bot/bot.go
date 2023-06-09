@@ -4,9 +4,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/piatoss3612/my-study-bot/internal/bot/command"
+	"go.uber.org/zap"
 )
 
 type Bot interface {
@@ -21,11 +23,14 @@ type bot struct {
 	sess               *discordgo.Session
 	registeredCommands []*discordgo.ApplicationCommand
 	handler            command.Handler
+
+	sugar *zap.SugaredLogger
 }
 
-func New(sess *discordgo.Session) Bot {
+func New(sess *discordgo.Session, sugar *zap.SugaredLogger) Bot {
 	b := &bot{
-		sess: sess,
+		sess:  sess,
+		sugar: sugar,
 	}
 	return b.setup()
 }
@@ -120,5 +125,31 @@ func (b *bot) handleApplicationCommand(s *discordgo.Session, i *discordgo.Intera
 		return
 	}
 
-	b.handler.Handle(name, s, i)
+	start := time.Now()
+
+	err := b.handler.Handle(name, s, i)
+	if err != nil {
+		b.errorResponse(s, i, err)
+		b.sugar.Errorw("command error", "command", name, "error", err.Error(), "duration", time.Since(start).String())
+		return
+	}
+
+	b.sugar.Infow("command handled", "command", name, "duration", time.Since(start).String())
+}
+
+func (b *bot) errorResponse(s *discordgo.Session, i *discordgo.InteractionCreate, err error) {
+	embed := &discordgo.MessageEmbed{
+		Title:       "오류",
+		Description: err.Error(),
+		Color:       0xff0000,
+		Timestamp:   time.Now().Format(time.RFC3339),
+	}
+
+	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Flags:  discordgo.MessageFlagsEphemeral,
+			Embeds: []*discordgo.MessageEmbed{embed},
+		},
+	})
 }

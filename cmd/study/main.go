@@ -115,7 +115,7 @@ func run() {
 		sugar.Info("Metrics server is down!")
 	}()
 
-	b := bot.New(mustOpenDiscordSession(cfg.Discord.BotToken))
+	b := bot.New(mustOpenDiscordSession(cfg.Discord.BotToken), sugar)
 
 	stop, err := b.Run()
 	if err != nil {
