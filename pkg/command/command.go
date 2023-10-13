@@ -8,17 +8,17 @@ import (
 
 var ErrInteractionNotFound = fmt.Errorf("interaction not found")
 
+// ApplicationCommandManager is an interface for discord slash command creation and deletion
+type ApplicationCommandManager interface {
+	ApplicationCommandCreate(guildID string, cmd *discordgo.ApplicationCommand, options ...discordgo.RequestOption) (*discordgo.ApplicationCommand, error)
+	ApplicationCommandDelete(guildID string, cmdID string, options ...discordgo.RequestOption) error
+}
+
 // Commander is an interface for a discord slash command
 type Commander interface {
 	Command() *discordgo.ApplicationCommand
 	HandleFunc() CommandHandleFunc
 	InteractionHandleFuncs() map[string]CommandHandleFunc
-}
-
-// ApplicationCommandManager is an interface for discord slash command creation and deletion
-type ApplicationCommandManager interface {
-	ApplicationCommandCreate(guildID string, cmd *discordgo.ApplicationCommand, options ...discordgo.RequestOption) (*discordgo.ApplicationCommand, error)
-	ApplicationCommandDelete(guildID string, cmdID string, options ...discordgo.RequestOption) error
 }
 
 // CommandHandleFunc is a function that handles a discord slash command or one of its interactions
