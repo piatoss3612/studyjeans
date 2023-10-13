@@ -1,6 +1,12 @@
 package command
 
-import "github.com/bwmarrin/discordgo"
+import (
+	"fmt"
+
+	"github.com/bwmarrin/discordgo"
+)
+
+var ErrInteractionNotFound = fmt.Errorf("interaction not found")
 
 // Commander is an interface for a discord slash command
 type Commander interface {
@@ -11,9 +17,8 @@ type Commander interface {
 
 // ApplicationCommandManager is an interface for discord slash command creation and deletion
 type ApplicationCommandManager interface {
-	ApplicationCommandCreate(appID string, guildID string, cmd *discordgo.ApplicationCommand, options ...discordgo.RequestOption) (*discordgo.ApplicationCommand, error)
-	ApplicationCommandDelete(appID string, guildID string, cmdID string, options ...discordgo.RequestOption) error
-	ApplicationID() string
+	ApplicationCommandCreate(guildID string, cmd *discordgo.ApplicationCommand, options ...discordgo.RequestOption) (*discordgo.ApplicationCommand, error)
+	ApplicationCommandDelete(guildID string, cmdID string, options ...discordgo.RequestOption) error
 }
 
 // CommandHandleFunc is a function that handles a discord slash command or one of its interactions
@@ -55,7 +60,7 @@ func (r *CommandRegistry) RegisterCommands(cs ...Commander) {
 // CreateCommands creates the discord slash commands in the registry on discord
 func (r *CommandRegistry) CreateCommands() error {
 	for _, c := range r.cmds {
-		_, err := r.m.ApplicationCommandCreate(r.m.ApplicationID(), "", c)
+		_, err := r.m.ApplicationCommandCreate("", c)
 		if err != nil {
 			return err
 		}
@@ -66,17 +71,28 @@ func (r *CommandRegistry) CreateCommands() error {
 
 // Handle handles a discord slash command or one of its interactions
 func (r *CommandRegistry) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	if h, ok := r.handlers[i.ApplicationCommandData().Name]; ok {
+	var name string
+
+	switch i.Type {
+	case discordgo.InteractionApplicationCommand, discordgo.InteractionApplicationCommandAutocomplete:
+		name = i.ApplicationCommandData().Name
+	case discordgo.InteractionMessageComponent:
+		name = i.MessageComponentData().CustomID
+	case discordgo.InteractionModalSubmit:
+		name = i.ModalSubmitData().CustomID
+	}
+
+	if h, ok := r.handlers[name]; ok {
 		return h(s, i)
 	}
 
-	return nil
+	return fmt.Errorf("%s: %s", ErrInteractionNotFound.Error(), name)
 }
 
 // DeleteCommands deletes the discord slash commands in the registry on discord
 func (r *CommandRegistry) DeleteCommands() error {
 	for _, c := range r.cmds {
-		err := r.m.ApplicationCommandDelete(r.m.ApplicationID(), "", c.ID)
+		err := r.m.ApplicationCommandDelete("", c.ID)
 		if err != nil {
 			return err
 		}
