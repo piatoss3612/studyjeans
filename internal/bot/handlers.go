@@ -58,7 +58,15 @@ func NewApplicationCommandHandler(m *command.CommandManager, l *zap.Logger) func
 		totalSuccess.WithLabelValues(name).Inc()
 		l.Info("handled interaction",
 			zap.String("interaction", name),
-			zap.String("user", i.User.String()),
+			zap.String("user", func() string {
+				if i.Member != nil {
+					return i.Member.User.ID
+				}
+				if i.User != nil {
+					return i.User.ID
+				}
+				return ""
+			}()),
 			zap.String("guild", i.GuildID),
 			zap.String("channel", i.ChannelID),
 			zap.Duration("duration", timer.ObserveDuration()),
