@@ -3,6 +3,7 @@ package bot
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	_ "github.com/joho/godotenv/autoload"
@@ -42,6 +43,12 @@ func TestDiscordBot_Close(t *testing.T) {
 	}
 
 	b := New(s)
+
+	if err := b.Open(); err != nil {
+		t.Errorf("Expected nil, got %v", err)
+	}
+
+	time.Sleep(1 * time.Second)
 
 	if err := b.Close(); err != nil {
 		t.Errorf("Expected nil, got %v", err)

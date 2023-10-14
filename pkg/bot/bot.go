@@ -1,6 +1,8 @@
 package bot
 
-import "github.com/bwmarrin/discordgo"
+import (
+	"github.com/bwmarrin/discordgo"
+)
 
 type Bot struct {
 	s *discordgo.Session
