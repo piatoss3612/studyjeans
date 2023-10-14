@@ -9,9 +9,9 @@ import (
 var ErrInteractionNotFound = fmt.Errorf("interaction not found")
 
 // ApplicationCommandManager is an interface for discord slash command creation and deletion
-type ApplicationCommandManager interface {
-	ApplicationCommandCreate(guildID string, cmd *discordgo.ApplicationCommand, options ...discordgo.RequestOption) (*discordgo.ApplicationCommand, error)
-	ApplicationCommandDelete(guildID string, cmdID string, options ...discordgo.RequestOption) error
+type CommandManager interface {
+	CommandCreate(guildID string, cmd *discordgo.ApplicationCommand) error
+	CommandDelete(guildID string, cmdID string) error
 }
 
 // Commander is an interface for a discord slash command
@@ -26,13 +26,13 @@ type CommandHandleFunc func(*discordgo.Session, *discordgo.InteractionCreate) er
 
 // CommandRegistry is a registry for discord slash commands
 type CommandRegistry struct {
-	m        ApplicationCommandManager
+	m        CommandManager
 	cmds     []*discordgo.ApplicationCommand
 	handlers map[string]CommandHandleFunc
 }
 
 // NewCommandRegistry creates a new CommandRegistry
-func NewCommandRegistry(m ApplicationCommandManager) *CommandRegistry {
+func NewCommandRegistry(m CommandManager) *CommandRegistry {
 	return &CommandRegistry{
 		m:        m,
 		cmds:     make([]*discordgo.ApplicationCommand, 0),
@@ -60,7 +60,7 @@ func (r *CommandRegistry) RegisterCommands(cs ...Commander) {
 // CreateCommands creates the discord slash commands in the registry on discord
 func (r *CommandRegistry) CreateCommands() error {
 	for _, c := range r.cmds {
-		_, err := r.m.ApplicationCommandCreate("", c)
+		err := r.m.CommandCreate("", c)
 		if err != nil {
 			return err
 		}
@@ -92,7 +92,7 @@ func (r *CommandRegistry) Handle(s *discordgo.Session, i *discordgo.InteractionC
 // DeleteCommands deletes the discord slash commands in the registry on discord
 func (r *CommandRegistry) DeleteCommands() error {
 	for _, c := range r.cmds {
-		err := r.m.ApplicationCommandDelete("", c.ID)
+		err := r.m.CommandDelete("", c.ID)
 		if err != nil {
 			return err
 		}
