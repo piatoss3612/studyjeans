@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/piatoss3612/studyjeans/pkg/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -15,21 +16,21 @@ var (
 			Name: "command_requests_total",
 			Help: "Total number of requests.",
 		},
-		[]string{"command"},
+		[]string{"application_command"},
 	)
 	totalSuccess = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "command_success_total",
 			Help: "Total number of successful requests.",
 		},
-		[]string{"command"},
+		[]string{"application_command"},
 	)
 	totalErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "command_errors_total",
 			Help: "Total number of errors.",
 		},
-		[]string{"command"},
+		[]string{"application_command"},
 	)
 	duration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -37,7 +38,7 @@ var (
 			Help:    "Command response duration distribution.",
 			Buckets: []float64{0.1, 0.5, 1, 2, 5, 10, 30, 60},
 		},
-		[]string{"command"},
+		[]string{"application_command"},
 	)
 	totalGuilds = prometheus.NewGauge(
 		prometheus.GaugeOpts{
@@ -47,7 +48,7 @@ var (
 	)
 )
 
-func NewBotMetricsServer(port string) *http.Server {
+func NewBotMetricsServer(port string) (*http.Server, error) {
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(
 		collectors.NewGoCollector(),
@@ -58,16 +59,9 @@ func NewBotMetricsServer(port string) *http.Server {
 		totalGuilds,
 	)
 
-	mux := http.NewServeMux()
-	mux.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
-	mux.Handle("/healthcheck", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-
-	return &http.Server{
-		Addr:         ":" + port,
-		Handler:      mux,
+	return metrics.NewHttpMetricsServer(reg, promhttp.HandlerOpts{}, metrics.ServerConfig{
+		Port:         port,
 		WriteTimeout: 10 * time.Second,
 		ReadTimeout:  10 * time.Second,
-	}
+	})
 }
