@@ -100,20 +100,7 @@ func (m *CommandManager) CreateCommands(guildID string) error {
 }
 
 // Handle handles a discord slash command or one of its interactions
-func (m *CommandManager) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-	var name string
-
-	switch i.Type {
-	case discordgo.InteractionApplicationCommand, discordgo.InteractionApplicationCommandAutocomplete:
-		name = i.ApplicationCommandData().Name
-	case discordgo.InteractionMessageComponent:
-		name = i.MessageComponentData().CustomID
-	case discordgo.InteractionModalSubmit:
-		name = i.ModalSubmitData().CustomID
-	default:
-		return fmt.Errorf("interaction type %v not found", i.Type)
-	}
-
+func (m *CommandManager) Handle(name string, s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	if h, ok := m.r.Handler(name); ok {
 		return h(s, i)
 	}

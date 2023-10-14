@@ -238,78 +238,29 @@ func TestCommandManager_Handle(t *testing.T) {
 		f: func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 			return nil
 		},
-		h: map[string]CommandHandleFunc{
-			"message_component": func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-				return nil
-			},
-			"modal_submit": func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-				return nil
-			},
-		},
 	}
 
-	interactions := []*discordgo.InteractionCreate{
-		{
-			Interaction: &discordgo.Interaction{
-				Type: discordgo.InteractionApplicationCommand,
-				Data: discordgo.ApplicationCommandInteractionData{
-					Name: "application_command",
-				},
-			},
-		},
-		{
-			Interaction: &discordgo.Interaction{
-				Type: discordgo.InteractionMessageComponent,
-				Data: discordgo.MessageComponentInteractionData{
-					CustomID: "message_component",
-				},
-			},
-		},
-		{
-			Interaction: &discordgo.Interaction{
-				Type: discordgo.InteractionModalSubmit,
-				Data: discordgo.ModalSubmitInteractionData{
-					CustomID: "modal_submit",
-				},
+	i := &discordgo.InteractionCreate{
+		Interaction: &discordgo.Interaction{
+			Type: discordgo.InteractionApplicationCommand,
+			Data: discordgo.ApplicationCommandInteractionData{
+				Name: "application_command",
 			},
 		},
 	}
 
 	r.RegisterCommand(cmd)
 
-	for _, i := range interactions {
-		err := m.Handle(nil, i)
-		if err != nil {
-			t.Errorf("expected no error, got %v", err)
-		}
+	err := m.Handle(cmd.Command().Name, nil, i)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
 	}
 
-	err := m.Handle(nil, &discordgo.InteractionCreate{
-		Interaction: &discordgo.Interaction{
-			Type: discordgo.InteractionPing,
-			Data: discordgo.ApplicationCommandInteractionData{
-				Name: "unknown",
-			},
-		},
-	})
+	err = m.Handle("unknown", nil, i)
 	if err == nil {
 		t.Errorf("expected error, got nil")
 	}
-	if !strings.Contains(err.Error(), fmt.Sprintf("interaction type %v not found", discordgo.InteractionPing)) {
-		t.Errorf("expected error to contain %v, got %v", fmt.Sprintf("interaction type %v not found", discordgo.InteractionPing), err)
-	}
 
-	err = m.Handle(nil, &discordgo.InteractionCreate{
-		Interaction: &discordgo.Interaction{
-			Type: discordgo.InteractionApplicationCommand,
-			Data: discordgo.ApplicationCommandInteractionData{
-				Name: "unknown",
-			},
-		},
-	})
-	if err == nil {
-		t.Errorf("expected error, got nil")
-	}
 	if !strings.Contains(err.Error(), fmt.Sprintf("handler for interaction %s not found", "unknown")) {
 		t.Errorf("expected error to contain %v, got %v", fmt.Sprintf("handler for interaction %s not found", "unknown"), err)
 	}
