@@ -6,9 +6,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-var ErrInteractionNotFound = fmt.Errorf("interaction not found")
-
-// ApplicationCommandManager is an interface for discord slash command creation and deletion
+// CommandManager is an interface for discord slash command creation and deletion
 type CommandManager interface {
 	CommandCreate(guildID string, cmd *discordgo.ApplicationCommand) error
 	CommandDelete(guildID string, cmdID string) error
@@ -80,13 +78,15 @@ func (r *CommandRegistry) Handle(s *discordgo.Session, i *discordgo.InteractionC
 		name = i.MessageComponentData().CustomID
 	case discordgo.InteractionModalSubmit:
 		name = i.ModalSubmitData().CustomID
+	default:
+		return fmt.Errorf("interaction type %v not found", i.Type)
 	}
 
 	if h, ok := r.handlers[name]; ok {
 		return h(s, i)
 	}
 
-	return fmt.Errorf("%s: %s", ErrInteractionNotFound.Error(), name)
+	return fmt.Errorf("handler for interaction %s not found", name)
 }
 
 // DeleteCommands deletes the discord slash commands in the registry on discord

@@ -2,6 +2,8 @@ package command
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/bwmarrin/discordgo"
@@ -208,6 +210,21 @@ func TestCommandRegistry_Handle(t *testing.T) {
 
 	err := r.Handle(nil, &discordgo.InteractionCreate{
 		Interaction: &discordgo.Interaction{
+			Type: discordgo.InteractionPing,
+			Data: discordgo.ApplicationCommandInteractionData{
+				Name: "unknown",
+			},
+		},
+	})
+	if err == nil {
+		t.Errorf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), fmt.Sprintf("interaction type %v not found", discordgo.InteractionPing)) {
+		t.Errorf("expected error to contain %v, got %v", fmt.Sprintf("interaction type %v not found", discordgo.InteractionPing), err)
+	}
+
+	err = r.Handle(nil, &discordgo.InteractionCreate{
+		Interaction: &discordgo.Interaction{
 			Type: discordgo.InteractionApplicationCommand,
 			Data: discordgo.ApplicationCommandInteractionData{
 				Name: "unknown",
@@ -216,6 +233,9 @@ func TestCommandRegistry_Handle(t *testing.T) {
 	})
 	if err == nil {
 		t.Errorf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), fmt.Sprintf("handler for interaction %s not found", "unknown")) {
+		t.Errorf("expected error to contain %v, got %v", fmt.Sprintf("handler for interaction %s not found", "unknown"), err)
 	}
 }
 
