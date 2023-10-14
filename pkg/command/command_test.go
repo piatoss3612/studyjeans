@@ -2,6 +2,8 @@ package command
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/bwmarrin/discordgo"
@@ -40,23 +42,23 @@ var (
 	errDeleteCommand = errors.New("error")
 )
 
-type StubApplicationCommandManager struct{}
+type StubCommandManager struct{}
 
-func (m *StubApplicationCommandManager) ApplicationCommandCreate(guildID string, cmd *discordgo.ApplicationCommand, options ...discordgo.RequestOption) (*discordgo.ApplicationCommand, error) {
-	return cmd, nil
-}
-
-func (m *StubApplicationCommandManager) ApplicationCommandDelete(guildID string, cmdID string, options ...discordgo.RequestOption) error {
+func (m *StubCommandManager) CommandCreate(guildID string, cmd *discordgo.ApplicationCommand) error {
 	return nil
 }
 
-type ErrorApplicationCommandManager struct{}
-
-func (m *ErrorApplicationCommandManager) ApplicationCommandCreate(guildID string, cmd *discordgo.ApplicationCommand, options ...discordgo.RequestOption) (*discordgo.ApplicationCommand, error) {
-	return nil, errCreateCommand
+func (m *StubCommandManager) CommandDelete(guildID string, cmdID string) error {
+	return nil
 }
 
-func (m *ErrorApplicationCommandManager) ApplicationCommandDelete(guildID string, cmdID string, options ...discordgo.RequestOption) error {
+type ErrorCommandManager struct{}
+
+func (m *ErrorCommandManager) CommandCreate(guildID string, cmd *discordgo.ApplicationCommand) error {
+	return errCreateCommand
+}
+
+func (m *ErrorCommandManager) CommandDelete(guildID string, cmdID string) error {
 	return errDeleteCommand
 }
 
@@ -79,11 +81,11 @@ func (c *StubCommand) InteractionHandleFuncs() map[string]CommandHandleFunc {
 }
 
 func newCommandRegistry() *CommandRegistry {
-	return NewCommandRegistry(&StubApplicationCommandManager{})
+	return NewCommandRegistry(&StubCommandManager{})
 }
 
 func newErrorCommandRegistry() *CommandRegistry {
-	return NewCommandRegistry(&ErrorApplicationCommandManager{})
+	return NewCommandRegistry(&ErrorCommandManager{})
 }
 
 func TestNewCommandRegistry(t *testing.T) {
@@ -208,6 +210,21 @@ func TestCommandRegistry_Handle(t *testing.T) {
 
 	err := r.Handle(nil, &discordgo.InteractionCreate{
 		Interaction: &discordgo.Interaction{
+			Type: discordgo.InteractionPing,
+			Data: discordgo.ApplicationCommandInteractionData{
+				Name: "unknown",
+			},
+		},
+	})
+	if err == nil {
+		t.Errorf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), fmt.Sprintf("interaction type %v not found", discordgo.InteractionPing)) {
+		t.Errorf("expected error to contain %v, got %v", fmt.Sprintf("interaction type %v not found", discordgo.InteractionPing), err)
+	}
+
+	err = r.Handle(nil, &discordgo.InteractionCreate{
+		Interaction: &discordgo.Interaction{
 			Type: discordgo.InteractionApplicationCommand,
 			Data: discordgo.ApplicationCommandInteractionData{
 				Name: "unknown",
@@ -216,6 +233,9 @@ func TestCommandRegistry_Handle(t *testing.T) {
 	})
 	if err == nil {
 		t.Errorf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), fmt.Sprintf("handler for interaction %s not found", "unknown")) {
+		t.Errorf("expected error to contain %v, got %v", fmt.Sprintf("handler for interaction %s not found", "unknown"), err)
 	}
 }
 
