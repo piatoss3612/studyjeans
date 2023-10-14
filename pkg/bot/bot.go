@@ -2,13 +2,10 @@ package bot
 
 import (
 	"github.com/bwmarrin/discordgo"
-	"github.com/piatoss3612/studyjeans/pkg/command"
 )
 
 type Bot struct {
-	m command.CommandManager
 	s *discordgo.Session
-	r *command.CommandRegistry
 }
 
 func New(s *discordgo.Session) *Bot {

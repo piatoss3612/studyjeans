@@ -5,17 +5,12 @@ import (
 	"os"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/joho/godotenv"
+	_ "github.com/joho/godotenv/autoload"
 	"github.com/piatoss3612/studyjeans/pkg/bot"
 	"github.com/piatoss3612/studyjeans/pkg/shutdown"
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		panic(err)
-	}
-
 	s, err := discordgo.New("Bot " + os.Getenv("BOT_TOKEN"))
 	if err != nil {
 		panic(err)
