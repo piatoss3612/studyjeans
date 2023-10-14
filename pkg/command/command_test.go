@@ -1,18 +1,21 @@
 package command
 
 import (
-	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/bwmarrin/discordgo"
+
+	_ "github.com/joho/godotenv/autoload"
 )
 
 var (
 	c1 = &StubCommand{
 		cmd: &discordgo.ApplicationCommand{
-			Name: "test",
+			Name:        "test",
+			Description: "test",
 		},
 		f: func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 			return nil
@@ -26,7 +29,8 @@ var (
 
 	c2 = &StubCommand{
 		cmd: &discordgo.ApplicationCommand{
-			Name: "test3",
+			Name:        "test3",
+			Description: "test3",
 		},
 		f: func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 			return nil
@@ -37,30 +41,7 @@ var (
 			},
 		},
 	}
-
-	errCreateCommand = errors.New("error")
-	errDeleteCommand = errors.New("error")
 )
-
-type StubCommandManager struct{}
-
-func (m *StubCommandManager) CommandCreate(guildID string, cmd *discordgo.ApplicationCommand) error {
-	return nil
-}
-
-func (m *StubCommandManager) CommandDelete(guildID string, cmdID string) error {
-	return nil
-}
-
-type ErrorCommandManager struct{}
-
-func (m *ErrorCommandManager) CommandCreate(guildID string, cmd *discordgo.ApplicationCommand) error {
-	return errCreateCommand
-}
-
-func (m *ErrorCommandManager) CommandDelete(guildID string, cmdID string) error {
-	return errDeleteCommand
-}
 
 type StubCommand struct {
 	cmd *discordgo.ApplicationCommand
@@ -81,18 +62,11 @@ func (c *StubCommand) InteractionHandleFuncs() map[string]CommandHandleFunc {
 }
 
 func newCommandRegistry() *CommandRegistry {
-	return NewCommandRegistry(&StubCommandManager{})
-}
-
-func newErrorCommandRegistry() *CommandRegistry {
-	return NewCommandRegistry(&ErrorCommandManager{})
+	return NewCommandRegistry()
 }
 
 func TestNewCommandRegistry(t *testing.T) {
 	r := newCommandRegistry()
-	if r.m == nil {
-		t.Errorf("expected m to not be nil")
-	}
 	if len(r.cmds) != 0 {
 		t.Errorf("expected cmds to be empty, got %v", r.cmds)
 	}
@@ -141,19 +115,121 @@ func TestCommandRegistry_RegisterCommands(t *testing.T) {
 	}
 }
 
-func TestCommandRegistry_CreateCommands(t *testing.T) {
+func TestCommandRegistry_Commands(t *testing.T) {
 	r := newCommandRegistry()
 
 	r.RegisterCommands(c1, c2)
 
-	err := r.CreateCommands()
-	if err != nil {
-		t.Errorf("expected no error, got %v", err)
+	cmds := r.Commands()
+
+	if len(cmds) != 2 {
+		t.Errorf("expected cmds to have 2 elements, got %v", cmds)
+	}
+
+	if cmds[0].Name != "test" {
+		t.Errorf("expected cmds[0].Name to be \"test\", got %v", cmds[0].Name)
+	}
+
+	if cmds[1].Name != "test3" {
+		t.Errorf("expected cmds[1].Name to be \"test3\", got %v", cmds[1].Name)
 	}
 }
 
-func TestCommandRegistry_Handle(t *testing.T) {
+func TestCommandRegistry_Handlers(t *testing.T) {
 	r := newCommandRegistry()
+
+	r.RegisterCommands(c1, c2)
+
+	handlers := r.Handlers()
+
+	if len(handlers) != 4 {
+		t.Errorf("expected handlers to have 4 elements, got %v", handlers)
+	}
+}
+
+func TestNewCommandManager(t *testing.T) {
+	s := &discordgo.Session{}
+	r := newCommandRegistry()
+
+	m := NewCommandManager(s, r)
+
+	if m.s != s {
+		t.Errorf("expected m.s to be s, got %v", m.s)
+	}
+
+	if m.r != r {
+		t.Errorf("expected m.r to be r, got %v", m.r)
+	}
+}
+
+func TestCommandManager_CommandRegistry(t *testing.T) {
+	s := &discordgo.Session{}
+	r := newCommandRegistry()
+
+	m := NewCommandManager(s, r)
+
+	if m.CommandRegistry() != r {
+		t.Errorf("expected m.CommandRegistry() to be r, got %v", m.CommandRegistry())
+	}
+}
+
+func TestCommandManager_SetCommandRegistry(t *testing.T) {
+	s := &discordgo.Session{}
+	r := newCommandRegistry()
+
+	m := NewCommandManager(s, r)
+
+	r2 := newCommandRegistry()
+
+	m.SetCommandRegistry(r2)
+
+	if m.CommandRegistry() != r2 {
+		t.Errorf("expected m.CommandRegistry() to be r2, got %v", m.CommandRegistry())
+	}
+}
+
+func TestCommandManager_CreateAndDeleteCommands(t *testing.T) {
+	s, err := discordgo.New("Bot " + os.Getenv("BOT_TOKEN"))
+	if err != nil {
+		t.Errorf("expected err to be nil, got %v", err)
+	}
+	r := newCommandRegistry()
+
+	c := &StubCommand{
+		cmd: &discordgo.ApplicationCommand{
+			Name:        "hello",
+			Description: "hello",
+		},
+		f: func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+			return nil
+		},
+	}
+
+	r.RegisterCommands(c)
+
+	m := NewCommandManager(s, r)
+
+	err = s.Open()
+	if err != nil {
+		t.Errorf("expected err to be nil, got %v", err)
+	}
+	defer s.Close()
+
+	err = m.CreateCommands("")
+	if err != nil {
+		t.Errorf("expected err to be nil, got %v", err)
+	}
+
+	err = m.DeleteCommands("")
+	if err == nil {
+		t.Errorf("expected err to be not nil, got %v", err)
+	}
+}
+
+func TestCommandManager_Handle(t *testing.T) {
+	r := newCommandRegistry()
+
+	m := NewCommandManager(nil, r)
 
 	cmd := &StubCommand{
 		cmd: &discordgo.ApplicationCommand{
@@ -202,13 +278,13 @@ func TestCommandRegistry_Handle(t *testing.T) {
 	r.RegisterCommand(cmd)
 
 	for _, i := range interactions {
-		err := r.Handle(nil, i)
+		err := m.Handle(nil, i)
 		if err != nil {
 			t.Errorf("expected no error, got %v", err)
 		}
 	}
 
-	err := r.Handle(nil, &discordgo.InteractionCreate{
+	err := m.Handle(nil, &discordgo.InteractionCreate{
 		Interaction: &discordgo.Interaction{
 			Type: discordgo.InteractionPing,
 			Data: discordgo.ApplicationCommandInteractionData{
@@ -223,7 +299,7 @@ func TestCommandRegistry_Handle(t *testing.T) {
 		t.Errorf("expected error to contain %v, got %v", fmt.Sprintf("interaction type %v not found", discordgo.InteractionPing), err)
 	}
 
-	err = r.Handle(nil, &discordgo.InteractionCreate{
+	err = m.Handle(nil, &discordgo.InteractionCreate{
 		Interaction: &discordgo.Interaction{
 			Type: discordgo.InteractionApplicationCommand,
 			Data: discordgo.ApplicationCommandInteractionData{
@@ -236,43 +312,5 @@ func TestCommandRegistry_Handle(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), fmt.Sprintf("handler for interaction %s not found", "unknown")) {
 		t.Errorf("expected error to contain %v, got %v", fmt.Sprintf("handler for interaction %s not found", "unknown"), err)
-	}
-}
-
-func TestCommandRegistry_DeleteCommands(t *testing.T) {
-	r := newCommandRegistry()
-
-	r.RegisterCommands(c1, c2)
-
-	err := r.CreateCommands()
-	if err != nil {
-		t.Errorf("expected no error, got %v", err)
-	}
-
-	err = r.DeleteCommands()
-	if err != nil {
-		t.Errorf("expected no error, got %v", err)
-	}
-}
-
-func TestCommandRegistry_CreateAndDeleteCommandsError(t *testing.T) {
-	r := newErrorCommandRegistry()
-
-	r.RegisterCommands(c1, c2)
-
-	err := r.CreateCommands()
-	if err == nil {
-		t.Errorf("expected error, got nil")
-	}
-	if err != errCreateCommand {
-		t.Errorf("expected err to be %v, got %v", errCreateCommand, err)
-	}
-
-	err = r.DeleteCommands()
-	if err == nil {
-		t.Errorf("expected error, got nil")
-	}
-	if err != errDeleteCommand {
-		t.Errorf("expected err to be %v, got %v", errDeleteCommand, err)
 	}
 }
