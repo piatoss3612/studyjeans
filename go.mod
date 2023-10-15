@@ -20,7 +20,7 @@ require (
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.11.1 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
-	golang.org/x/crypto v0.0.0-20210421170649-83a5a9bb288b // indirect
+	golang.org/x/crypto v0.1.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 )
