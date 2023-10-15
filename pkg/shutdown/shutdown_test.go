@@ -8,9 +8,7 @@ import (
 )
 
 func TestGracefulShutdown(t *testing.T) {
-	fn := func() error {
-		return nil
-	}
+	fn := func() {}
 
 	stop := GracefulShutdown(fn, os.Interrupt)
 	if stop == nil {
@@ -29,9 +27,7 @@ func TestGracefulShutdown(t *testing.T) {
 }
 
 func TestGracefulShutdownCtx(t *testing.T) {
-	fn := func() error {
-		return nil
-	}
+	fn := func() {}
 
 	ctx, cancel := GracefulShutdownCtx(context.Background(), fn, os.Interrupt)
 	if ctx == nil {

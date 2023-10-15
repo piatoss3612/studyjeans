@@ -40,8 +40,8 @@ func main() {
 
 	l.Info("Studyjeans bot is now running. Press CTRL-C to exit.")
 
-	<-shutdown.GracefulShutdown(func() error {
-		return b.Close()
+	<-shutdown.GracefulShutdown(func() {
+		_ = b.Close()
 	}, os.Interrupt)
 
 	l.Info("Successfully shutdown studyjeans bot!")
