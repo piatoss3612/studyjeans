@@ -15,8 +15,11 @@ func GracefulShutdown(fn func(), sigs ...os.Signal) <-chan struct{} {
 	go func() {
 		<-sigChan
 
+		signal.Stop(sigChan)
+
 		fn()
 
+		close(sigChan)
 		close(stop)
 	}()
 
@@ -28,6 +31,7 @@ func GracefulShutdownCtx(ctx context.Context, fn func(), sigs ...os.Signal) (con
 
 	go func() {
 		<-ctx.Done()
+
 		fn()
 	}()
 

@@ -35,6 +35,7 @@ func NewApplicationCommandHandler(m *command.CommandManager, l *zap.Logger) func
 					},
 				},
 			})
+			return
 		}
 
 		timer := prometheus.NewTimer(duration.WithLabelValues(name))

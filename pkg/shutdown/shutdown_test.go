@@ -2,7 +2,6 @@ package shutdown
 
 import (
 	"context"
-	"os"
 	"syscall"
 	"testing"
 )
@@ -10,7 +9,7 @@ import (
 func TestGracefulShutdown(t *testing.T) {
 	fn := func() {}
 
-	stop := GracefulShutdown(fn, os.Interrupt)
+	stop := GracefulShutdown(fn, syscall.SIGINT)
 	if stop == nil {
 		t.Error("stop channel is nil")
 	}
@@ -29,7 +28,7 @@ func TestGracefulShutdown(t *testing.T) {
 func TestGracefulShutdownCtx(t *testing.T) {
 	fn := func() {}
 
-	ctx, cancel := GracefulShutdownCtx(context.Background(), fn, os.Interrupt)
+	ctx, cancel := GracefulShutdownCtx(context.Background(), fn, syscall.SIGINT)
 	if ctx == nil {
 		t.Error("ctx is nil")
 	}
