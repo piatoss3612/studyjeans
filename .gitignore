@@ -1,3 +1,12 @@
+# env
 .env
+
+# configuration
 *config.json
+
+# docker
 docker-compose.yml
+
+# node
+node_modules
+package-lock.json

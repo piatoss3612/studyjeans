@@ -1,6 +1,6 @@
 .PHONY: up
 up:
-	docker compose up -d
+	docker compose up -d --no-cache
 
 .PHONY: down
 down:
